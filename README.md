@@ -41,7 +41,7 @@ Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen
 
 - **Stammdaten-Export der Klassen:**  
   - In WebUntis unter `Stammdaten -> Klassen`.  
-  - Kopieren Sie die Tabelle in eine Excel-Datei mit den Spalten:
+  - Kopieren Sie die Tabelle in eine Excel-Datei mit folgenden Spalten in genau dieser Reihenfolge (nichts umbenennen):
     - `Klasse`, `Langname`, `Alias`, `Jahrgangsstufe`, `Text`, `Klassenlehrkraft`, `Klassenlehrkraft`, `Abteilung`, `Von`, `Bis`.
   - Exportieren Sie diese Excel-Datei mit Excel anschließend als `.csv`.
 
