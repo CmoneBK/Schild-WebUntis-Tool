@@ -27,10 +27,14 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
   - Optionale Daten: E-mail (privat), Telefon-Nr., Fax-Nr., Straße, Postleitzahl, Ortsname
 
 **Hinweise** Dies wird nicht funktionieren, wenn Sie die Datei als Excel-Datei exportieren und diese als .csv abspeichern. Speichern Sie sich diese Exporteinstellung als Vorlage ab, um sie später schneller wieder verwenden zu können.
+
+[Beispiel-Schild-Export](/Beispiel-Dateien/SchildExport.csv)
+
   
 ### 2. Ein in WebUntis korrekt konfigurierter Import
 - Als Zeichensatz ist UTF-8 zu wählen.
-![Korrekt konfigurierter WebUntis Import](/WebUntis%20Importeinstellungen.png)
+  
+![Korrekt konfigurierter WebUntis Import](/Beispiel-Dateien/WebUntis%20Importeinstellungen.png)
 
 ### 3. Optional: Stammdaten Exporte für Warnungs-Funktion
 Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen an Klassenleitungen), benötigen Sie:
@@ -39,7 +43,7 @@ Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen
   - In WebUntis unter `Stammdaten -> Lehrkräfte`.  
   - Scrollen Sie nach unten zur Seite `Berichte` und wählen Sie den CSV-Bericht bei "Lehrkräfte".  
   - **Hinweis:** Das Feld für die E-Mail-Adressen muss mit den Dienst-E-Mail-Adressen der Kollegen gefüllt sein.
-
+  - [Beispiel-Lehrkräfte-Export](/Beispiel-Dateien/Teacher_20241006_1140%202.csv)
 - **Stammdaten-Export der Klassen:**  
   - In WebUntis unter `Stammdaten -> Klassen`.  
   - Kopieren Sie die Tabelle in eine Excel-Datei mit folgenden Spalten in genau dieser Reihenfolge (nichts umbenennen):
@@ -47,6 +51,7 @@ Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen
   
   Dies ist darauf ausgelegt, dass Sie die Tabelle aus WebUntis einfach dort reinkopieren können und nichts mehr ändern müssen.
   - Exportieren Sie diese Excel-Datei mit Excel anschließend als `.csv`.
+  - [Beispiel-Klassen-Export](/Beispiel-Dateien/Klassen.csv)
 
 **Hinweise:** Die generierten CSV-Dateien sollten im Ordner für Klassen- und Lehrerdaten gespeichert werden, der in der Datei `settings.ini` konfiguriert ist. Diese lässt sich mit dem Editor oder Notepad++ öffnen und bearbeiten. 
 Wenn Sie das Verzeichnis so belassen wie es ist können Sie die Dateien in die generierten Ordner ablegen. Manche Schulen werden hierfür jedoch einen Ordner auf einem sicheren Netzlaufwerk bevorzugen.  
