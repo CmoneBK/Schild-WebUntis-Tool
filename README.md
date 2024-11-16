@@ -44,7 +44,7 @@ Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen
   - Kopieren Sie die Tabelle in eine Excel-Datei mit folgenden Spalten in genau dieser Reihenfolge (nichts umbenennen):
     - `Auswahl`, `[eine Leere Spalte]`, `Klasse`, `Langname`, `Alias`, `Jahrgangsstufe`, `Text`, `Klassenlehrkraft`, `Klassenlehrkraft`, `Abteilung`, `Von`, `Bis`.
   
-  Dies ist darauf Ausgelegt, dass sie die Tabelle aus WebUntis einfach dort reinkopieren können und nichts mehr ändern müssen.
+  Dies ist darauf ausgelegt, dass Sie die Tabelle aus WebUntis einfach dort reinkopieren können und nichts mehr ändern müssen.
   - Exportieren Sie diese Excel-Datei mit Excel anschließend als `.csv`.
 
 **Hinweise:** Die generierten CSV-Dateien sollten im Ordner für Klassen- und Lehrerdaten gespeichert werden, der in der Datei `settings.ini` konfiguriert ist. Diese lässt sich mit dem Editor oder Notepad++ öffnen und bearbeiten. 
