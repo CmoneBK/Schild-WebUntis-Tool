@@ -48,7 +48,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
 def read_classes(classes_dir, teachers_dir):
     # Prüfen, ob der Ordner für Klassendaten existiert
     if not os.path.exists(classes_dir):
-        print(f"Warnung: Der Ordner '{classes_dir}' existiert nicht. Es werden Dummy-Daten verwendet.")
+        print(f"Warnung: Der Ordner '{classes_dir}' existiert nicht. Es werden Dummy-Klassendaten verwendet.")
         return {
             "dummy_class_1": {
                 "Klassenlehrkraft_1": "Max Muster",
@@ -61,7 +61,7 @@ def read_classes(classes_dir, teachers_dir):
     # Neueste Klassen-CSV-Datei finden
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
     if not class_csv_files:
-        print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden. Es werden Dummy-Daten verwendet.")
+        print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden. Es werden Dummy-Klassendaten verwendet.")
         return {
             "dummy_class_1": {
                 "Klassenlehrkraft_1": "Max Muster",
@@ -73,24 +73,36 @@ def read_classes(classes_dir, teachers_dir):
 
     newest_class_file = max(class_csv_files, key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))
 
-    # Neueste Lehrkräfte-CSV-Datei finden
-    teacher_csv_files = [f for f in os.listdir(teachers_dir) if f.endswith('.csv')]
-    if not teacher_csv_files:
-        print(f"Warnung: Keine Lehrkräfte-CSV-Dateien im Ordner '{teachers_dir}' gefunden.")
-        return {}
-    newest_teacher_file = max(teacher_csv_files, key=lambda f: os.path.getctime(os.path.join(teachers_dir, f)))
-
-    # Lehrkräfte in ein Dictionary einlesen
-    teachers = {}
-    with open(os.path.join(teachers_dir, newest_teacher_file), 'r', newline='', encoding='utf-8-sig') as teacher_file:
-        teacher_reader = csv.DictReader(teacher_file, delimiter='\t')
-        for row in teacher_reader:
-            teacher_name = row['name']
-            teachers[teacher_name] = {
-                'email': row.get('address.email', ''),
-                'forename': row.get('foreName', ''),
-                'longname': row.get('longName', '')
+    # Prüfen, ob der Ordner für Lehrerdaten existiert
+    if not os.path.exists(teachers_dir):
+        print(f"Warnung: Der Ordner '{teachers_dir}' existiert nicht. Es werden Dummy-Lehrerdaten verwendet.")
+        teachers = {
+            "dummy_teacher_1": {"email": "lehrer1@example.com", "forename": "Anna", "longname": "Lehrkraft"},
+            "dummy_teacher_2": {"email": "lehrer2@example.com", "forename": "Tom", "longname": "Muster"},
+        }
+    else:
+        # Neueste Lehrkräfte-CSV-Datei finden
+        teacher_csv_files = [f for f in os.listdir(teachers_dir) if f.endswith('.csv')]
+        if not teacher_csv_files:
+            print(f"Warnung: Keine Lehrkräfte-CSV-Dateien im Ordner '{teachers_dir}' gefunden. Es werden Dummy-Lehrerdaten verwendet.")
+            teachers = {
+                "dummy_teacher_1": {"email": "lehrer1@example.com", "forename": "Anna", "longname": "Lehrkraft"},
+                "dummy_teacher_2": {"email": "lehrer2@example.com", "forename": "Tom", "longname": "Muster"},
             }
+        else:
+            newest_teacher_file = max(teacher_csv_files, key=lambda f: os.path.getctime(os.path.join(teachers_dir, f)))
+
+            # Lehrkräfte in ein Dictionary einlesen
+            teachers = {}
+            with open(os.path.join(teachers_dir, newest_teacher_file), 'r', newline='', encoding='utf-8-sig') as teacher_file:
+                teacher_reader = csv.DictReader(teacher_file, delimiter='\t')
+                for row in teacher_reader:
+                    teacher_name = row['name']
+                    teachers[teacher_name] = {
+                        'email': row.get('address.email', ''),
+                        'forename': row.get('foreName', ''),
+                        'longname': row.get('longName', '')
+                    }
 
     # Klassen-CSV-Datei einlesen und Lehrkräfte-Emails zuordnen
     classes_by_name = {}
@@ -114,6 +126,7 @@ def read_classes(classes_dir, teachers_dir):
             }
 
     return classes_by_name
+
 
 
 def read_students(use_abschlussdatum):
