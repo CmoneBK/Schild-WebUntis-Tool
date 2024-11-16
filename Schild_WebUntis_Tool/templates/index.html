@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schild-WebUntis-Tool</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Schild-WebUntis-Tool</h1>
+
+        <form method="post">
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="use_abschlussdatum" name="use_abschlussdatum" {% if use_abschlussdatum %}checked{% endif %}>
+                <label class="form-check-label" for="use_abschlussdatum">Benutze Vorrauss. Abschlussdatum als Entlassdatum, falls dieses früher liegt oder kein Entlassdatum existiert</label>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="create_second_file" name="create_second_file" {% if create_second_file %}checked{% endif %}>
+                <label class="form-check-label" for="create_second_file">Erstelle Liste mit fehlenden Entlassdatumsangaben</label>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="warn_entlassdatum" name="warn_entlassdatum" {% if warn_entlassdatum %}checked{% endif %}>
+                <label class="form-check-label" for="warn_entlassdatum">Warnungen für Entlassdatum erstellen</label>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="warn_aufnahmedatum" name="warn_aufnahmedatum" {% if warn_aufnahmedatum %}checked{% endif %}>
+                <label class="form-check-label" for="warn_aufnahmedatum">Warnungen für Aufnahmedatum erstellen</label>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="warn_klassenwechsel" name="warn_klassenwechsel" {% if warn_klassenwechsel %}checked{% endif %}>
+                <label class="form-check-label" for="warn_klassenwechsel">Warnungen für Klassenwechsel erstellen</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Verarbeiten</button>
+        </form>
+
+
+        {% if confirmation %}
+        <div class="alert alert-success mt-3" role="alert">
+            {{ confirmation }}
+        </div>
+        {% endif %}
+
+        {% if warnings %}
+        <h3 class="mt-5">Warnings:</h3>
+        <ul class="list-group">
+            {% for warning in warnings %}
+            {% if 'neues_entlassdatum' in warning.keys() %}
+            <li class="list-group-item">
+                <strong>Schüler:</strong> {{ warning['Vorname'] }} {{ warning['Nachname'] }} (Klasse {{ warning.get('Klasse', 'N/A') }})<br>
+                <strong>Neues Entlassdatum:</strong> {{ warning['neues_entlassdatum'] }}<br>
+                <strong>Altes Entlassdatum:</strong> {{ warning['altes_entlassdatum'] }}<br>
+                {% if 'Zeitraum_nicht_dokumentiert' in warning %}
+                <strong>Zeitraum nicht dokumentiert:</strong> {{ warning['Zeitraum_nicht_dokumentiert'] }}<br>
+                {% endif %}
+                <strong>Warnung:</strong> {{ warning['warning_message'] }}<br>
+                <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{ warning['Klassenlehrkraft_1_Email'] }})<br>
+                <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{ warning['Klassenlehrkraft_2_Email'] }})
+            </li>
+            {% elif 'neue_klasse' in warning.keys() %}
+            <li class="list-group-item">
+                <strong>Schüler:</strong> {{ warning['Vorname'] }} {{ warning['Nachname'] }}<br>
+                <strong>Alte Klasse:</strong> {{ warning.get('alte_klasse', 'N/A') }}<br>
+                <strong>Neue Klasse:</strong> {{ warning.get('neue_klasse', 'N/A') }}<br>
+                <strong>Warnung:</strong> {{ warning['warning_message'] }}<br>
+                <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{ warning['Klassenlehrkraft_1_Email'] }})<br>
+                <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{ warning['Klassenlehrkraft_2_Email'] }})
+            </li>
+            {% elif 'neues_aufnahmedatum' in warning.keys() %}
+            <li class="list-group-item">
+                <strong>Schüler:</strong> {{ warning['Vorname'] }} {{ warning['Nachname'] }} (Klasse {{ warning.get('Klasse', 'N/A') }})<br>
+                <strong>Neues Aufnahmedatum:</strong> {{ warning['neues_aufnahmedatum'] }}<br>
+                <strong>Altes Aufnahmedatum:</strong> {{ warning['altes_aufnahmedatum'] }}<br>
+                {% if 'Zeitraum_nicht_dokumentiert' in warning %}
+                <strong>Zeitraum nicht dokumentiert:</strong> {{ warning['Zeitraum_nicht_dokumentiert'] }}<br>
+                {% endif %}
+                <strong>Warnung:</strong> {{ warning['warning_message'] }}<br>
+                <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{ warning['Klassenlehrkraft_1_Email'] }})<br>
+                <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{ warning['Klassenlehrkraft_2_Email'] }})
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+        <button id="generateEmails" class="btn btn-info mt-3">Emails Generieren</button>
+        <button id="sendEmails" class="btn btn-danger mt-3">Emails senden</button>
+        {% endif %}
+
+
+        {% if emails %}
+        <h3 class="mt-5">Emails Generieren:</h3>
+        <ul class="list-group">
+            {% for email in emails %}
+            <li class="list-group-item">
+                {% if 'neues_entlassdatum' in email.warning.keys() %}
+                <strong>An:</strong> {{ email['to']|join(', ') }}<br>
+                <strong>Betreff:</strong> Problem mit Entlassdatum für {{ email.warning['Vorname'] }} {{ email.warning['Nachname'] }}<br>
+                <strong>Text:</strong><br>
+                <div class="email-body">
+                    <p>Es gibt ein Problem mit dem Entlassdatum des Schülers/der Schülerin <strong>{{ email.warning['Vorname'] }} {{ email.warning['Nachname'] }}</strong>{% if email.warning.get('Klasse') %} aus der Klasse <strong>{{ email.warning.get('Klasse', 'N/A') }}</strong>{% endif %}.</p>
+                    <p>Das neue Entlassdatum lautet: <strong>{{ email.warning['neues_entlassdatum'] }}</strong>, während das alte Entlassdatum <strong>{{ email.warning['altes_entlassdatum'] }}</strong> war.</p>
+                </div>
+                {% elif 'neue_klasse' in email.warning.keys() %}
+                <strong>An:</strong> {{ email['to']|join(', ') }}<br>
+                <strong>Betreff:</strong> Klassenwechsel für {{ email.warning['Vorname'] }} {{ email.warning['Nachname'] }}<br>
+                <strong>Text:</strong><br>
+                <div class="email-body">
+                    <p>Es gab einen Klassenwechsel des Schülers/der Schülerin <strong>{{ email.warning['Vorname'] }} {{ email.warning['Nachname'] }}</strong>.</p>
+                    <p>Die alte Klasse war: <strong>{{ email.warning.get('alte_klasse', 'N/A') }}</strong>, und die neue Klasse lautet: <strong>{{ email.warning.get('neue_klasse', 'N/A') }}</strong>.</p>
+                    <p>Bitte korrigieren Sie den Eintrag manuell im Digitalen Klassenbuch, da die Änderung ab dem aktuellen Tag gilt.</p>
+                </div>
+                {% elif 'neues_aufnahmedatum' in email.warning.keys() %}
+                <strong>An:</strong> {{ email['to']|join(', ') }}<br>
+                <strong>Betreff:</strong> Problem mit Aufnahmedatum für {{ email.warning['Vorname'] }} {{ email.warning['Nachname'] }}<br>
+                <strong>Text:</strong><br>
+                <div class="email-body">
+                    <p>Es gibt ein Problem mit dem Aufnahmedatum des Schülers/der Schülerin <strong>{{ email.warning['Vorname'] }} {{ email.warning['Nachname'] }}</strong>{% if email.warning.get('Klasse') %} aus der Klasse <strong>{{ email.warning.get('Klasse', 'N/A') }}</strong>{% endif %}.</p>
+                    <p>Das neue Aufnahmedatum lautet: <strong>{{ email.warning['neues_aufnahmedatum'] }}</strong>, während das alte Aufnahmedatum <strong>{{ email.warning['altes_aufnahmedatum'] }}</strong> war.</p>
+                </div>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <script>
+        document.getElementById("generateEmails")?.addEventListener("click", function () {
+            fetch("/generate_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+                if (data.emails) {
+                    window.location.href = "/view_generated_emails";
+                }
+            });
+        });
+
+        document.getElementById("sendEmails")?.addEventListener("click", function () {
+            fetch("/send_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+            });
+        });
+
+        document.getElementById("generateClassChangeEmails")?.addEventListener("click", function () {
+            fetch("/generate_class_change_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+                if (data.emails) {
+                    window.location.href = "/view_generated_emails";
+                }
+            });
+        });
+
+        document.getElementById("sendClassChangeEmails")?.addEventListener("click", function () {
+            fetch("/send_class_change_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+            });
+        });
+    </script>
+</body>
+</html>

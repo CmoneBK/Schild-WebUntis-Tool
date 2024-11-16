@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generierte E-Mails</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Generierte E-Mails</h1>
+
+        {% if emails %}
+        <ul class="list-group mt-4">
+            {% for email in emails %}
+            <li class="list-group-item">
+                <strong>An:</strong> {{ email['to']|join(', ') }}<br>
+                <strong>Betreff:</strong> {{ email['subject'] }}<br>
+                <strong>Text:</strong><br>
+                <div class="email-body mt-2">{{ email['body']|safe }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+        <button id="sendEmails" class="btn btn-danger mt-3">Emails Senden</button>
+        {% else %}
+        <p class="mt-3">No emails have been generated yet.</p>
+        {% endif %}
+
+        <a href="/" class="btn btn-primary mt-4" onclick="history.back(); return false;">Zurück</a>
+    </div>
+
+    <script>
+        document.getElementById("sendEmails")?.addEventListener("click", function () {
+            fetch("/send_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+            });
+        });
+
+        document.getElementById("sendClassChangeEmails")?.addEventListener("click", function () {
+            fetch("/send_class_change_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+            });
+        });
+    </script>
+</body>
+</html>
