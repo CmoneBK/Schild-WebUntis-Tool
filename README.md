@@ -55,7 +55,8 @@ Wenn Sie das Verzeichnis so belassen wie es ist können Sie die Dateien in die g
 
 ## Installation
 1. Die .exe Dateie finden Sie unter: [Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe) Dort gibt es oben rechts neben dem 'RAW' einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.
-2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. (Diese Datei sollte immer durch neue Exporte überschrieben werden).
+2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
+Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
 3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.
 4. Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
    - `settings.ini` (Anpassung bei Bedarf):
@@ -63,6 +64,13 @@ Wenn Sie das Verzeichnis so belassen wie es ist können Sie die Dateien in die g
    - `email_settings.ini` (Anpassung notwendig für E-Mail Versand):
      - SMTP-Konfiguration für den E-Mail-Versand.
 5. Öffnen Sie die im Browser angezeigte Webseite, um das Tool zu nutzen.
+
+## Verwendung
+1. Das Programm wandelt bei einem Klick auf `Verarbeiten` aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Order WebUntis Importe aktuellem Datum und Uhrzeit in der Datei. 
+Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Verzeichnis exportierten Datei und stellt kritische Unterschiede als Warnungen dar.
+2. Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
+3. Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet. 
+Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen. 
 
 ## Hinweise
 - **Warnungen:** Warnungen werden basierend auf Ihren Auswahlkriterien erstellt. Änderungen an Entlass- oder Aufnahmedaten, die zu Lücken in der Dokumentation führen, erfordern besondere Aufmerksamkeit.
