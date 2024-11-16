@@ -1,0 +1,2 @@
+*.exe filter=lfs diff=lfs merge=lfs -text
+Schild-WebUntis-Tool.exe filter=lfs diff=lfs merge=lfs -text
