@@ -46,17 +46,37 @@ def run(use_abschlussdatum=True, create_second_file=True,
 
 
 def read_classes(classes_dir, teachers_dir):
+    # Prüfen, ob der Ordner für Klassendaten existiert
+    if not os.path.exists(classes_dir):
+        print(f"Warnung: Der Ordner '{classes_dir}' existiert nicht. Es werden Dummy-Daten verwendet.")
+        return {
+            "dummy_class_1": {
+                "Klassenlehrkraft_1": "Max Muster",
+                "Klassenlehrkraft_1_Email": "max.muster@example.com",
+                "Klassenlehrkraft_2": "Erika Beispiel",
+                "Klassenlehrkraft_2_Email": "erika.beispiel@example.com",
+            }
+        }
+
     # Neueste Klassen-CSV-Datei finden
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
     if not class_csv_files:
-        print("Keine Klassen-CSV-Dateien im angegebenen Verzeichnis gefunden.")
-        return {}
+        print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden. Es werden Dummy-Daten verwendet.")
+        return {
+            "dummy_class_1": {
+                "Klassenlehrkraft_1": "Max Muster",
+                "Klassenlehrkraft_1_Email": "max.muster@example.com",
+                "Klassenlehrkraft_2": "Erika Beispiel",
+                "Klassenlehrkraft_2_Email": "erika.beispiel@example.com",
+            }
+        }
+
     newest_class_file = max(class_csv_files, key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))
 
     # Neueste Lehrkräfte-CSV-Datei finden
     teacher_csv_files = [f for f in os.listdir(teachers_dir) if f.endswith('.csv')]
     if not teacher_csv_files:
-        print("Keine Lehrkräfte-CSV-Dateien im angegebenen Verzeichnis gefunden.")
+        print(f"Warnung: Keine Lehrkräfte-CSV-Dateien im Ordner '{teachers_dir}' gefunden.")
         return {}
     newest_teacher_file = max(teacher_csv_files, key=lambda f: os.path.getctime(os.path.join(teachers_dir, f)))
 
@@ -67,10 +87,10 @@ def read_classes(classes_dir, teachers_dir):
         for row in teacher_reader:
             teacher_name = row['name']
             teachers[teacher_name] = {
-            'email': row.get('address.email', ''),
-            'forename': row.get('foreName', ''),
-            'longname': row.get('longName', '')
-        }
+                'email': row.get('address.email', ''),
+                'forename': row.get('foreName', ''),
+                'longname': row.get('longName', '')
+            }
 
     # Klassen-CSV-Datei einlesen und Lehrkräfte-Emails zuordnen
     classes_by_name = {}
@@ -94,6 +114,7 @@ def read_classes(classes_dir, teachers_dir):
             }
 
     return classes_by_name
+
 
 def read_students(use_abschlussdatum):
     import_dir = os.path.join(os.getcwd(), 'WebUntis Importe')
