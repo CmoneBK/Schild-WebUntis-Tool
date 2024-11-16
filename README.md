@@ -49,7 +49,7 @@ Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen
 
 **Hinweise:** Die generierten CSV-Dateien sollten im Ordner für Klassen- und Lehrerdaten gespeichert werden, der in der Datei `settings.ini` konfiguriert ist. Diese lässt sich mit dem Editor oder Notepad++ öffnen und bearbeiten. 
 Wenn Sie das Verzeichnis so belassen wie es ist können Sie die Dateien in die generierten Ordner ablegen. Manche Schulen werden hierfür jedoch einen Ordner auf einem sicheren Netzlaufwerk bevorzugen.  
-- **SMTP-Login-Daten Ihres E-Mail Anbieters**
+- **SMTP-Login-Daten Ihres E-Mail Anbieters:**
 
   Diese sollten Sie haben und bereithalten. Erstellen Sie am besten einen seperaten E-Mail Account speziell zum Versand der hier generierten E-Mails.
 
