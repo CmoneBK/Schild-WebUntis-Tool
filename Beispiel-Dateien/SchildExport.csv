@@ -1,0 +1,7 @@
+﻿Interne ID-Nummer;Nachname;Vorname;Klasse;Klassenlehrer;Geburtsdatum;Geschlecht;vorauss. Abschlussdatum;Aufnahmedatum;Entlassdatum;Volljährig;Schulpflicht erfüllt;Status;Straße;Ortsname;Postleitzahl;Telefon-Nr.;Fax-Nr.;E-Mail (privat)
+10001;Mustermann;Max;10A;Herr Schmidt;15.03.2008;m;31.07.2024;01.08.2023;;Nein;Ja;2;Musterstraße 1;Musterstadt;12345;1234567890;;max.mustermann@example.com
+10002;Musterfrau;Lena;10A;Herr Schmidt;22.07.2007;w;31.07.2024;01.08.2023;;Nein;Ja;2;Beispiellstraße 2;Musterstadt;12345;0987654321;;lena.musterfrau@example.com
+10003;Beispiel;Paul;10B;Frau Meier;10.12.2006;m;31.07.2024;01.08.2023;;Nein;Ja;2;Hauptstraße 5;Beispieldorf;54321;1122334455;;paul.beispiel@example.com
+10004;Fiktiv;Anna;10B;Frau Meier;03.06.2008;w;31.07.2024;01.08.2023;;Nein;Ja;2;Nebenstraße 8;Beispieldorf;54321;5566778899;;anna.fiktiv@example.com
+10005;Demodat;Lukas;10C;Herr Müller;25.09.2007;m;31.07.2024;01.08.2023;;Nein;Ja;2;Rathausplatz 10;Demostadt;98765;6677889900;;lukas.demodat@example.com
+10006;Tester;Sophie;10C;Herr Müller;14.11.2006;w;31.07.2024;01.08.2023;;Nein;Ja;2;Ringstraße 12;Demostadt;98765;7788990011;;sophie.tester@example.com

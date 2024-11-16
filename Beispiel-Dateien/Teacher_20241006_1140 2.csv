@@ -1,0 +1,11 @@
+name	longName	foreName	title	birthDate	pnr	address.email	address.phone	address.mobile	address.street	address.postCode	address.city
+FAKE	Fake	Anna		15.08.1985	D0012345	tester.anna@example.com	0123456789	01701234567	Musterstraße 1	12345	Musterstadt
+DATA	Data	Max		22.03.1987	D0016789	max.mustermann@example.com	0987654321	01719876543	Beispiellstraße 5	54321	Demostadt
+EXAM	Examplar	Lena		30.06.1990	D0023456	lena.examplar@example.com	0112233445	01729988776	Hauptstraße 12	65432	Beispielstadt
+TESTER	Tester	Paul		17.11.1988	D0034567	paul.demo@example.com	0223344556	01735554432	Ringstraße 22	76543	Demoville
+FAKER	Faker	Sophie		05.09.1992	D0045678	sophie.simulant@example.com	0334455667	01746665554	Nebenstraße 8	87654	Testhausen
+MIME	Mime	Philipp		14.01.1995	D0056789	philipp.mime@example.com	0445566778	01757776643	Demoallee 10	98765	Fakecity
+MOCK	Mockup	Chris		25.04.1983	D0067890	chris.mockup@example.com	0556677889	01768887721	Schulstraße 3	11223	Sampletown
+DUMMY	Dummy	Marie		02.07.1986	D0078901	marie.dummy@example.com	0667788990	01779998887	Fakegasse 7	22334	Probetown
+SAMPLE	Sample	Tim		10.12.1990	D0089012	tim.example@example.com	0778899001	01789991122	Teststraße 9	33445	Modellstadt
+LORE	Lore	Emma		08.03.1989	D0090123	emma.testerson@example.com	0889900112	01799982233	Demoweg 2	44556	Probekreis

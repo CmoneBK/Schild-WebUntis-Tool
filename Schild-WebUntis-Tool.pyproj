@@ -43,6 +43,9 @@
     <Folder Include="Schild_WebUntis_Tool\templates\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Beispiel-Dateien\Klassen.csv" />
+    <Content Include="Beispiel-Dateien\SchildExport.csv" />
+    <Content Include="Beispiel-Dateien\Teacher_20241006_1140 2.csv" />
     <Content Include="requirements.txt" />
     <Content Include="Schild_WebUntis_Tool\static\content\bootstrap.css" />
     <Content Include="Schild_WebUntis_Tool\static\content\bootstrap.min.css" />
