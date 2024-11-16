@@ -34,6 +34,7 @@
     <Compile Include="Schild_WebUntis_Tool\__init__.py" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Beispiel-Dateien\" />
     <Folder Include="Schild_WebUntis_Tool\" />
     <Folder Include="Schild_WebUntis_Tool\static\" />
     <Folder Include="Schild_WebUntis_Tool\static\content\" />
