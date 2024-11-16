@@ -54,7 +54,7 @@ Wenn Sie das Verzeichnis so belassen wie es ist können Sie die Dateien in die g
   Diese sollten Sie haben und bereithalten. Erstellen Sie am besten einen seperaten E-Mail Account speziell zum Versand der hier generierten E-Mails.
 
 ## Installation
-1. Die .exe Dateie finden Sie unter: [Schild-WebUntis-Tool.exe]([https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master/Schild%20WebUntis%20Bridge2/dist/SchildNRW%20WebUntis%20Umwandler%201.2.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe)) Dort gibt es oben rechts einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.
+1. Die .exe Dateie finden Sie unter: [Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe) Dort gibt es oben rechts einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.
 2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. (Diese Datei sollte immer durch neue Exporte überschrieben werden).
 3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.
 4. Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
