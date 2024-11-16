@@ -1,6 +1,5 @@
 # Schild-WebUntis-Tool
-
-##Dieses Tool ist eine Weiterentwicklung des [SchildNRW-WebUntis Umwandlders](https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master)
+**Dieses Tool ist eine Weiterentwicklung des [SchildNRW-WebUntis-Umwandlers](https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master)**
 
 Ein Tool zur Umwandlung und Verwaltung von Schülerdaten aus SchildNRW für den Import nach WebUntis, inklusive benutzerdefinierter Warnungen und E-Mail-Benachrichtigungen.
 
