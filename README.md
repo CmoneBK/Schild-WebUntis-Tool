@@ -41,8 +41,8 @@ Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen
 
 - **Stammdaten-Export der Lehrkräfte:**  
   - In WebUntis unter `Stammdaten -> Lehrkräfte`.  
-  - Scrollen Sie nach unten zur Seite `Berichte` und wählen Sie den CSV-Bericht bei "Lehrkräfte".  
-  - **Hinweis:** Das Feld für die E-Mail-Adressen muss mit den Dienst-E-Mail-Adressen der Kollegen gefüllt sein.
+  - Scrollen Sie nach unten zur Seite, um `Berichte` anzuklicken und wählen Sie den CSV-Bericht bei "Lehrkräfte".  
+  - **Wichtiger Hinweis:** Das Feld für die E-Mail-Adressen muss mit den Dienst-E-Mail-Adressen der Kollegen gefüllt sein, damit es nachher funktioniert.
   - [Beispiel-Lehrkräfte-Export](/Beispiel-Dateien/Teacher_20241006_1140%202.csv)
 - **Stammdaten-Export der Klassen:**  
   - In WebUntis unter `Stammdaten -> Klassen`.  
