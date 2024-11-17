@@ -67,7 +67,7 @@ Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leicht
 4. (Optional für den Fall, dass Sie die Warnungs- und E-Mail Funtkionen nutzen wollen)
 
    Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
-   - `settings.ini` (Anpassung bei Bedarf, es werden standardmäßig Order im Verzeichnis der .exe Datei erstellt und diese Pfade eingetragen):
+   - `settings.ini` (Anpassung bei Bedarf. Es werden standardmäßig Order im Verzeichnis der .exe Datei erstellt und diese Pfade eingetragen):
      - Andere Ordnerpfade für Klassendaten (`classes_directory`) und Lehrerdaten (`teachers_directory`).
    - `email_settings.ini` (Anpassung notwendig für E-Mail Versand):
      - SMTP-Konfiguration Ihrer Absender-Adresse für den E-Mail-Versand.
