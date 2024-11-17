@@ -22,18 +22,20 @@ generated_emails_cache = []  # Globaler Cache für generierte E-Mails
 
 # Prüfen, ob die Konfigurationsdateien existieren, und sie bei Bedarf mit Standardwerten erstellen
 def ensure_ini_files_exist():
+    # Standardpfade relativ zum Verzeichnis der .exe festlegen
+    default_classes_dir = os.path.join(os.getcwd(), "Klassendaten")
+    default_teachers_dir = os.path.join(os.getcwd(), "Lehrerdaten")
+
     # Standard-Inhalt für die settings.ini zur Definition der Ordnerpfade
-    default_classes_dir = "Klassendaten"
-    default_teachers_dir = "Lehrerdaten"
     settings_ini_content = f"""# Einstellungen für Verzeichnisse
 # Geben Sie die Pfade zu den benötigten Verzeichnissen an.
 # Beispiele:
-# classes_directory = ./Klassendaten
-# teachers_directory = ./Lehrerdaten
+# classes_directory = {default_classes_dir} # Pfad zu den Klassendateien
+# teachers_directory = {default_teachers_dir} # Pfad zu den Lehrerdaten
 
 [Directories]
-classes_directory = ./{default_classes_dir}  # Pfad zu den Klassendateien
-teachers_directory = ./{default_teachers_dir}  # Pfad zu den Lehrerdaten
+classes_directory = {default_classes_dir}  
+teachers_directory = {default_teachers_dir}  
 """
     # Standard-Inhalt für die email_settings.ini zur SMTP-Konfiguration
     email_settings_ini_content = """# Einstellungen für den E-Mail-Versand
@@ -78,15 +80,15 @@ credentials_path = ./config/credentials.json
         config.read("settings.ini")
 
     # Ordner für Klassendaten und Lehrerdaten nur erstellen, falls sie in settings.ini fehlen
-    classes_dir = config.get("Directories", "classes_directory", fallback=f"./{default_classes_dir}")
-    teachers_dir = config.get("Directories", "teachers_directory", fallback=f"./{default_teachers_dir}")
+    classes_dir = config.get("Directories", "classes_directory", fallback=default_classes_dir)
+    teachers_dir = config.get("Directories", "teachers_directory", fallback=default_teachers_dir)
 
     # Erstelle Standardordner für Klassendaten und Lehrerdaten, falls sie nicht existieren
-    if classes_dir == f"./{default_classes_dir}" and not os.path.exists(default_classes_dir):
+    if classes_dir == default_classes_dir and not os.path.exists(default_classes_dir):
         os.makedirs(default_classes_dir)
         print(f"Ordner '{default_classes_dir}' wurde erstellt.")
 
-    if teachers_dir == f"./{default_teachers_dir}" and not os.path.exists(default_teachers_dir):
+    if teachers_dir == default_teachers_dir and not os.path.exists(default_teachers_dir):
         os.makedirs(default_teachers_dir)
         print(f"Ordner '{default_teachers_dir}' wurde erstellt.")
 
