@@ -1,11 +1,11 @@
 ﻿import os
-import csv
 import sys
 
-# Basisverzeichnis explizit zum Suchpfad hinzufügen
+# Basisverzeichnis explizit zum Suchpfad hinzufügen, um relative Importe zu ermöglichen
 base_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(base_dir)
 
+import csv
 import configparser
 import webbrowser
 import threading
@@ -14,16 +14,15 @@ from flask import Flask, render_template, request, jsonify
 from main import run
 from smtp import send_email
 
-
-
 app = Flask(__name__,
             template_folder=os.path.join(base_dir, 'templates'),
             static_folder=os.path.join(base_dir, 'static'))
-warnings_cache = []  # Global cache for warnings
-generated_emails_cache = []  # Global cache for generated emails
+warnings_cache = []  # Globaler Cache für die Zwischenspeicherung von Warnungen
+generated_emails_cache = []  # Globaler Cache für generierte E-Mails
 
+# Prüfen, ob die Konfigurationsdateien existieren, und sie bei Bedarf mit Standardwerten erstellen
 def ensure_ini_files_exist():
-    # Standard-Inhalt für die .ini-Datei
+    # Standard-Inhalt für die settings.ini zur Definition der Ordnerpfade
     default_classes_dir = "Klassendaten"
     default_teachers_dir = "Lehrerdaten"
     settings_ini_content = f"""# Einstellungen für Verzeichnisse
@@ -36,7 +35,7 @@ def ensure_ini_files_exist():
 classes_directory = ./{default_classes_dir}  # Pfad zu den Klassendateien
 teachers_directory = ./{default_teachers_dir}  # Pfad zu den Lehrerdaten
 """
-
+    # Standard-Inhalt für die email_settings.ini zur SMTP-Konfiguration
     email_settings_ini_content = """# Einstellungen für den E-Mail-Versand
 # Passen Sie diese Einstellungen an Ihren SMTP-Server an.
 # Beispiele:
@@ -82,6 +81,7 @@ credentials_path = ./config/credentials.json
     classes_dir = config.get("Directories", "classes_directory", fallback=f"./{default_classes_dir}")
     teachers_dir = config.get("Directories", "teachers_directory", fallback=f"./{default_teachers_dir}")
 
+    # Erstelle Standardordner für Klassendaten und Lehrerdaten, falls sie nicht existieren
     if classes_dir == f"./{default_classes_dir}" and not os.path.exists(default_classes_dir):
         os.makedirs(default_classes_dir)
         print(f"Ordner '{default_classes_dir}' wurde erstellt.")
@@ -99,11 +99,11 @@ credentials_path = ./config/credentials.json
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    global warnings_cache
-    warnings = []
-    confirmation = None  # Variable for confirmation message
+    global warnings_cache # Globaler Cache für die Zwischenspeicherung von Warnungen
+    warnings = [] 
+    confirmation = None  # Variable für Bestätigungsnachricht
 
-    # Standardwerte für die Checkboxen
+    # Standardwerte für die Checkboxen definieren
     use_abschlussdatum = False
     create_second_file = False
     warn_entlassdatum = True
@@ -111,7 +111,7 @@ def index():
     warn_klassenwechsel = True
 
     if request.method == 'POST':
-        # Aktuelle Werte aus dem Formular lesen
+        # Aktuelle Werte aus dem Formular lesen und die Auswahl des Benutzers speichern
         use_abschlussdatum = request.form.get('use_abschlussdatum') == 'on'
         create_second_file = request.form.get('create_second_file') == 'on'
         warn_entlassdatum = request.form.get('warn_entlassdatum') == 'on'
@@ -126,12 +126,12 @@ def index():
             warn_aufnahmedatum=warn_aufnahmedatum,
             warn_klassenwechsel=warn_klassenwechsel
         )
-        warnings_cache = warnings  # Store warnings for later use
+        warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
         
-        # Set confirmation message after successful execution
+        # Setzt eine Bestätigungsnachricht nach erfolgreicher Ausführung
         confirmation = "Erledigt!"
 
-    # Render the page with the current checkbox states and warnings
+    # Seite mit aktuellen Checkbox-Zuständen und Warnungen rendern
     return render_template(
         'index.html',
         warnings=warnings,
@@ -146,9 +146,9 @@ def index():
 @app.route('/generate_emails', methods=['POST'])
 def generate_emails():
     global warnings_cache, generated_emails_cache
-    generated_emails_cache = []  # Reset the email cache
+    generated_emails_cache = []  # Globaler Cache für generierte E-Mails
     if warnings_cache:
-        # Generate email content based on warnings
+        # Generiere E-Mails basierend auf den vorhandenen Warnungen und speichere sie im Cache
         for warning in warnings_cache:
             # Dynamische Einbindung des Zeitraums (falls vorhanden)
             zeitraum_text = (
@@ -198,9 +198,9 @@ def generate_emails():
                     f"<p>Mit freundlichen Grüßen,<br>Das WebUntis Team</p>"
                 )
             else:
-                continue  # Skip if the warning type is not recognized
+                continue  # Überspringt, wenn der Warnungstyp nicht erkannt wird
 
-            # Append generated email to cache
+            # Fügt die generierte E-Mail dem Cache hinzu
             generated_emails_cache.append({
                 'subject': subject,
                 'body': body,
@@ -215,7 +215,7 @@ def generate_emails():
 def send_emails():
     global generated_emails_cache
     if generated_emails_cache:
-        # Verwende den Cache zum Senden der E-Mails
+        # Verwende den Cache zum Senden der E-Mails und überprüfe, ob welche vorhanden sind
         for email in generated_emails_cache:
             send_email(
                 subject=email['subject'],
@@ -232,6 +232,7 @@ def view_generated_emails():
     global generated_emails_cache
     return render_template('view_emails.html', emails=generated_emails_cache)
 
+# Öffnet den Standardbrowser automatisch auf die lokale URL
 def open_browser():
     webbrowser.open_new("http://127.0.0.1:5000/")
 
