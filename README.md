@@ -33,8 +33,8 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
   
 ### 2. Ein in WebUntis korrekt konfigurierter Import
 - Als Zeichensatz ist UTF-8 zu wählen.
-  
-![Korrekt konfigurierter WebUntis Import](/Beispiel-Dateien/WebUntis%20Importeinstellungen.png)
+
+  <img src="/Beispiel-Dateien/WebUntis%20Importeinstellungen.png" alt="Korrekt konfigurierter WebUntis Import" width="400" />
 
 ### 3. Optional: Stammdaten Exporte für Warnungs-Funktion
 Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen an Klassenleitungen), benötigen Sie:
