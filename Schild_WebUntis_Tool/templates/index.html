@@ -35,8 +35,28 @@
         </form>
 
 
+        {% if errors %}
+        <div class="alert alert-danger" role="alert">
+            <ul>
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if warnings_messages %}
+        <div class="alert alert-warning" role="alert">
+            <ul>
+                {% for warning in warnings_messages %}
+                <li>{{ warning }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
         {% if confirmation %}
-        <div class="alert alert-success mt-3" role="alert">
+        <div class="alert alert-success" role="alert">
             {{ confirmation }}
         </div>
         {% endif %}

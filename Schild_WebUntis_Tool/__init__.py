@@ -101,9 +101,11 @@ credentials_path = ./config/credentials.json
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    global warnings_cache # Globaler Cache für die Zwischenspeicherung von Warnungen
-    warnings = [] 
+    global warnings_cache  # Globaler Cache für die Zwischenspeicherung von Warnungen
+    warnings = []
     confirmation = None  # Variable für Bestätigungsnachricht
+    errors = []  # Liste für Fehlermeldungen
+    warnings_messages = []  # Liste für nicht-blockierende Warnungen
 
     # Standardwerte für die Checkboxen definieren
     use_abschlussdatum = False
@@ -112,7 +114,26 @@ def index():
     warn_aufnahmedatum = True
     warn_klassenwechsel = True
 
-    if request.method == 'POST':
+    # Lese die Konfigurationspfade aus der settings.ini
+    config = configparser.ConfigParser()
+    config.read("settings.ini")
+    classes_dir = config.get("Directories", "classes_directory", fallback="./Klassendaten")
+    teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
+
+    # Überprüfen, ob die Haupt-CSV-Datei vorhanden ist
+    main_csv_exists = any(f.endswith('.csv') for f in os.listdir('.') if not os.path.isdir(f))
+    if not main_csv_exists:
+        errors.append("Die Haupt-CSV-Datei fehlt im Hauptverzeichnis und wird für die Verarbeitung benötigt.")
+
+    # Überprüfen, ob die Klassendaten verfügbar sind
+    if not os.path.exists(classes_dir) or not any(f.endswith('.csv') for f in os.listdir(classes_dir)):
+        warnings_messages.append("Die Klassendaten fehlen oder es sind keine CSV-Dateien im konfigurierten Ordner vorhanden.")
+
+    # Überprüfen, ob die Lehrerdaten verfügbar sind
+    if not os.path.exists(teachers_dir) or not any(f.endswith('.csv') for f in os.listdir(teachers_dir)):
+        warnings_messages.append("Die Lehrerdaten fehlen oder es sind keine CSV-Dateien im konfigurierten Ordner vorhanden.")
+
+    if request.method == 'POST' and not errors:
         # Aktuelle Werte aus dem Formular lesen und die Auswahl des Benutzers speichern
         use_abschlussdatum = request.form.get('use_abschlussdatum') == 'on'
         create_second_file = request.form.get('create_second_file') == 'on'
@@ -121,29 +142,35 @@ def index():
         warn_klassenwechsel = request.form.get('warn_klassenwechsel') == 'on'
 
         # Übergebe die Auswahl an die Run-Funktion
-        warnings = run(
-            use_abschlussdatum=use_abschlussdatum,
-            create_second_file=create_second_file,
-            warn_entlassdatum=warn_entlassdatum,
-            warn_aufnahmedatum=warn_aufnahmedatum,
-            warn_klassenwechsel=warn_klassenwechsel
-        )
-        warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
-        
-        # Setzt eine Bestätigungsnachricht nach erfolgreicher Ausführung
-        confirmation = "Erledigt!"
+        try:
+            warnings = run(
+                use_abschlussdatum=use_abschlussdatum,
+                create_second_file=create_second_file,
+                warn_entlassdatum=warn_entlassdatum,
+                warn_aufnahmedatum=warn_aufnahmedatum,
+                warn_klassenwechsel=warn_klassenwechsel
+            )
+            warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
 
-    # Seite mit aktuellen Checkbox-Zuständen und Warnungen rendern
+            # Setzt eine Bestätigungsnachricht nach erfolgreicher Ausführung
+            confirmation = "Erledigt!"
+        except Exception as e:
+            errors.append(f"Fehler während der Verarbeitung: {str(e)}")
+
+    # Seite mit aktuellen Checkbox-Zuständen, Warnungen, Fehlern und Bestätigung rendern
     return render_template(
         'index.html',
         warnings=warnings,
         confirmation=confirmation,
+        errors=errors,
+        warnings_messages=warnings_messages,
         use_abschlussdatum=use_abschlussdatum,
         create_second_file=create_second_file,
         warn_entlassdatum=warn_entlassdatum,
         warn_aufnahmedatum=warn_aufnahmedatum,
         warn_klassenwechsel=warn_klassenwechsel
     )
+
 
 @app.route('/generate_emails', methods=['POST'])
 def generate_emails():
