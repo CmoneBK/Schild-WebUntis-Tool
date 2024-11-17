@@ -33,16 +33,16 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
   
 ### 2. Ein in WebUntis korrekt konfigurierter Import
 - Als Zeichensatz ist UTF-8 zu wählen.
-  
-![Korrekt konfigurierter WebUntis Import](/Beispiel-Dateien/WebUntis%20Importeinstellungen.png)
+
+  <img src="/Beispiel-Dateien/WebUntis%20Importeinstellungen.png" alt="Korrekt konfigurierter WebUntis Import" width="400" />
 
 ### 3. Optional: Stammdaten Exporte für Warnungs-Funktion
 Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen an Klassenleitungen), benötigen Sie:
 
 - **Stammdaten-Export der Lehrkräfte:**  
   - In WebUntis unter `Stammdaten -> Lehrkräfte`.  
-  - Scrollen Sie nach unten zur Seite `Berichte` und wählen Sie den CSV-Bericht bei "Lehrkräfte".  
-  - **Hinweis:** Das Feld für die E-Mail-Adressen muss mit den Dienst-E-Mail-Adressen der Kollegen gefüllt sein.
+  - Scrollen Sie nach unten zur Seite, um `Berichte` anzuklicken und wählen Sie den CSV-Bericht bei "Lehrkräfte".  
+  - **Wichtiger Hinweis:** Das Feld für die E-Mail-Adressen muss mit den Dienst-E-Mail-Adressen der Kollegen gefüllt sein, damit es nachher funktioniert.
   - [Beispiel-Lehrkräfte-Export](/Beispiel-Dateien/Teacher_20241006_1140%202.csv)
 - **Stammdaten-Export der Klassen:**  
   - In WebUntis unter `Stammdaten -> Klassen`.  
@@ -64,12 +64,15 @@ Wenn Sie das Verzeichnis so belassen wie es ist können Sie die Dateien in die g
 2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
 3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.
-4. (Optional falls Sie die Warnungs- und E-Mail Funtkionen nutzen wollen) Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
-   - `settings.ini` (Anpassung bei Bedarf):
-     - Andere Ordnerpfade für Klassendaten (`classes_directory`) und Lehrerdaten (`teachers_directory`).
+4. (Optional für den Fall, dass Sie die Warnungs- und E-Mail Funtkionen nutzen wollen)
+
+   Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
+   - `settings.ini` (Anpassung bei Bedarf. Es werden standardmäßig Order im Verzeichnis der .exe Datei erstellt und diese Pfade eingetragen):
+     - Abweichende Wunsch-Ordnerpfade für Klassendaten (`classes_directory`) und Lehrerdaten (`teachers_directory`) können hier eingefügt werden.
    - `email_settings.ini` (Anpassung notwendig für E-Mail Versand):
-     - SMTP-Konfiguration für den E-Mail-Versand.
-5. Öffnen Sie die im Browser angezeigte Webseite, um das Tool zu nutzen.
+     - SMTP-Konfiguration Ihrer Absender-Adresse für den E-Mail-Versand.
+5. (Optional) Platzieren der Klassen und Lehrerdaten-Dateien in den Verzeichnissen.
+6. Öffnen Sie die im Browser angezeigte Webseite, um das Tool zu nutzen.
 
 ## Verwendung
 1. Das Programm wandelt bei einem Klick auf `Verarbeiten` aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Order WebUntis Importe aktuellem Datum und Uhrzeit in der Datei. 
