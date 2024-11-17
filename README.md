@@ -64,7 +64,7 @@ Wenn Sie das Verzeichnis so belassen wie es ist können Sie die Dateien in die g
 2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
 3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.
-4. Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
+4. (Optional falls Sie die Warnungs- und E-Mail Funtkionen nutzen wollen) Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
    - `settings.ini` (Anpassung bei Bedarf):
      - Andere Ordnerpfade für Klassendaten (`classes_directory`) und Lehrerdaten (`teachers_directory`).
    - `email_settings.ini` (Anpassung notwendig für E-Mail Versand):
