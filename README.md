@@ -91,6 +91,6 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 - **Neue Warnungen:** 
   - Dokumentationslücken bei Aufnahmedatum und Entlassdatum.
   - Detaillierte Warnungsnachrichten mit betroffenen Zeiträumen.
-- **E-Mail-Integration:** Vollständig generierte E-Mails für Warnungen direkt über das Tool versenden.
+- **E-Mail-Integration:** Vollständig generierte E-Mails für Warnungen direkt über das Tool versenden. Die Vorlagen lassen sich in einer .ini Datei anpassen.
 - **Flexibilität:** Benutzerdefinierte Auswahl, welche Warnungen erstellt oder ignoriert werden sollen.
 - **Strukturverbesserungen:** Automatische Ordnererstellung für Klassendaten, Lehrerdaten und Importe.
