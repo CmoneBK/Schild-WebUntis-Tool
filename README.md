@@ -12,7 +12,7 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
   - Aufnahmedaten, die in die Vergangenheit verschoben werden und Dokumentationslücken verursachen.
   - Klassenwechsel, die eine manuelle Nachbearbeitung in WebUntis erfordern.
 - **E-Mail-Benachrichtigungen:** Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen.
-- **Benutzerfreundliches Web-Interface:** Auswahl von Kriterien für Warnungen, Generieren von Berichten und Senden von E-Mails direkt über den Browser.
+- **Benutzerfreundliches Web-Interface:** Auswahl von Kriterien für Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen direkt über den Browser.
 - **Automatische Konfiguration:** Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.
 
 ## Voraussetzungen
