@@ -98,3 +98,4 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 ## Update 2.1
 ### Änderungen:
 - **Vorlagen-Editor:** Die Email-Vorlagen lassen sich in einer .ini Datei und in einem Web-Editor anpassen.
+- **Bug-Fix:** Das aktuelle Datum wird bei nicht-dokumentierten Zeiträumen jetzt korrekt berücksichtigt.
