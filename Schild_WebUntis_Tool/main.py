@@ -207,6 +207,11 @@ def create_warnings(classes_by_name, students_by_id):
 
                         # Fall 1: Entlassdatum wird in die Zukunft verschoben und Importdatum liegt nach altem Entlassdatum
                         if previous_date and new_date and previous_date < new_date and now_date > previous_date:
+                            if now_date < new_date:
+                                undokumentierter_zeitraum_bis = now_date
+                            else:
+                                undokumentierter_zeitraum_bis = new_date
+
                             klasse = row['Klasse'].strip().lower()
                             klassen_info = classes_by_name.get(klasse, {})
                             if not klassen_info:
@@ -218,11 +223,13 @@ def create_warnings(classes_by_name, students_by_id):
                                 'Klasse': row.get('Klasse', 'N/A'),
                                 'neues_entlassdatum': new_entlassdatum,
                                 'altes_entlassdatum': previous_entlassdatum,
-                                'Zeitraum_nicht_dokumentiert': f"{previous_entlassdatum} bis {now_date.strftime('%d.%m.%Y')}",
+                                'Zeitraum_nicht_dokumentiert': f"{previous_entlassdatum} bis {undokumentierter_zeitraum_bis.strftime('%d.%m.%Y')}",
                                 'Klassenlehrkraft_1': klassen_info.get('Klassenlehrkraft_1', 'N/A'),
                                 'Klassenlehrkraft_1_Email': klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
                                 'Klassenlehrkraft_2': klassen_info.get('Klassenlehrkraft_2', 'N/A'),
                                 'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+                                'Volljaehrig': students_by_id[interne_id].get('Volljährig', 'Unbekannt'),  # Volljaehrig Schlüssel hinzufügen
+                                'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),  # Status Schlüssel hinzufügen
                                 'warning_message': (
                                     "Das Entlassdatum wurde in die Zukunft verschoben, "
                                     "und es gibt einen nicht dokumentierten Zeitraum."
@@ -261,6 +268,8 @@ def create_class_change_warnings(classes_by_name, students_by_id):
                             'Klassenlehrkraft_1_Email': klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
                             'Klassenlehrkraft_2': klassen_info.get('Klassenlehrkraft_2', 'N/A'),
                             'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+                            'Volljaehrig': students_by_id[interne_id].get('Volljährig', 'Unbekannt'),  # Volljaehrig hinzufügen
+                            'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),  # Status Schlüssel hinzufügen
                             'warning_message': "Klassenwechsel muss im Digitalen Klassenbuch manuell korrigiert werden, da die Änderung im System ab dem aktuellen Tag gilt."
                         })
     return warnings
@@ -287,6 +296,10 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
 
                         # Fall 2: Aufnahmedatum wird in die Vergangenheit verschoben und Importdatum liegt nach dem neuen Aufnahmedatum
                         if prev_date_obj and new_date_obj and new_date_obj < prev_date_obj and now_date > new_date_obj:
+                            if now_date < prev_date_obj:
+                                undokumentierter_zeitraum_bis = now_date
+                            else:
+                                undokumentierter_zeitraum_bis = prev_date_obj
                             klasse = row.get('Klasse', 'N/A').strip().lower()
                             klassen_info = classes_by_name.get(klasse, {})
 
@@ -296,11 +309,13 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
                                 'Klasse': row.get('Klasse', 'N/A'),
                                 'neues_aufnahmedatum': new_admission_date,
                                 'altes_aufnahmedatum': previous_admission_date,
-                                'Zeitraum_nicht_dokumentiert': f"{new_admission_date} bis {previous_admission_date}",
+                                'Zeitraum_nicht_dokumentiert': f"{new_admission_date} bis {undokumentierter_zeitraum_bis.strftime('%d.%m.%Y')}",
                                 'Klassenlehrkraft_1': klassen_info.get('Klassenlehrkraft_1', 'N/A'),
                                 'Klassenlehrkraft_1_Email': klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
                                 'Klassenlehrkraft_2': klassen_info.get('Klassenlehrkraft_2', 'N/A'),
                                 'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+                                'Volljaehrig': students_by_id[interne_id].get('Volljährig', 'Unbekannt'),  # Volljaehrig hinzufügen
+                                'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),  # Status Schlüssel hinzufügen
                                 'warning_message': (
                                     "Das Aufnahmedatum wurde in die Vergangenheit verschoben, "
                                     "und es gibt einen nicht dokumentierten Zeitraum."

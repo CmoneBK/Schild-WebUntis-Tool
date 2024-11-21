@@ -110,10 +110,17 @@ def read_students(use_abschlussdatum):
 
     newest_file = max(csv_files, key=os.path.getctime)
 
+    # Mapping für Status-Werte
+    status_mapping = {
+        '2': 'Aktiv',
+        '8': 'Abgang',
+        '9': 'Abschluss'
+    }
+
     # Definierte Spalten
     columns_to_filter = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Geburtsdatum', 'Klasse', 'Geschlecht', 'Entlassdatum', 'Aufnahmedatum', 'vorauss. Abschlussdatum', 'Schulpflicht erfüllt', 'Volljährig', 'E-Mail (privat)', 'Telefon-Nr.', 'Fax-Nr.', 'Straße', 'Postleitzahl', 'Ortsname']
     output_columns = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Geburtsdatum', 'Klasse', 'Geschlecht', 'Entlassdatum', 'Aufnahmedatum', 'vorauss. Abschlussdatum', 'Schulpflicht', 'Volljährig', 'E-Mail (privat)', 'Telefon-Nr.', 'Fax-Nr.', 'Straße', 'Postleitzahl', 'Ortsname', 'Aktiv']
-
+       
     output_data_students = []
     students_by_id = {}
     with open(newest_file, 'r', newline='', encoding='utf-8-sig') as csvfile:
@@ -148,12 +155,14 @@ def read_students(use_abschlussdatum):
                     entlassdatum = abschlussdatum
             filtered_row['Entlassdatum'] = entlassdatum
 
+            # Mapping des Status
+            filtered_row['Status_Text'] = status_mapping.get(row.get('Status', ''), 'Unbekannt')
+
             # Schüler als aktiv markieren
             filtered_row['Aktiv'] = 'Ja' if row['Status'] == '2' else 'Nein'
             output_data_students.append([filtered_row.get(col, '') for col in output_columns])
             students_by_id[filtered_row['Interne ID-Nummer']] = filtered_row
-
-    return output_data_students, students_by_id
+        return output_data_students, students_by_id
 
 def read_csv(file_path):
     data = {}
@@ -173,16 +182,30 @@ def save_warnings_for_web(changes, class_changes):
     # Speichern der allgemeinen Änderungen
     with open(os.path.join(web_data_dir, 'changes.csv'), 'w', newline='', encoding='utf-8-sig') as csvfile:
         writer = csv.writer(csvfile, delimiter=';')
-        writer.writerow(['student_id', 'name', 'changes'])
+        # Ergänzung der neuen Spalte "Volljährig"
+        writer.writerow(['student_id', 'name', 'volljährig', 'changes'])
         for change in changes:
-            writer.writerow([change['student_id'], change['name'], " | ".join(change['changes'])])
+            writer.writerow([
+                change['student_id'], 
+                change['name'], 
+                change.get('Volljährig', 'Unbekannt'),  # Sicherstellen, dass der Schlüssel existiert
+                " | ".join(change['changes'])
+            ])
     
     # Speichern der Klassenänderungen
     with open(os.path.join(web_data_dir, 'class_changes.csv'), 'w', newline='', encoding='utf-8-sig') as csvfile:
         writer = csv.writer(csvfile, delimiter=';')
-        writer.writerow(['student_id', 'name', 'old_class', 'new_class', 'warning'])
+        # Ergänzung der neuen Spalte "Volljährig"
+        writer.writerow(['student_id', 'name', 'volljährig', 'old_class', 'new_class', 'warning'])
         for class_change in class_changes:
-            writer.writerow([class_change['student_id'], class_change['name'], class_change['old_class'], class_change['new_class'], class_change['warning']])
+            writer.writerow([
+                class_change['student_id'], 
+                class_change['name'], 
+                class_change.get('Volljährig', 'Unbekannt'),  # Sicherstellen, dass der Schlüssel existiert
+                class_change['old_class'], 
+                class_change['new_class'], 
+                class_change['warning']
+            ])
 
 if __name__ == "__main__":
     compare_student_changes()

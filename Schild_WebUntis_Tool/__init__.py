@@ -10,7 +10,7 @@ import configparser
 import webbrowser
 import threading
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session
 from main import run
 from smtp import send_email
 
@@ -61,14 +61,12 @@ credentials_path = ./config/credentials.json
 # Verwenden Sie Platzhalter wie {Vorname}, {Nachname}, {Klasse}, {neues_entlassdatum}, etc.
 
 [Templates]
-subject_entlassdatum = Webuntis-Warnung: Entlassdatum-Problem bei $Vorname $Nachname
-body_entlassdatum = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Es gibt ein Problem mit dem Entlassdatum des Schülers/der Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong>.</p><p><strong>Neues Entlassdatum:</strong> $neues_entlassdatum<br><strong>Altes Entlassdatum:</strong> $altes_entlassdatum</p><p>$zeitraum_text</p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email<br><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p>Mit freundlichen Grüßen,<br>Das WebUntis Team</p>
-
-subject_aufnahmedatum = Webuntis-Warnung: Aufnahmedatum-Problem bei $Vorname $Nachname
-body_aufnahmedatum = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Das Aufnahmedatum des Schülers/der Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong> hat sich geändert.</p><p><strong>Neues Aufnahmedatum:</strong> $neues_aufnahmedatum<br><strong>Altes Aufnahmedatum:</strong> $altes_aufnahmedatum</p><p>$zeitraum_text</p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email<br><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p>Mit freundlichen Grüßen,<br>Das WebUntis Team</p>
-
-subject_klassenwechsel = Webuntis-Warnung: Klassenwechsel bei $Vorname $Nachname
-body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Es gab einen Klassenwechsel des Schülers/der Schülerin <strong>$Vorname $Nachname</strong>.</p><p><strong>Alte Klasse:</strong> $alte_klasse<br><strong>Neue Klasse:</strong> $neue_klasse</p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email<br><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p>Mit freundlichen Grüßen,<br>Das WebUntis Team</p>
+subject_entlassdatum = Webuntis-Hinweis: Entlassdatum-Problem bei $Vorname $Nachname
+body_entlassdatum = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Es gibt ein Problem mit dem Entlassdatum des Schülers/der Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong>.</p><p></p><p><strong>Neues Entlassdatum:</strong> $neues_entlassdatum</p><p><strong>Altes Entlassdatum:</strong> $altes_entlassdatum</p><p></p><p>$zeitraum_text</p><p></p><p>In dieser Zeit war der Schüler/die Schülerin nun offiziel teil der Klasse, jedoch nicht im digitalen Klassenbuch dokumentierbar. Dies muss nun nachgeholt werden.</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
+subject_aufnahmedatum = Webuntis-Hinweis: Aufnahmedatum-Problem bei $Vorname $Nachname
+body_aufnahmedatum = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Das Aufnahmedatum des Schülers/der Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong> hat sich geändert.</p><p></p><p><strong>Neues Aufnahmedatum:</strong> $neues_aufnahmedatum</p><p><strong>Altes Aufnahmedatum:</strong> $altes_aufnahmedatum</p><p></p><p>$zeitraum_text</p><p></p><p>In dieser Zeit war der Schüler/die Schülerin nun offiziel teil der Klasse, jedoch nicht im digitalen Klassenbuch dokumentierbar. Dies muss nun nachgeholt werden.</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
+subject_klassenwechsel = Webuntis-Hinweis: Klassenwechsel bei $Vorname $Nachname
+body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Es gab einen Klassenwechsel des Schülers/der Schülerin <strong>$Vorname $Nachname</strong>.</p><p>Sofern dieser Klassenwechsel nicht am heutigen Tag stattfand, informieren Sie bitte das WebUntis-Team über die Notwendigkeit einer Korrektur. </p><p>Liegt der Wechsel in der Vergangenheit müssen anschließend die Tage zwischen heute und diesem Wechsel nachdokumentiert werden.</p><p></p><p><strong>Alte Klasse:</strong> $alte_klasse</p><p><strong>Neue Klasse:</strong> $neue_klasse</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
 """
 
     # Prüfen, ob settings.ini existiert
@@ -122,6 +120,18 @@ def index():
     warn_entlassdatum = True
     warn_aufnahmedatum = True
     warn_klassenwechsel = True
+
+    # Werte aus der email_settings.ini laden
+    config = configparser.ConfigParser()
+    config.read("email_settings.ini")
+
+    # Vorlagenwerte laden
+    subject_entlassdatum = config.get("Templates", "subject_entlassdatum", fallback="")
+    body_entlassdatum = config.get("Templates", "body_entlassdatum", fallback="")
+    subject_aufnahmedatum = config.get("Templates", "subject_aufnahmedatum", fallback="")
+    body_aufnahmedatum = config.get("Templates", "body_aufnahmedatum", fallback="")
+    subject_klassenwechsel = config.get("Templates", "subject_klassenwechsel", fallback="")
+    body_klassenwechsel = config.get("Templates", "body_klassenwechsel", fallback="")
 
     # Lese die Konfigurationspfade aus der settings.ini
     config = configparser.ConfigParser()
@@ -177,7 +187,13 @@ def index():
         create_second_file=create_second_file,
         warn_entlassdatum=warn_entlassdatum,
         warn_aufnahmedatum=warn_aufnahmedatum,
-        warn_klassenwechsel=warn_klassenwechsel
+        warn_klassenwechsel=warn_klassenwechsel,
+        subject_entlassdatum=subject_entlassdatum,
+        body_entlassdatum=body_entlassdatum,
+        subject_aufnahmedatum=subject_aufnahmedatum,
+        body_aufnahmedatum=body_aufnahmedatum,
+        subject_klassenwechsel=subject_klassenwechsel,
+        body_klassenwechsel=body_klassenwechsel
     )
 
 from string import Template
@@ -210,16 +226,26 @@ def generate_emails():
                 else ""
             )
 
+            # Prüfen, ob "Volljaehrig" verwendet wird, und den Wert dynamisch bereitstellen
+            if 'Volljährig' not in warning:
+                warning['Volljaehrig'] = warning.get('Volljaehrig', 'Unbekannt')
+
             # Lade Vorlagen aus der .ini-Datei
-            subject_template = config.get("Templates", f"subject_{warning_type}", fallback="")
-            body_template = config.get("Templates", f"body_{warning_type}", fallback="")
+            try:
+                subject_template = config.get("Templates", f"subject_{warning_type}")
+                body_template = config.get("Templates", f"body_{warning_type}")
+            except configparser.NoOptionError:
+                return jsonify({"message": f"Vorlage für {warning_type} fehlt in der Konfigurationsdatei."}), 400
 
             # Verwende Template-System zur Verarbeitung der Vorlagen
-            subject = Template(subject_template).substitute(warning)
-            body = Template(body_template).substitute(
-                warning,
-                zeitraum_text=zeitraum_text  # Zusatzwert für Zeitraum
-            )
+            try:
+                subject = Template(subject_template).substitute(**warning)
+                body = Template(body_template).substitute(
+                    **warning,
+                    zeitraum_text=zeitraum_text  # Zusatzwert für Zeitraum
+                )
+            except KeyError as e:
+                return jsonify({"message": f"Fehlender Platzhalter: {e} in der Vorlage für {warning_type}"}), 400
 
             # E-Mail zur Liste hinzufügen
             generated_emails_cache.append({
@@ -227,12 +253,57 @@ def generate_emails():
                 'body': body,
                 'to': [warning.get('Klassenlehrkraft_1_Email', 'N/A'), warning.get('Klassenlehrkraft_2_Email', 'N/A')]
             })
-
         return jsonify({"message": "Die E-Mails wurden erfolgreich generiert.", "emails": generated_emails_cache})
     else:
         return jsonify({"message": "Keine Warnungen verfügbar, um E-Mails zu generieren."})
 
 
+@app.route('/get_templates', methods=['GET'])
+def get_templates():
+    config = configparser.ConfigParser()
+    config.read('email_settings.ini')
+    return jsonify({
+        "subject_entlassdatum": config.get("Templates", "subject_entlassdatum"),
+        "body_entlassdatum": config.get("Templates", "body_entlassdatum"),
+        "subject_aufnahmedatum": config.get("Templates", "subject_aufnahmedatum"),
+        "body_aufnahmedatum": config.get("Templates", "body_aufnahmedatum"),
+        "subject_klassenwechsel": config.get("Templates", "subject_klassenwechsel"),
+        "body_klassenwechsel": config.get("Templates", "body_klassenwechsel")
+    })
+
+@app.route('/update_templates', methods=['POST'])
+def update_templates():
+    save_to_ini = request.form.get('saveToIni') == 'on'
+
+    templates = {
+        "subject_entlassdatum": request.form.get("subject_entlassdatum", ""),
+        "body_entlassdatum": request.form.get("body_entlassdatum", ""),
+        "subject_aufnahmedatum": request.form.get("subject_aufnahmedatum", ""),
+        "body_aufnahmedatum": request.form.get("body_aufnahmedatum", ""),
+        "subject_klassenwechsel": request.form.get("subject_klassenwechsel", ""),
+        "body_klassenwechsel": request.form.get("body_klassenwechsel", "")
+    }
+
+    if save_to_ini:
+        # Aktualisiere die .ini-Datei
+        config = configparser.ConfigParser()
+        config.read('email_settings.ini')
+
+        if not config.has_section("Templates"):
+            config.add_section("Templates")
+
+        for key, value in templates.items():
+            config.set("Templates", key, str(value))  # Konvertiere alle Werte in Strings
+
+        with open('email_settings.ini', 'w') as configfile:
+            config.write(configfile)
+        return jsonify({"message": "Vorlagen dauerhaft gespeichert."})
+    else:
+        # Speichere Vorlagen temporär in der Session
+        for key, value in templates.items():
+            session[key] = str(value)  # Speichere alle Werte als Strings in der Session
+
+        return jsonify({"message": "Vorlagen temporär gespeichert."})
 
 
 @app.route('/send_emails', methods=['POST'])

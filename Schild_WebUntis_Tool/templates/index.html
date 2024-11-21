@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schild-WebUntis-Tool</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <style>
         .btn:hover {
             opacity: 0.8;
@@ -145,6 +146,172 @@
         </ul>
         {% endif %}
     </div>
+
+    <div class="container mt-5">
+        <button id="toggleEditor" class="btn btn-secondary">Editor Ein-/Ausblenden</button>
+        <div id="emailEditor" class="mt-4" style="display: none; position: relative;">
+            <h4 class="mb-4 d-inline">Email-Vorlagen bearbeiten</h4>
+            <button id="toggleInfo" class="btn btn-info" style="position: absolute; right: 0; top: 0;">Schlüssel-Info Ein-/Ausblenden</button>
+            <div id="infoTable" class="mt-4" style="display: none;">
+                <h5>Verfügbare Schlüssel</h5>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Kategorie</th>
+                            <th>Schlüssel</th>
+                            <th>Beschreibung</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Generelle Schlüssel -->
+                        <tr>
+                            <td rowspan="6">Generell</td>
+                            <td>$Vorname</td>
+                            <td>Vorname des Schülers/der Schülerin</td>
+                        </tr>
+                        <tr>
+                            <td>$Nachname</td>
+                            <td>Nachname des Schülers/der Schülerin</td>
+                        </tr>
+                        <tr>
+                            <td>$Klasse</td>
+                            <td>Klasse des Schülers/der Schülerin</td>
+                        </tr>
+                        <tr>
+                            <td>$Klassenlehrkraft_1</td>
+                            <td>Name der ersten Klassenlehrkraft</td>
+                        </tr>
+                        <tr>
+                            <td>$Klassenlehrkraft_1_Email</td>
+                            <td>E-Mail-Adresse der ersten Klassenlehrkraft</td>
+                        </tr>
+                        <tr>
+                            <td>$Klassenlehrkraft_2</td>
+                            <td>Name der zweiten Klassenlehrkraft</td>
+                        </tr>
+                        <!-- Warnung Entlassdatum -->
+                        <tr>
+                            <td rowspan="3">Entlassdatum</td>
+                            <td>$neues_entlassdatum</td>
+                            <td>Neues Entlassdatum</td>
+                        </tr>
+                        <tr>
+                            <td>$altes_entlassdatum</td>
+                            <td>Altes Entlassdatum</td>
+                        </tr>
+                        <tr>
+                            <td>$zeitraum_text</td>
+                            <td>Zusätzlicher Zeitraumtext (falls verfügbar)</td>
+                        </tr>
+                        <!-- Warnung Aufnahmedatum -->
+                        <tr>
+                            <td rowspan="3">Aufnahmedatum</td>
+                            <td>$neues_aufnahmedatum</td>
+                            <td>Neues Aufnahmedatum</td>
+                        </tr>
+                        <tr>
+                            <td>$altes_aufnahmedatum</td>
+                            <td>Altes Aufnahmedatum</td>
+                        </tr>
+                        <tr>
+                            <td>$zeitraum_text</td>
+                            <td>Zusätzlicher Zeitraumtext (falls verfügbar)</td>
+                        </tr>
+                        <!-- Warnung Klassenwechsel -->
+                        <tr>
+                            <td rowspan="2">Klassenwechsel</td>
+                            <td>$alte_klasse</td>
+                            <td>Alte Klasse des Schülers/der Schülerin</td>
+                        </tr>
+                        <tr>
+                            <td>$neue_klasse</td>
+                            <td>Neue Klasse des Schülers/der Schülerin</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <form id="templateForm" method="post">
+                <!-- Entlassdatum -->
+                <div class="form-group">
+                    <label for="subjectEntlassdatum" class="font-weight-bold">Betreff Entlassdatum:</label>
+                    <input type="text" id="subjectEntlassdatum" name="subject_entlassdatum" class="form-control mb-3" value="{{ subject_entlassdatum }}">
+                </div>
+                <div class="form-group">
+                    <label for="bodyEntlassdatum" class="font-weight-bold">Nachricht Entlassdatum:</label>
+                    <div id="editorBodyEntlassdatum" class="quill-editor"></div>
+                    <textarea id="bodyEntlassdatum" name="body_entlassdatum" class="form-control d-none">{{ body_entlassdatum }}</textarea>
+                </div>
+
+                <!-- Aufnahmedatum -->
+                <div class="form-group">
+                    <label for="subjectAufnahmedatum" class="font-weight-bold">Betreff Aufnahmedatum:</label>
+                    <input type="text" id="subjectAufnahmedatum" name="subject_aufnahmedatum" class="form-control mb-3" value="{{ subject_aufnahmedatum }}">
+                </div>
+                <div class="form-group">
+                    <label for="bodyAufnahmedatum" class="font-weight-bold">Nachricht Aufnahmedatum:</label>
+                    <div id="editorBodyAufnahmedatum" class="quill-editor"></div>
+                    <textarea id="bodyAufnahmedatum" name="body_aufnahmedatum" class="form-control d-none">{{ body_aufnahmedatum }}</textarea>
+                </div>
+
+                <!-- Klassenwechsel -->
+                <div class="form-group">
+                    <label for="subjectKlassenwechsel" class="font-weight-bold">Betreff Klassenwechsel:</label>
+                    <input type="text" id="subjectKlassenwechsel" name="subject_klassenwechsel" class="form-control mb-3" value="{{ subject_klassenwechsel }}">
+                </div>
+                <div class="form-group">
+                    <label for="bodyKlassenwechsel" class="font-weight-bold">Nachricht Klassenwechsel:</label>
+                    <div id="editorBodyKlassenwechsel" class="quill-editor"></div>
+                    <textarea id="bodyKlassenwechsel" name="body_klassenwechsel" class="form-control d-none">{{ body_klassenwechsel }}</textarea>
+                </div>
+
+                <button type="button" id="saveTemplate" class="btn btn-primary mt-3">Speichern</button>
+            </form>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <script>
+    // Initialisiere WYSIWYG-Editoren
+    const editorOptions = { theme: 'snow' };
+    const editorBodyEntlassdatum = new Quill('#editorBodyEntlassdatum', editorOptions);
+    const editorBodyAufnahmedatum = new Quill('#editorBodyAufnahmedatum', editorOptions);
+    const editorBodyKlassenwechsel = new Quill('#editorBodyKlassenwechsel', editorOptions);
+
+    // Lade die aktuellen Inhalte in die Quill-Editoren
+    editorBodyEntlassdatum.root.innerHTML = `{{ body_entlassdatum | safe }}`;
+    editorBodyAufnahmedatum.root.innerHTML = `{{ body_aufnahmedatum | safe }}`;
+    editorBodyKlassenwechsel.root.innerHTML = `{{ body_klassenwechsel | safe }}`;
+
+    // Synch mit den versteckten Textareas
+    document.getElementById('saveTemplate').addEventListener('click', function () {
+        document.getElementById('bodyEntlassdatum').value = editorBodyEntlassdatum.root.innerHTML;
+        document.getElementById('bodyAufnahmedatum').value = editorBodyAufnahmedatum.root.innerHTML;
+        document.getElementById('bodyKlassenwechsel').value = editorBodyKlassenwechsel.root.innerHTML;
+
+        const formData = new FormData(document.getElementById("templateForm"));
+        formData.append("saveToIni", "on");
+        fetch("/update_templates", {
+            method: "POST",
+            body: formData
+        }).then(response => response.json()).then(data => {
+            alert(data.message);
+        });
+    });
+
+    // Ein-/Ausblenden des Editors
+    document.getElementById("toggleEditor").addEventListener("click", function () {
+        const editor = document.getElementById("emailEditor");
+        editor.style.display = editor.style.display === "none" ? "block" : "none";
+    });
+        // Info-Button ein-/ausblenden
+    document.getElementById("toggleInfo").addEventListener("click", function () {
+        const infoTable = document.getElementById("infoTable");
+        infoTable.style.display = infoTable.style.display === "none" ? "block" : "none";
+    });
+    </script>
+
 
     <script>
         document.getElementById("generateEmails")?.addEventListener("click", function () {
