@@ -114,4 +114,3 @@ Falls Sie die Email-Funktion nicht nutzen wollem, lassen Sie `--generate-emails`
 ## Update 2.2
 ### Änderungen:
 - **Kommandozeilen-Argumente:** Es ist nun möglich, das Tool auch von der Kommandozeile aus zu bedienen.
-Dazu gibt es: Schild-WebUntis-Tool.exe `--no-web` `--process` `--generate-emails` `--send-emails` für einen vollständigen Prozess ohne Weboberfläche.
