@@ -91,6 +91,11 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 - **Neue Warnungen:** 
   - Dokumentationslücken bei Aufnahmedatum und Entlassdatum.
   - Detaillierte Warnungsnachrichten mit betroffenen Zeiträumen.
-- **E-Mail-Integration:** Vollständig generierte E-Mails für Warnungen direkt über das Tool versenden. Die Vorlagen lassen sich in einer .ini Datei und in einem Web-Editor anpassen.
+- **E-Mail-Integration:** Vollständig generierte E-Mails für Warnungen direkt über das Tool versenden.
 - **Flexibilität:** Benutzerdefinierte Auswahl, welche Warnungen erstellt oder ignoriert werden sollen.
 - **Strukturverbesserungen:** Automatische Ordnererstellung für Klassendaten, Lehrerdaten und Importe.
+
+## Update 2.1
+### Änderungen:
+- **Vorlagen-Editor:** Die Email-Vorlagen lassen sich in einer .ini Datei und in einem Web-Editor anpassen.
+- **Bug-Fix:** Das aktuelle Datum wird bei nicht-dokumentierten Zeiträumen jetzt korrekt berücksichtigt.
