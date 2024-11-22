@@ -79,7 +79,17 @@ Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leicht
 Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Verzeichnis exportierten Datei und stellt kritische Unterschiede als Warnungen dar.
 2. Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
 3. Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet. 
-4. Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen. 
+4. Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
+
+## Alternative Verwendung über Kommandozeile
+1. Navigieren Sie in das Verzeichnis der .exe, klicken Sie auf die Adresszeie im Explorer, geben sie 'cmd' ein und drücken Sie Enter.
+2. Geben Sie `Schild-WebUntis-Tool.exe --no-web --process --generate-emails --send-emails` ein und drücken Sie Enter.
+3. In der Konsole sehen Sie den Prozess durchlaufen. Alle Dateien wurden erstellt und die Warnungen versendet.
+   `--no web` deaktiviert dabei die Weboberfläche
+   `--process` verarbeitet die Dateien mit den Standarteinstellungen der Weboberfläche (alle Warnungen werden generiert)
+   `--generate-emails` generiert die Emails auf Grundlage der email_settings.ini
+   `--send-emails` versendet die geneierten Emails auf Grundlage der email_settings.ini
+   wollen Sie die Email Funktion nicht nutzen lassen sie `--generate-emails` und `--send-emails` weg.
 
 ## Hinweise
 - **Warnungen:** Warnungen werden basierend auf Ihren Auswahlkriterien erstellt. Änderungen an Entlass- oder Aufnahmedaten, die zu Lücken in der Dokumentation führen, erfordern besondere Aufmerksamkeit.
@@ -99,3 +109,8 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 ### Änderungen:
 - **Vorlagen-Editor:** Die Email-Vorlagen lassen sich in einer .ini Datei und in einem Web-Editor anpassen.
 - **Bug-Fix:** Das aktuelle Datum wird bei nicht-dokumentierten Zeiträumen jetzt korrekt berücksichtigt.
+
+## Update 2.2
+### Änderungen:
+- **Kommandozeilen-Argumente:** Es ist nun möglich, das Tool auch von der Kommandozeile aus zu bedienen.
+Dazu gibt es: Schild-WebUntis-Tool.exe `--no-web` `--process` `--generate-emails` `--send-emails` für einen vollständigen Prozess ohne Weboberfläche.
