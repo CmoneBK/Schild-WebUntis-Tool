@@ -388,8 +388,3 @@ def save_files(output_data_students, warnings, create_second_file):
             writer.writerow(second_output_columns)  # Header für die zweite Datei
             writer.writerows(second_output_data)
         print(f'Second output file name: {second_output_file}')
-
-
-
-
-

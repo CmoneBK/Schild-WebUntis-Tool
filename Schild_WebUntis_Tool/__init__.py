@@ -9,10 +9,14 @@ import csv
 import configparser
 import webbrowser
 import threading
+import argparse
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, session
 from main import run
 from smtp import send_email
+from compare import compare_student_changes
+
+global warnings_cache, generated_emails_cache
 
 app = Flask(__name__,
             template_folder=os.path.join(base_dir, 'templates'),
@@ -21,6 +25,26 @@ warnings_cache = []  # Globaler Cache für die Zwischenspeicherung von Warnungen
 generated_emails_cache = []  # Globaler Cache für generierte E-Mails
 
 # Prüfen, ob die Konfigurationsdateien existieren, und sie bei Bedarf mit Standardwerten erstellen
+def process_data():
+    # These should match the defaults in the web processing logic
+    use_abschlussdatum = False
+    create_second_file = False
+    warn_entlassdatum = True
+    warn_aufnahmedatum = True
+    warn_klassenwechsel = True
+
+    print("Starting processing...")
+    all_warnings = run(
+        use_abschlussdatum=use_abschlussdatum,
+        create_second_file=create_second_file,
+        warn_entlassdatum=warn_entlassdatum,
+        warn_aufnahmedatum=warn_aufnahmedatum,
+        warn_klassenwechsel=warn_klassenwechsel
+    )
+    print("Processing completed.")
+    return all_warnings
+
+
 def ensure_ini_files_exist():
     # Standard-Inhalt für die settings.ini zur Definition der Ordnerpfade
     default_classes_dir = "Klassendaten"
@@ -332,16 +356,66 @@ def open_browser():
     webbrowser.open_new("http://127.0.0.1:5000/")
 
 if __name__ == "__main__":
-    ensure_ini_files_exist()  # Prüfe und erstelle .ini-Dateien bei Bedarf
+    # Parser für CLI-Argumente
+    parser = argparse.ArgumentParser(description="Command-line interface for processing data.")
+    parser.add_argument('--process', action='store_true', help="Run the main processing task.")
+    parser.add_argument('--generate-emails', action='store_true', help="Generate warning emails.")
+    parser.add_argument('--send-emails', action='store_true', help="Send generated warning emails.")
+    parser.add_argument('--no-web', action='store_true', help="Prevent opening the web interface.")
+    args = parser.parse_args()
 
-    if os.environ.get('FLASK_SERVER_STARTED') != '1':
-        os.environ['FLASK_SERVER_STARTED'] = '1'
-        browser_thread = threading.Timer(1, open_browser)
-        browser_thread.start()
+    # Initialisiere globale Caches
+    warnings_cache = []
+    generated_emails_cache = []
 
-    app.run(debug=True)
-    try:
-        app.run(debug=True)
-    except Exception as e:
-        print(f"Fehler: {e}")
-    input("Drücke eine Taste, um die Konsole zu schließen...")
+    # Verarbeitung starten
+    if args.process:
+        print("Processing data...")
+        warnings_cache = process_data()  # Ergebnisse des Prozesses speichern
+        print("Data processed successfully.")
+
+    # E-Mails generieren
+    if args.generate_emails:
+        if not warnings_cache:
+            print("Es sind zum Generieren von E-Mails keine Warnungen im Cache vorhanden.")
+        else:
+            print("Generiere E-Mails...")
+            from flask import current_app
+            with app.app_context():
+                generate_emails()
+            print("E-Mails erfolgreich generiert.")
+
+    # E-Mails senden
+    if args.send_emails:
+        if not generated_emails_cache:
+            print("Es sind keine generierten E-Mails zum Senden im Cache vorhanden.")
+        else:
+            print("Sende E-Mails...")
+            for email in generated_emails_cache:
+                send_email(email['subject'], email['body'], email['to'])
+            print("E-Mails erfolgreich gesendet.")
+
+    # Web-App starten, falls keine Optionen gewählt wurden
+    if not args.no_web and not any([args.process, args.generate_emails, args.send_emails]):
+        ensure_ini_files_exist()  # Sicherstellen, dass .ini-Dateien vorhanden sind
+
+        if os.environ.get('FLASK_SERVER_STARTED') != '1':
+            os.environ['FLASK_SERVER_STARTED'] = '1'
+
+            # Browser in einem separaten Thread öffnen
+            browser_thread = threading.Timer(1, open_browser)
+            browser_thread.start()
+
+        try:
+            app.run(debug=True)
+        except Exception as e:
+            print(f"Fehler: {e}")
+        input("Drücke eine Taste, um die Konsole zu schließen...")
+
+    elif args.no_web:
+        print("Weboberfläche wurde deaktiviert.")
+
+
+
+
+
