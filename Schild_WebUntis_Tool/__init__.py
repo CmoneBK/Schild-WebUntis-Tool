@@ -12,7 +12,7 @@ import threading
 import argparse
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, session
-from main import run
+from main import run, read_students, read_classes
 from smtp import send_email
 from compare import compare_student_changes
 
@@ -26,14 +26,25 @@ generated_emails_cache = []  # Globaler Cache für generierte E-Mails
 
 # Prüfen, ob die Konfigurationsdateien existieren, und sie bei Bedarf mit Standardwerten erstellen
 def process_data():
-    # These should match the defaults in the web processing logic
-    use_abschlussdatum = False
-    create_second_file = False
-    warn_entlassdatum = True
-    warn_aufnahmedatum = True
-    warn_klassenwechsel = True
+    # Konfigurationsdatei einlesen
+    config = configparser.ConfigParser()
+    config.read('settings.ini')
 
-    print("Starting processing...")
+    # Werte aus der Konfigurationsdatei laden
+    use_abschlussdatum = config.getboolean('ProcessingOptions', 'use_abschlussdatum', fallback=False)
+    create_second_file = config.getboolean('ProcessingOptions', 'create_second_file', fallback=False)
+    warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
+    warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
+    warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
+
+    print("Starting processing with the following options:")
+    print(f"use_abschlussdatum: {use_abschlussdatum}")
+    print(f"create_second_file: {create_second_file}")
+    print(f"warn_entlassdatum: {warn_entlassdatum}")
+    print(f"warn_aufnahmedatum: {warn_aufnahmedatum}")
+    print(f"warn_klassenwechsel: {warn_klassenwechsel}")
+
+    # Verarbeite die Daten
     all_warnings = run(
         use_abschlussdatum=use_abschlussdatum,
         create_second_file=create_second_file,
@@ -58,6 +69,13 @@ def ensure_ini_files_exist():
 [Directories]
 classes_directory = ./{default_classes_dir}  # Pfad zu den Klassendateien
 teachers_directory = ./{default_teachers_dir}  # Pfad zu den Lehrerdaten
+
+[ProcessingOptions]
+use_abschlussdatum = False
+create_second_file = False
+warn_entlassdatum = True
+warn_aufnahmedatum = True
+warn_klassenwechsel = True
 """
     # Standard-Inhalt für die email_settings.ini zur SMTP-Konfiguration
     email_settings_ini_content = """# Einstellungen für den E-Mail-Versand
@@ -68,13 +86,15 @@ teachers_directory = ./{default_teachers_dir}  # Pfad zu den Lehrerdaten
 # smtp_user = ihrbenutzer@gmail.com # Benutzername für SMTP
 # smtp_password = ihrpasswort # Passwort für SMTP
 # smtp_encryption = starttls # Verschlüsselungsmethode (starttls oder ssl)
+# admin_email = admin@example.com #E-Mail Adresse des Admins zum Erhalt spezieller Admin-Warnungen bei Nutzung über die Kommandozeile
 
 [Email]
 smtp_server = smtp.example.com  
 smtp_port = 587  
 smtp_user = user@example.com  
 smtp_password = password  
-smtp_encryption = starttls  
+smtp_encryption = starttls
+admin_email = admin@example.com
 
 # OAuth-Einstellungen (falls verwendet)
 [OAuth]
@@ -128,6 +148,86 @@ body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_
         os.makedirs(import_dir)
         print(f"Ordner '{import_dir}' wurde erstellt.")
 
+def admin_warnings(send_email_flag=False):
+    global admin_warnings_cache
+    admin_warnings_cache = []
+
+    # Haupt-Import-Datei einlesen
+    students_output, students_by_id = read_students(use_abschlussdatum=False)
+
+    # Klassen- und Lehrkräfte-Daten einlesen
+    config = configparser.ConfigParser()
+    config.read('settings.ini')
+    classes_dir = config.get('Directories', 'classes_directory')
+    teachers_dir = config.get('Directories', 'teachers_directory')
+
+    # Klassen- und Lehrkräfte-Daten einlesen
+    classes_by_name, teachers = read_classes(classes_dir, teachers_dir, return_teachers=True)
+
+    # Lehrer-Daten aus der Lehrerdatei extrahieren (Spalte "name")
+    teacher_names = set(teachers.keys())
+
+    # Warnungen für fehlende Klassen in der Klassen-Datei
+    for student in students_by_id.values():
+        klasse = student.get('Klasse', '').strip().lower()
+        if klasse not in classes_by_name:
+            admin_warnings_cache.append({
+                'Typ': 'Fehlende Klasse in der Klassen-Datei',
+                'Details': f"Die Klasse '{klasse}' aus der Haupt-Import-Datei existiert nicht in der Klassen-Datei.",
+                'Schüler': f"{student.get('Vorname', '')} {student.get('Nachname', '')}"
+            })
+
+    # Warnungen für fehlende Klassenlehrkräfte in der Lehrkräfte-Datei
+    for student in students_by_id.values():
+        klassenlehrer = student.get('Klassenlehrer', '').strip()  # Klassenlehrer aus Haupt-Import        
+        if klassenlehrer:  # Nur prüfen, wenn der Wert vorhanden ist
+            if klassenlehrer not in teacher_names:  # Vergleich mit Lehrkräfte-Datei
+                admin_warnings_cache.append({
+                    'Typ': 'Fehlender Klassenlehrer in Lehrerdatei',
+                    'Details': f"Der Klassenlehrer '{klassenlehrer}' aus der Haupt-Import-Datei existiert nicht in der Lehrkräfte-Datei.",
+                    'Schüler': f"{student.get('Vorname', '')} {student.get('Nachname', '')}"
+                })
+
+
+    # Warnungen für fehlende Klassenlehrkräfte in der Klassen-Datei (Spalten 8 und 9)
+    with open(os.path.join(classes_dir, max([f for f in os.listdir(classes_dir) if f.endswith('.csv')], key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))), 'r', newline='', encoding='utf-8-sig') as class_file:
+        class_reader = csv.reader(class_file, delimiter=';')
+        header = next(class_reader)
+        for row in class_reader:
+            for idx in [7, 8]:  # Indizes für Klassenlehrkräfte
+                teacher_name = row[idx].strip()
+                if teacher_name and teacher_name not in teacher_names:
+                    admin_warnings_cache.append({
+                        'Typ': 'Fehlender Klassenlehrer in Lehrerdatei',
+                        'Details': f"Der Klassenlehrer '{teacher_name}' aus der Klassen-Datei existiert nicht in der Lehrkräfte-Datei."
+                    })
+
+    # Admin-Warnungen in der Konsole ausgeben
+    print("Admin-Warnungen:")
+    for warning in admin_warnings_cache:
+        print(f"Typ: {warning['Typ']}, Details: {warning['Details']}")
+
+    # E-Mail senden, falls das Kommandozeilenargument verwendet wurde
+    if send_email_flag and admin_warnings_cache:
+        config.read('email_settings.ini')
+        admin_email = config.get('Email', 'admin_email', fallback=None)
+        if not admin_email:
+            print("Admin-E-Mail-Adresse fehlt in email_settings.ini.")
+            return admin_warnings_cache
+
+        subject = "Admin-Warnungen von WebUntis"
+        body = "<p>Folgende Admin-Warnungen wurden generiert:</p><ul>"
+        for warning in admin_warnings_cache:
+            body += f"<li><strong>{warning['Typ']}:</strong> {warning['Details']}</li>"
+        body += "</ul><p>Mit freundlichen Grüßen,<br>Ihr System</p>"
+
+        try:
+            send_email(subject, body, [admin_email])
+            print(f"Admin-Warnungen wurden erfolgreich an {admin_email} gesendet.")
+        except Exception as e:
+            print(f"Fehler beim Senden der Admin-Warnungen: {e}")
+
+    return admin_warnings_cache
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -138,12 +238,15 @@ def index():
     errors = []  # Liste für Fehlermeldungen
     warnings_messages = []  # Liste für nicht-blockierende Warnungen
 
-    # Standardwerte für die Checkboxen definieren
-    use_abschlussdatum = False
-    create_second_file = False
-    warn_entlassdatum = True
-    warn_aufnahmedatum = True
-    warn_klassenwechsel = True
+    # Werte aus der settings.ini laden
+    config = configparser.ConfigParser()
+    config.read("settings.ini")
+
+    use_abschlussdatum = config.getboolean('ProcessingOptions', 'use_abschlussdatum', fallback=False)
+    create_second_file = config.getboolean('ProcessingOptions', 'create_second_file', fallback=False)
+    warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
+    warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
+    warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
 
     # Werte aus der email_settings.ini laden
     config = configparser.ConfigParser()
@@ -361,12 +464,23 @@ if __name__ == "__main__":
     parser.add_argument('--process', action='store_true', help="Run the main processing task.")
     parser.add_argument('--generate-emails', action='store_true', help="Generate warning emails.")
     parser.add_argument('--send-emails', action='store_true', help="Send generated warning emails.")
+    parser.add_argument('--send-admin-warnings', action='store_true', help="Send admin warnings via email.")
     parser.add_argument('--no-web', action='store_true', help="Prevent opening the web interface.")
+    parser.add_argument('--skip-admin-warnings', action='store_true', help="Skip the generation of admin warnings.")
     args = parser.parse_args()
 
     # Initialisiere globale Caches
     warnings_cache = []
     generated_emails_cache = []
+
+    # Standardmäßig Admin-Warnungen ausführen, falls nicht übersprungen
+    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':  # Verhindert doppelte Ausführung im Debug-Modus
+        if not args.skip_admin_warnings:
+            admin_warnings()
+
+    # Senden von Admin-Warnugen
+    if args.send_admin_warnings:
+        admin_warnings(send_email_flag=True)
 
     # Verarbeitung starten
     if args.process:
@@ -414,6 +528,7 @@ if __name__ == "__main__":
 
     elif args.no_web:
         print("Weboberfläche wurde deaktiviert.")
+
 
 
 

@@ -45,11 +45,11 @@ def run(use_abschlussdatum=True, create_second_file=True,
     return all_warnings
 
 
-def read_classes(classes_dir, teachers_dir):
+def read_classes(classes_dir, teachers_dir, return_teachers=False):
     # Prüfen, ob der Ordner für Klassendaten existiert
     if not os.path.exists(classes_dir):
         print(f"Warnung: Der Ordner '{classes_dir}' existiert nicht. Es werden Dummy-Klassendaten verwendet.")
-        return {
+        dummy_classes = {
             "dummy_class_1": {
                 "Klassenlehrkraft_1": "Max Muster",
                 "Klassenlehrkraft_1_Email": "max.muster@example.com",
@@ -57,12 +57,13 @@ def read_classes(classes_dir, teachers_dir):
                 "Klassenlehrkraft_2_Email": "erika.beispiel@example.com",
             }
         }
+        return (dummy_classes, {}) if return_teachers else dummy_classes
 
     # Neueste Klassen-CSV-Datei finden
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
     if not class_csv_files:
         print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden. Es werden Dummy-Klassendaten verwendet.")
-        return {
+        dummy_classes = {
             "dummy_class_1": {
                 "Klassenlehrkraft_1": "Max Muster",
                 "Klassenlehrkraft_1_Email": "max.muster@example.com",
@@ -70,6 +71,7 @@ def read_classes(classes_dir, teachers_dir):
                 "Klassenlehrkraft_2_Email": "erika.beispiel@example.com",
             }
         }
+        return (dummy_classes, {}) if return_teachers else dummy_classes
 
     newest_class_file = max(class_csv_files, key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))
 
@@ -125,7 +127,8 @@ def read_classes(classes_dir, teachers_dir):
                 'Klassenlehrkraft_2_Email': teachers.get(row[8], {}).get('email', 'Keine E-Mail gefunden')
             }
 
-    return classes_by_name
+    return (classes_by_name, teachers) if return_teachers else classes_by_name
+
 
 
 
@@ -143,7 +146,7 @@ def read_students(use_abschlussdatum):
     newest_file = max(csv_files, key=os.path.getctime)
 
     # Definierte Spalten
-    columns_to_filter = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Geburtsdatum', 'Klasse', 'Geschlecht', 'Entlassdatum', 'Aufnahmedatum', 'vorauss. Abschlussdatum', 'Schulpflicht erfüllt', 'Volljährig', 'E-Mail (privat)', 'Telefon-Nr.', 'Fax-Nr.', 'Straße', 'Postleitzahl', 'Ortsname']
+    columns_to_filter = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Geburtsdatum', 'Klasse', 'Klassenlehrer', 'Geschlecht', 'Entlassdatum', 'Aufnahmedatum', 'vorauss. Abschlussdatum', 'Schulpflicht erfüllt', 'Volljährig', 'E-Mail (privat)', 'Telefon-Nr.', 'Fax-Nr.', 'Straße', 'Postleitzahl', 'Ortsname']
     output_columns = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Geburtsdatum', 'Klasse', 'Geschlecht', 'Entlassdatum', 'Aufnahmedatum', 'vorauss. Abschlussdatum', 'Schulpflicht', 'Volljährig', 'E-Mail (privat)', 'Telefon-Nr.', 'Fax-Nr.', 'Straße', 'Postleitzahl', 'Ortsname', 'Aktiv']
 
     output_data_students = []
@@ -181,6 +184,13 @@ def read_students(use_abschlussdatum):
 
             # Schüler als aktiv markieren
             filtered_row['Aktiv'] = 'Ja' if row['Status'] == '2' else 'Nein'
+
+            # Klassenlehrer verarbeiten
+            if 'Klassenlehrer' in reader.fieldnames:
+                filtered_row['Klassenlehrer'] = row.get('Klassenlehrer', '').strip()
+            else:
+                filtered_row['Klassenlehrer'] = ''  # Standardwert, falls die Spalte fehlt
+
             output_data_students.append([filtered_row.get(col, '') for col in output_columns])
             students_by_id[filtered_row['Interne ID-Nummer']] = filtered_row
 

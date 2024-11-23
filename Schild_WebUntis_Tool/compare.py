@@ -209,3 +209,4 @@ def save_warnings_for_web(changes, class_changes):
 
 if __name__ == "__main__":
     compare_student_changes()
+
