@@ -72,6 +72,7 @@ Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leicht
      - Außerdem können Sie hier die Standart-Einstellungen zur Verarbeitung im WebEnd bzw. in der Kommandozeile anpassen.
    - `email_settings.ini` (Anpassung notwendig für E-Mail Versand):
      - SMTP-Konfiguration Ihrer Absender-Adresse für den E-Mail-Versand.
+     - Email-Vorlagen können hier zusätzlich zum WebEnd auch per Coding angepasst werden.
 5. (Optional) Platzieren der Klassen und Lehrerdaten-Dateien in den Verzeichnissen.
 6. Öffnen Sie die im Browser angezeigte Webseite, um das Tool zu nutzen.
 
