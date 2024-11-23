@@ -67,8 +67,8 @@ def ensure_ini_files_exist():
 # teachers_directory = ./Lehrerdaten
 
 [Directories]
-classes_directory = ./{default_classes_dir}  # Pfad zu den Klassendateien
-teachers_directory = ./{default_teachers_dir}  # Pfad zu den Lehrerdaten
+classes_directory = ./{default_classes_dir}
+teachers_directory = ./{default_teachers_dir}
 
 [ProcessingOptions]
 use_abschlussdatum = False
@@ -188,9 +188,16 @@ def admin_warnings(send_email_flag=False):
                     'Schüler': f"{student.get('Vorname', '')} {student.get('Nachname', '')}"
                 })
 
+    # Überprüfen, ob CSV-Dateien im Klassenverzeichnis vorhanden sind
+    class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
+    if not class_csv_files:
+        print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden. Es werden Dummy-Daten verwendet.")
+        return admin_warnings_cache  # Gibt leere Warnungsliste zurück oder handle dies mit Dummy-Daten
 
+    # Neueste Klassen-CSV-Datei bestimmen
+    newest_class_file = max(class_csv_files, key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))
     # Warnungen für fehlende Klassenlehrkräfte in der Klassen-Datei (Spalten 8 und 9)
-    with open(os.path.join(classes_dir, max([f for f in os.listdir(classes_dir) if f.endswith('.csv')], key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))), 'r', newline='', encoding='utf-8-sig') as class_file:
+    with open(os.path.join(classes_dir, newest_class_file), 'r', newline='', encoding='utf-8-sig') as class_file:
         class_reader = csv.reader(class_file, delimiter=';')
         header = next(class_reader)
         for row in class_reader:
@@ -459,6 +466,7 @@ def open_browser():
     webbrowser.open_new("http://127.0.0.1:5000/")
 
 if __name__ == "__main__":
+    ensure_ini_files_exist()
     # Parser für CLI-Argumente
     parser = argparse.ArgumentParser(description="Command-line interface for processing data.")
     parser.add_argument('--process', action='store_true', help="Run the main processing task.")
