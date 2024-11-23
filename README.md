@@ -69,7 +69,7 @@ Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leicht
    Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
    - `settings.ini` (Anpassung bei Bedarf. Es werden standardmäßig Order im Verzeichnis der .exe Datei erstellt und diese Pfade eingetragen):
      - Abweichende Wunsch-Ordnerpfade für Klassendaten (`classes_directory`) und Lehrerdaten (`teachers_directory`) können hier eingefügt werden.
-     - Außerdem können Sie hier die Standart-Einstellungen zur Verarbeitung im WebEnd bzw. in der Kommandozeile anpassen.
+     - Außerdem können Sie hier die Standard-Einstellungen zur Verarbeitung im WebEnd bzw. in der Kommandozeile anpassen.
    - `email_settings.ini` (Anpassung notwendig für E-Mail Versand):
      - SMTP-Konfiguration Ihrer Absender-Adresse für den E-Mail-Versand.
      - Email-Vorlagen können hier zusätzlich zum WebEnd auch per Coding angepasst werden.
@@ -77,19 +77,19 @@ Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leicht
 6. Öffnen Sie die im Browser angezeigte Webseite, um das Tool zu nutzen.
 
 ## Verwendung
-1. Das Programm wandelt bei einem Klick auf `Verarbeiten` aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Order WebUntis Importe aktuellem Datum und Uhrzeit in der Datei. 
+1. Das Programm wandelt bei einem Klick auf `Verarbeiten` aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Order WebUntis Importe mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
 Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Verzeichnis exportierten Datei und stellt kritische Unterschiede als Warnungen dar.
 2. Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
 3. Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet. 
 4. Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
-5. Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist dann auf die Notwendigkeit der Aktualisierung hin.
+5. Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.
 
 ## Alternative Verwendung über Kommandozeile
 1. Navigieren Sie in das Verzeichnis der .exe, klicken Sie auf die Adresszeie im Explorer, geben sie 'cmd' ein und drücken Sie Enter.
 2. Geben Sie `Schild-WebUntis-Tool.exe --no-web --process --generate-emails --send-emails` ein und drücken Sie Enter.
 3. In der Konsole sehen Sie den Prozess durchlaufen. Alle Dateien wurden erstellt und die Warnungen versendet.
   - `--no web` deaktiviert dabei die Weboberfläche
-  - `--process` verarbeitet die Dateien mit den Standarteinstellungen der Weboberfläche (alle Warnungen werden generiert)
+  - `--process` verarbeitet die Dateien mit den Standardeinstellungen der Weboberfläche (alle Warnungen werden generiert)
   - `--generate-emails` generiert die Emails auf Grundlage der email_settings.ini
   - `--send-emails` versendet die geneierten Emails auf Grundlage der email_settings.ini
   - `--skip-admin-warnings` ermöglicht es das Generieren von Admin-Warnungen zu deaktivieren
@@ -120,4 +120,4 @@ Falls Sie die Email-Funktion nicht nutzen wollem, lassen Sie `--generate-emails`
 ### Änderungen:
 - **Kommandozeilen-Argumente:** Es ist nun möglich, das Tool auch von der Kommandozeile aus zu bedienen.
 - **Admin-Warnungen:** Bei im Vergleich zur Importdatei fehlenden Klassen oder Klassenlehrkräften in der Klassen- oder Lehrkraftdatei werden Admin-Warnungen generiert und bei Nutzung der Kommandozeile auf Wunsch auch an die hinterlegte Admin Email-Adresse gesendet.
-- **Anpassung von Verarbeitungs-Standart-Einstellungen:** Die Standart-Einstellungen für die Verarbeitung im WebEnd bzw. die Verarbeitung über die Kommandozeile lassen sich jetzt über die settings.ini anpassen.
+- **Anpassung von Verarbeitungs-Standard-Einstellungen:** Die Standard-Einstellungen für die Verarbeitung im WebEnd bzw. die Verarbeitung über die Kommandozeile lassen sich jetzt über die settings.ini anpassen.
