@@ -80,6 +80,7 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 2. Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
 3. Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet. 
 4. Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
+5. Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist dann auf die Notwendigkeit der Aktualisierung hin.
 
 ## Alternative Verwendung über Kommandozeile
 1. Navigieren Sie in das Verzeichnis der .exe, klicken Sie auf die Adresszeie im Explorer, geben sie 'cmd' ein und drücken Sie Enter.
@@ -89,6 +90,8 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
   - `--process` verarbeitet die Dateien mit den Standarteinstellungen der Weboberfläche (alle Warnungen werden generiert)
   - `--generate-emails` generiert die Emails auf Grundlage der email_settings.ini
   - `--send-emails` versendet die geneierten Emails auf Grundlage der email_settings.ini
+  - `--skip-admin-warnings` ermöglicht es das Generieren von Admin-Warnungen zu deaktivieren
+  - `--send-admin-warnings` sendet vorhandene Admin-Warnungen and die in der email_settings.ini definierte Admin Email-Adresse
 
 Falls Sie die Email-Funktion nicht nutzen wollem, lassen Sie `--generate-emails` und `--send-emails` weg.
 
@@ -114,3 +117,4 @@ Falls Sie die Email-Funktion nicht nutzen wollem, lassen Sie `--generate-emails`
 ## Update 2.2
 ### Änderungen:
 - **Kommandozeilen-Argumente:** Es ist nun möglich, das Tool auch von der Kommandozeile aus zu bedienen.
+- **Admin-Warnungen:** Bei im Vergleich zur Importdatei fehlenden Klassen oder Klassenlehrkräften in der Klassen- oder Lehrkraftdatei werden Admin-Warnungen generiert und bei Nutzung der Kommandozeile auf Wunsch auch gesendet.
