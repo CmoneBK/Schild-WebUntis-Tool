@@ -128,7 +128,7 @@ Optionen:
    
 5. In der Konsole sehen Sie den Prozess durchlaufen. Alle Dateien wurden erstellt und die Warnungen versendet.
 
-### Verfügbare Argumente für die Kommandozeile:
+<b>Verfügbare Argumente für die Kommandozeile:</b>
 - `--no-web` deaktiviert dabei die Weboberfläche.
 - `--process` verarbeitet die Dateien mit den Standardeinstellungen der Weboberfläche (alle Warnungen werden generiert).
 - `--generate-emails` generiert die E-Mails auf Grundlage der `email_settings.ini`.
