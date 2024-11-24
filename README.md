@@ -143,7 +143,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 
 ## Hinweise
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
-- **Screenshots:** Hier klicken
+- **Screenshots:** 
   <br>
   <img src="/Screenshots/Start Ohne Daten.png" alt="Korrekt konfigurierter WebUntis Import" width="500" />
   <br>
