@@ -88,6 +88,8 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 1. Navigieren Sie in das Verzeichnis der .exe, klicken Sie auf die Adresszeie im Explorer, geben sie 'cmd' ein und drücken Sie Enter.
 2. Geben Sie `Schild-WebUntis-Tool.exe --no-web --process --generate-emails --send-emails` ein und drücken Sie Enter.
 3. In der Konsole sehen Sie den Prozess durchlaufen. Alle Dateien wurden erstellt und die Warnungen versendet.
+
+Verfügbare Argumente für die Kommandozeile:
   - `--no web` deaktiviert dabei die Weboberfläche
   - `--process` verarbeitet die Dateien mit den Standardeinstellungen der Weboberfläche (alle Warnungen werden generiert)
   - `--generate-emails` generiert die Emails auf Grundlage der email_settings.ini
