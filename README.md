@@ -73,6 +73,7 @@ Wenn Sie das Verzeichnis so belassen wie es ist, können Sie die Dateien in die 
 
 ## Installation
 1. Die .exe Dateie finden Sie unter: [Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe)
+
    Dort gibt es oben rechts neben dem 'RAW' einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.
 3. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
