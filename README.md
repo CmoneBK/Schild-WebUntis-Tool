@@ -124,9 +124,11 @@ Optionen:
   
 1. Navigieren Sie in das Verzeichnis der `.exe`, klicken Sie auf die Adresszeile im Explorer, geben Sie `cmd` ein und drücken Sie Enter.
    
-3. Geben Sie `Schild-WebUntis-Tool.exe --no-web --process --generate-emails --send-emails` ein und drücken Sie Enter.
+2a. Geben Sie `Schild-WebUntis-Tool.exe --no-web --process` ein und drücken Sie Enter. Es wird nur die Hauptfunktion ausgeführt. Warnungen werden nur auf der Konsolde dargestellt.
+
+2b. Geben Sie `Schild-WebUntis-Tool.exe --no-web --process --generate-emails --send-emails` ein und drücken Sie Enter. Die Warnungen werden per Mail an die Klassenlehrkräfte versendet (korrekte Konfiguration vorrausgesetzt). 
    
-5. In der Konsole sehen Sie den Prozess durchlaufen. Alle Dateien wurden erstellt und die Warnungen versendet.
+In der Konsole sehen Sie den Prozess durchlaufen.
 
 <b>Verfügbare Argumente für die Kommandozeile:</b>
 - `--no-web` deaktiviert dabei die Weboberfläche.
@@ -135,9 +137,6 @@ Optionen:
 - `--send-emails` versendet die generierten E-Mails auf Grundlage der `email_settings.ini`.
 - `--skip-admin-warnings` ermöglicht es, das Generieren von Admin-Warnungen zu deaktivieren.
 - `--send-admin-warnings` sendet vorhandene Admin-Warnungen an die in der `email_settings.ini` definierte Admin-E-Mail-Adresse.
-
-**Hinweis:**  
-Falls Sie die E-Mail-Funktion nicht nutzen wollen, lassen Sie `--generate-emails` und `--send-emails` weg.
 
 </details>
 
