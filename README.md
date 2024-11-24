@@ -100,7 +100,7 @@ Verfügbare Argumente für die Kommandozeile:
 Falls Sie die Email-Funktion nicht nutzen wollem, lassen Sie `--generate-emails` und `--send-emails` weg.
 
 ## Hinweise
-- **Warnungen:** /Warnungen werden basierend auf Ihren Auswahlkriterien erstellt. Änderungen an Entlass- oder Aufnahmedaten, die zu Lücken in der Dokumentation führen, erfordern besondere Aufmerksamkeit.
+- **Warnungen:** Warnungen werden basierend auf Ihren Auswahlkriterien erstellt. Änderungen an Entlass- oder Aufnahmedaten, die zu Lücken in der Dokumentation führen, erfordern besondere Aufmerksamkeit.
 - **E-Mails:** E-Mail-Inhalte basieren auf den generierten Warnungen und enthalten detaillierte Informationen sowie Aufforderungen zur Nachbearbeitung.
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
 
