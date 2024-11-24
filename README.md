@@ -99,12 +99,22 @@ Platzieren Sie schließlich die Klassen- und Lehrerdaten-Dateien in den Verzeich
 5. Öffnen Sie die im Browser angezeigte Webseite, um das Tool zu nutzen.
 
 ## Verwendung
-1. Das Programm wandelt bei einem Klick auf `Verarbeiten` aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Order WebUntis Importe mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
+Hauptfunktion:
+1. Das Programm wandelt bei einem Klick auf `Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterorder WebUntis Importe mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
 Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Verzeichnis exportierten Datei und stellt kritische Unterschiede als Warnungen dar.
+
+<details>
+<summary>Warnungs- und E-Mail-Funktion:</summary>
+
 2. Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
-3. Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet. 
-4. Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
-5. Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.
+
+3. Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet.
+
+</details>
+
+Optionen: 
+- Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
+- Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.
 
 
 
