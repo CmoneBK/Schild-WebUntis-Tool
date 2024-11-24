@@ -143,14 +143,14 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 
 ## Hinweise
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
-- **Screenshots:** <details><summary><b>Hier klicken</b></summary>
+- **Screenshots:** Hier klicken
   <br>
   <img src="/Screenshots/Start Ohne Daten.png" alt="Korrekt konfigurierter WebUntis Import" width="500" />
   <br>
   <img src="/Screenshots/Beispiel Warnungen.png" alt="Korrekt konfigurierter WebUntis Import" width="500" />
   <br>
   <img src="/Screenshots/Beispiel EMail.png" alt="Korrekt konfigurierter WebUntis Import" width="500" />
-  </details>
+ 
 ## Updates
 <details>
 <summary><b>Update 2.0</b></summary>
