@@ -36,8 +36,8 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
 
   <img src="/Beispiel-Dateien/WebUntis%20Importeinstellungen.png" alt="Korrekt konfigurierter WebUntis Import" width="400" />
 
-### 3. Optional: Stammdaten Exporte für Warnungs-Funktion
-Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen an Klassenleitungen), benötigen Sie:
+### 3. Optional: Stammdaten Exporte für Hinweis-Funktion
+Falls die Hinweis-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen an Klassenleitungen), benötigen Sie:
 
 - **Stammdaten-Export der Lehrkräfte:**  
   - In WebUntis unter `Stammdaten -> Lehrkräfte`.  
@@ -64,7 +64,7 @@ Wenn Sie das Verzeichnis so belassen wie es ist können Sie die Dateien in die g
 2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
 3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.
-4. (Optional für den Fall, dass Sie die Warnungs- und E-Mail Funtkionen nutzen wollen)
+4. (Optional für den Fall, dass Sie die Hinweis- und E-Mail Funtkionen nutzen wollen)
 
    Passen Sie die generierten `.ini`-Dateien (`settings.ini` und `email_settings.ini`) an Ihre Umgebung an (zu öffnen mit Editor oder Notepad++):
    - `settings.ini` (Anpassung bei Bedarf. Es werden standardmäßig Order im Verzeichnis der .exe Datei erstellt und diese Pfade eingetragen):
@@ -87,9 +87,9 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 ## Alternative Verwendung über Kommandozeile
 1. Navigieren Sie in das Verzeichnis der .exe, klicken Sie auf die Adresszeie im Explorer, geben sie 'cmd' ein und drücken Sie Enter.
 2. Geben Sie `Schild-WebUntis-Tool.exe --no-web --process --generate-emails --send-emails` ein und drücken Sie Enter.
-3. In der Konsole sehen Sie den Prozess durchlaufen. Alle Dateien wurden erstellt und die Warnungen versendet.
+3. In der Konsole sehen Sie den Prozess durchlaufen. Alle Dateien wurden erstellt und die Hinweise/Warnungen versendet.
   - `--no web` deaktiviert dabei die Weboberfläche
-  - `--process` verarbeitet die Dateien mit den Standardeinstellungen der Weboberfläche (alle Warnungen werden generiert)
+  - `--process` verarbeitet die Dateien mit den Standardeinstellungen der Weboberfläche (alle Hinweise/Warnungen werden generiert)
   - `--generate-emails` generiert die Emails auf Grundlage der email_settings.ini
   - `--send-emails` versendet die geneierten Emails auf Grundlage der email_settings.ini
   - `--skip-admin-warnings` ermöglicht es das Generieren von Admin-Warnungen zu deaktivieren
@@ -97,18 +97,18 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 
 Falls Sie die Email-Funktion nicht nutzen wollem, lassen Sie `--generate-emails` und `--send-emails` weg.
 
-## Hinweise
-- **Warnungen:** Warnungen werden basierend auf Ihren Auswahlkriterien erstellt. Änderungen an Entlass- oder Aufnahmedaten, die zu Lücken in der Dokumentation führen, erfordern besondere Aufmerksamkeit.
-- **E-Mails:** E-Mail-Inhalte basieren auf den generierten Warnungen und enthalten detaillierte Informationen sowie Aufforderungen zur Nachbearbeitung.
+## Hinweise an den Nutzer
+- **Hinweise/Warnungen:** Hinweise/Warnungen werden basierend auf Ihren Auswahlkriterien erstellt. Änderungen an Entlass- oder Aufnahmedaten, die zu Lücken in der Dokumentation führen, erfordern besondere Aufmerksamkeit.
+- **E-Mails:** E-Mail-Inhalte basieren auf den generierten Hinweisen/Warnungen und enthalten detaillierte Informationen sowie Aufforderungen zur Nachbearbeitung.
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
 
 ## Update 2.0
 ### Änderungen:
-- **Neue Warnungen:** 
+- **Neue Hinweise/Warnungen:** 
   - Dokumentationslücken bei Aufnahmedatum und Entlassdatum.
-  - Detaillierte Warnungsnachrichten mit betroffenen Zeiträumen.
-- **E-Mail-Integration:** Vollständig generierte E-Mails für Warnungen direkt über das Tool versenden.
-- **Flexibilität:** Benutzerdefinierte Auswahl, welche Warnungen erstellt oder ignoriert werden sollen.
+  - Detaillierte Hinweis-/Warnungsnachrichten mit betroffenen Zeiträumen.
+- **E-Mail-Integration:** Vollständig generierte E-Mails für Hinweise/Warnungen direkt über das Tool versenden.
+- **Flexibilität:** Benutzerdefinierte Auswahl, welche Hinweise/Warnungen erstellt oder ignoriert werden sollen.
 - **Strukturverbesserungen:** Automatische Ordnererstellung für Klassendaten, Lehrerdaten und Importe.
 
 ## Update 2.1
