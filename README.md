@@ -145,11 +145,15 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
 - **Screenshots:** 
   <br>
-  <img src="/Screenshots/Start Ohne Daten.png" alt="Korrekt konfigurierter WebUntis Import" width="500" />
+  <img src="/Screenshots/Start Ohne Daten.png" alt="Start Ohne Daten" width="500" />
   <br>
-  <img src="/Screenshots/Beispiel Warnungen.png" alt="Korrekt konfigurierter WebUntis Import" width="500" />
+  <img src="/Screenshots/Start mit Daten.png" alt="Start mit Daten" width="500" />
   <br>
-  <img src="/Screenshots/Beispiel EMail.png" alt="Korrekt konfigurierter WebUntis Import" width="500" />
+  <img src="/Screenshots/Beispiel Warnungen.png" alt="Beispiel Warnungen" width="500" />
+  <br>
+  <img src="/Screenshots/Email Editor.png" alt="EMail Vorlagen Editor" width="500" />
+  <br>
+  <img src="/Screenshots/Beispiel EMail.png" alt="Beispiel EMail" width="500" />
  
 ## Updates
 <details>
