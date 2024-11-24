@@ -7,7 +7,7 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
 
 ## Funktionen
 - **Datenumwandlung:** Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.
-- **Warnungen:** Generiert Warnungen für:
+- **Warnungen:** Generiert (auf Wunsch) Warnungen für:
   - Entlassdaten, die in die Zukunft verschoben werden und zu einem nicht dokumentierten Zeitraum führen.
   - Aufnahmedaten, die in die Vergangenheit verschoben werden und Dokumentationslücken verursachen.
   - Klassenwechsel, die eine manuelle Nachbearbeitung in WebUntis erfordern.
@@ -142,8 +142,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 
 
 ## Hinweise
-- **Warnungen:** Warnungen werden basierend auf Ihren Auswahlkriterien erstellt. Änderungen an Entlass- oder Aufnahmedaten, die zu Lücken in der Dokumentation führen, erfordern besondere Aufmerksamkeit.
-- **E-Mails:** E-Mail-Inhalte basieren auf den generierten Warnungen und enthalten detaillierte Informationen sowie Aufforderungen zur Nachbearbeitung.
+- **Screenshots:** Hier klicken
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
 
 ## Updates
