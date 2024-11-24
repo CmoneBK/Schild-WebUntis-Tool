@@ -100,11 +100,11 @@ Platzieren Sie schließlich die Klassen- und Lehrerdaten-Dateien in den Verzeich
 
 ## Verwendung
 Hauptfunktion:
-1. Das Programm wandelt bei einem Klick auf `Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterorder WebUntis Importe mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
+1. Das Programm wandelt bei einem Klick auf `Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterorder `WebUntis Importe` mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
 Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Verzeichnis exportierten Datei und stellt kritische Unterschiede als Warnungen dar.
 
 <details>
-<summary>Warnungs- und E-Mail-Funktion:</summary>
+<summary>E-Mail-Funktion:</summary>
 
 2. Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
 
