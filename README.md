@@ -146,7 +146,7 @@ Falls Sie die E-Mail-Funktion nicht nutzen wollen, lassen Sie `--generate-emails
 
 ## Updates
 <details>
-<summary>###<b>Update 2.0</b></summary>
+<summary><b>Update 2.0</b></summary>
 
 - **Neue Warnungen:** 
   - Dokumentationslücken bei Aufnahmedatum und Entlassdatum.
@@ -158,7 +158,7 @@ Falls Sie die E-Mail-Funktion nicht nutzen wollen, lassen Sie `--generate-emails
 </details>
 
 <details>
-<summary>###<b>Update 2.1</b></summary>
+<summary><b>Update 2.1</b></summary>
 
 - **Vorlagen-Editor:** Die Email-Vorlagen lassen sich in einer `.ini` Datei und in einem Web-Editor anpassen.
 - **Bug-Fix:** Das aktuelle Datum wird bei nicht-dokumentierten Zeiträumen jetzt korrekt berücksichtigt.
