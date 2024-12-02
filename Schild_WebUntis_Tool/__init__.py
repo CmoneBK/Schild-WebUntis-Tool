@@ -13,13 +13,25 @@ import argparse  # Parsen von Kommandozeilenargumenten
 import secrets  # Generieren sicherer Zufallswerte (z.B. für Secret Keys)
 import winshell  # Interaktion mit der Windows-Shell (z.B. Erstellen von Verknüpfungen)
 import pythoncom  # Python COM-Schnittstelle für Windows
+import threading
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
 from flask import Flask, render_template, request, jsonify, session  # Flask-Webframework
 from main import run, read_students, read_classes, compare_timeframe_imports  # Import von Funktionen aus eigenen Modulen
 from smtp import send_email  # Funktion zum Versenden von E-Mails aus eigenem Modul
+from waitress import serve
 
 # Globale Variablen für Warnungen und generierte E-Mails
 global warnings_cache, generated_emails_cache
+
+
+def resource_path(relative_path):
+    """ Gibt den Pfad zu einer Ressource zurück, funktioniert für dev und bei PyInstaller """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 # Flask-App initialisieren
 app = Flask(__name__,
@@ -720,9 +732,7 @@ cli_args = {}
 
 if __name__ == "__main__":
 
-    # Flask-Umgebung auf Produktion setzen
-    os.environ['FLASK_ENV'] = 'production'
-    os.environ['FLASK_DEBUG'] = '0'
+
     ensure_ini_files_exist()
 
     # Parser für Kommandozeilenargumente
@@ -750,6 +760,7 @@ if __name__ == "__main__":
         "no_xlsx": args.no_xlsx,
         "send_log_email": args.send_log_email,
     }
+
 
     # Initialisiere globale Caches
     warnings_cache = []
@@ -804,25 +815,17 @@ if __name__ == "__main__":
                 send_email(email['subject'], email['body'], email['to'])
             print("E-Mails erfolgreich gesendet.")
 
-    # Web-App starten, falls keine Optionen gewählt wurden
-    if not args.no_web and not any([args.process, args.generate_emails, args.send_emails]):
-        ensure_ini_files_exist()  # Sicherstellen, dass .ini-Dateien vorhanden sind
 
-        if os.environ.get('FLASK_SERVER_STARTED') != '1':
-            os.environ['FLASK_SERVER_STARTED'] = '1'
+    # Starten des WSGI-Servers mit Waitress
+    if not args.no_web:
+        browser_thread = threading.Thread(target=open_browser)
+        browser_thread.start()
+    try:
+        serve(app, host='0.0.0.0', port=5000)
+    except Exception as e:
+        print(f"Fehler beim Starten des WSGI-Servers: {e}")
 
-            # Browser in einem separaten Thread öffnen
-            browser_thread = threading.Timer(1, open_browser)
-            browser_thread.start()
 
-        try:
-            app.run(debug=False)
-        except Exception as e:
-            print(f"Fehler beim Starten der Web-App: {e}")
-        input("Drücke eine Taste, um die Konsole zu schließen...")
-
-    elif args.no_web:
-        print("Weboberfläche wurde deaktiviert.")
 
 
 
