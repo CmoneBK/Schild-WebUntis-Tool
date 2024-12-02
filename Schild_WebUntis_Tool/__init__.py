@@ -19,6 +19,8 @@ from main import run, read_students, read_classes, compare_timeframe_imports
 from smtp import send_email
 global warnings_cache, generated_emails_cache
 
+
+
 app = Flask(__name__,
             template_folder=os.path.join(base_dir, 'templates'),
             static_folder=os.path.join(base_dir, 'static'))
@@ -630,8 +632,9 @@ def open_browser():
 cli_args = {}
 
 if __name__ == "__main__":
+
     ensure_ini_files_exist()
-    # Parser für CLI-Argumente
+    # Parser für Kommandozeilenargumente
     parser = argparse.ArgumentParser(description="Command-line interface for processing data.")
     parser.add_argument('--process', action='store_true', help="Run the main processing task.")
     parser.add_argument('--generate-emails', action='store_true', help="Generate warning emails.")
@@ -660,11 +663,6 @@ if __name__ == "__main__":
     # Initialisiere globale Caches
     warnings_cache = []
     generated_emails_cache = []
-
-    # Standardmäßig Admin-Warnungen ausführen, falls nicht übersprungen
-    if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':  # Verhindert doppelte Ausführung im Debug-Modus
-        if not args.skip_admin_warnings:
-            admin_warnings()
 
     # Senden von Admin-Warnugen
     if args.send_admin_warnings:
@@ -722,7 +720,7 @@ if __name__ == "__main__":
             browser_thread.start()
 
         try:
-            app.run(debug=True)
+            app.run(debug=False)
         except Exception as e:
             print(f"Fehler: {e}")
         input("Drücke eine Taste, um die Konsole zu schließen...")
