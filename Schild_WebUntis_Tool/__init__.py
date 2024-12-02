@@ -569,12 +569,12 @@ def get_arguments():
     arguments = [
         {"name": "--process", "description": "Führt den Hauptprozess aus (Verarbeitung des Schild-Exports, Erstellungen von Warnungen, Erstellung der Log-Dateien)."},
         {"name": "--generate-emails --send-emails", "description": "Generiert und sendet die Warn-Emails auf Grundlage der gespeicherten Einstellungen."},
-        {"name": "--send-admin-warnings", "description": "Sendet Admin-Warnungen per Email an die hinterlegte Admin Email-Adresse."},
+        {"name": "--send-admin-warnings", "description": "Sendet Admin-Warnungen per Email an die hinterlegte Admin Email-Adresse, wenn im SchildExport Klassen oder Klassenlehrkräfte vorkommen, die in den Klassen- oder Lehrkraftdaten fehlen."},
         {"name": "--no-web", "description": "Verhindert das Öffnen des Web-Interfaces."},
-        {"name": "--skip-admin-warnings", "description": "Überspringt die Erstellung von Admin-Warnungen."},
+        {"name": "--send-log-email", "description": "Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin Email-Adresse."},
+        {"name": "--skip-admin-warnings", "description": "Überspringt die Erstellung von Admin-Warnungen. (Darf nicht mit --send admin-warnings kombiniert werden.)"},
         {"name": "--no-log", "description": "Verhindert die Erstellung der .log Logdateien."},
-        {"name": "--no-xlsx", "description": "Verhindert die Erstellung der Excel Logdateien."},
-        {"name": "--send-log-email", "description": "Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin Email-Adresse."}
+        {"name": "--no-xlsx", "description": "Verhindert die Erstellung der Excel Logdateien. (Darf nicht mit --send-log-email kombiniert werden.)"}
     ]
     return jsonify({"success": True, "arguments": arguments})
 @app.route('/get-executable-path', methods=['GET'])
