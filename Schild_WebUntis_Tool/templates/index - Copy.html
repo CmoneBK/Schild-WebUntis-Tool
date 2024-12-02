@@ -30,14 +30,6 @@
             background-color: #f9f9f9;
             border-radius: 8px;
         }
-
-        #shortcutCreator {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-        }
         .nav-tabs {
             margin-bottom: 15px;
         }
@@ -239,13 +231,14 @@
 
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-3" style="height: 60px;">
-            <button id="toggleEditor" class="btn btn-secondary w-100 mr-2">✉️ Email-Vorlagen Editor</button>
-            <button id="toggleShortcutCreator" class="btn btn-info w-100 mx-2">#️⃣🔗Befehl- und Verknüpfungs-Erstelltool</button>
+            <button id="toggleEditor" class="btn btn-secondary w-100 mr-2">✉️ Email-Vorlagen Editor Ein-/Ausblenden</button>
+            <button id="toggleShortcutCreator" class="btn btn-info w-100 mx-2">#️⃣🔗Befehl-/Verknüpfungs-Ersteller Einblenden</button>
             <button id="toggle-settings" class="btn btn-primary w-100 ml-2">⚙️ Einstellungen</button>
         </div>
 
+
         <div id="settingsPanel" class="mt-4" style="display: none;">
-            <h4 class="mb-4">⚙️ Einstellungen</h4>
+            <h4 class="mb-4">Einstellungen bearbeiten</h4>
             <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link active" id="directories-tab" data-toggle="tab" href="#directories" role="tab" aria-controls="directories" aria-selected="true">📁 Verzeichnisse</a>
@@ -432,7 +425,7 @@
         </div>
 
         <div id="emailEditor" class="mt-4" style="display: none;">
-            <h4 class="mb-4">✉️ Email-Vorlagen Editor</h4>
+            <h4 class="mb-4">✉️ Email-Vorlagen bearbeiten</h4>
             <ul class="nav nav-tabs" id="emailTabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link active" id="entlass-tab" data-toggle="tab" href="#entlass" role="tab" aria-controls="entlass" aria-selected="true">➡️ Entlassdatum</a>
@@ -572,46 +565,52 @@
             </div>
             <button id="saveEmailTemplates" class="btn btn-primary mt-4">Speichern</button>
         </div>
-        <div id="shortcutCreator" class="mt-4" style="display: none;">
-            <h4 class="mb-4">#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool </h4>
-            <div class="card-body">
-                <p class="text-muted">
-                    Mit diesem Tool können Sie Befehle erstellen, um das Programm direkt mit bestimmten Konfigurationsoptionen
-                    (Argumenten) auszuführen ohne diese im Browser auslösen zu müssen. <br />Außerdem können Sie eine Verknüpfung 
-                    erstellen, die bequem vom Desktop oder einem beliebigen anderen Ort aus aufgerufen werden kann. <br />
-                    Fügen Sie gewünschte Argumente hinzu, und generieren Sie entweder einen Befehl zum Ausführen in der Windows-Eingabeaufforderung (CMD) oder eine Verknüpfung.
-                </p>
-                <form id="shortcutForm">
-                    <div class="form-group">
-                        <label for="exePath">Pfad der Ausführungs-Datei:</label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="exePath" value="Schild-WebUntis-Tool.exe" placeholder="Pfad zur ausführbaren Datei">
-                        </div>
-                        <small id="fileValidationMessage" class="form-text text-danger"></small>
-                    </div>
-                    <div class="form-group">
-                        <label for="availableArgs">Verfügbare Argumente:</label>
-                        <div class="input-group">
-                            <select id="availableArgs" class="form-control">
-                                <!-- Arguments will be populated dynamically -->
-                            </select>
-                            <div class="input-group-append">
-                                <button type="button" class="btn btn-secondary" id="addArg">Argument hinzufügen</button>
+    </div>
+    <div class="container mt-5">
+        <div class="card">
+            <div id="shortcutCreator" class="card" style="display: none;">
+                <div class="card-header bg-secondary text-white">
+                    Befehl- und Verknüpfungs-Erstelltool
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Mit diesem Tool können Sie Befehle erstellen, um das Programm direkt mit bestimmten Konfigurationsoptionen
+                        (Argumenten) auszuführen ohne diese etwa im Browser auslösen zu müssen. Außerdem können Sie eine Verknüpfung 
+                        erstellen, die bequem vom Desktop oder einem beliebigen anderen Ort aus aufgerufen werden kann. 
+                        Fügen Sie gewünschte Argumente hinzu, und generieren Sie entweder einen Befehl zum Ausführen in der Windows-Eingabeaufforderung (CMD) oder eine Verknüpfung.
+                    </p>
+                    <form id="shortcutForm">
+                        <div class="form-group">
+                            <label for="exePath">Pfad der Ausführungs-Datei:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="exePath" value="Schild-WebUntis-Tool.exe" placeholder="Pfad zur ausführbaren Datei">
                             </div>
+                            <small id="fileValidationMessage" class="form-text text-danger"></small>
                         </div>
-                        <small id="argDescription" class="form-text text-muted">Select an argument to see its description.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="args">Verwendete Argumente:</label>
-                        <input type="text" class="form-control" id="args" placeholder="Argumente hier hinzufügen">
-                    </div>
-                    <div class="form-group">
-                        <label for="outputCommand">Generierter Befehl:</label>
-                        <input type="text" class="form-control" id="outputCommand" readonly>
-                    </div>
-                    <button type="button" class="btn btn-primary" id="generateCommand">Befehl Generieren (für CMD)</button>
-                    <button type="button" class="btn btn-success" id="createShortcut">Verknüpfung Erstellen (Desktop)</button>
-                </form>
+                        <div class="form-group">
+                            <label for="availableArgs">Verfügbare Argumente:</label>
+                            <div class="input-group">
+                                <select id="availableArgs" class="form-control">
+                                    <!-- Arguments will be populated dynamically -->
+                                </select>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" id="addArg">Argument hinzufügen</button>
+                                </div>
+                            </div>
+                            <small id="argDescription" class="form-text text-muted">Select an argument to see its description.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="args">Verwendete Argumente:</label>
+                            <input type="text" class="form-control" id="args" placeholder="Argumente hier hinzufügen">
+                        </div>
+                        <div class="form-group">
+                            <label for="outputCommand">Generierter Befehl:</label>
+                            <input type="text" class="form-control" id="outputCommand" readonly>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="generateCommand">Befehl Generieren (für CMD)</button>
+                        <button type="button" class="btn btn-success" id="createShortcut">Verknüpfung Erstellen (Desktop)</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -622,51 +621,6 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const panels = {
-                settingsPanel: document.getElementById("settingsPanel"),
-                emailEditor: document.getElementById("emailEditor"),
-                shortcutCreator: document.getElementById("shortcutCreator"),
-            };
-
-            const toggleButtons = {
-                toggleSettingsButton: document.getElementById("toggle-settings"),
-                toggleEditorButton: document.getElementById("toggleEditor"),
-                toggleShortcutButton: document.getElementById("toggleShortcutCreator"),
-            };
-
-            function togglePanel(panelKey) {
-                Object.entries(panels).forEach(([key, panel]) => {
-                    if (key === panelKey) {
-                        // Zeige das ausgewählte Panel
-                        panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "block" : "none";
-                    } else {
-                        // Blende alle anderen Panels aus
-                        panel.style.display = "none";
-                    }
-                });
-            }
-
-            // Event listener for Settings Panel
-            toggleButtons.toggleSettingsButton.addEventListener("click", function () {
-                togglePanel("settingsPanel");
-            });
-
-            // Event listener for Email Editor
-            toggleButtons.toggleEditorButton.addEventListener("click", function () {
-                togglePanel("emailEditor");
-            });
-
-            // Event listener for Shortcut Creator
-            toggleButtons.toggleShortcutButton.addEventListener("click", function () {
-                togglePanel("shortcutCreator");
-            });
-
-            // Ensure all panels are initially hidden
-            Object.values(panels).forEach((panel) => (panel.style.display = "none"));
-        });
-
-
         document.addEventListener("DOMContentLoaded", function () {
             // Initialisiere WYSIWYG-Editoren
             const editorOptions = { theme: 'snow' };
@@ -722,6 +676,21 @@
                     });
             });
 
+            // Ein-/Ausblenden des E-Mail-Editors
+            const toggleEditorButton = document.getElementById("toggleEditor");
+            const emailEditor = document.getElementById("emailEditor");
+
+            toggleEditorButton.addEventListener("click", function () {
+                if (emailEditor.style.display === "none" || emailEditor.style.display === "") {
+                    emailEditor.style.display = "block";
+                    toggleEditorButton.textContent = "✉️ Email-Editor Ausblenden";
+                } else {
+                    emailEditor.style.display = "none";
+                    toggleEditorButton.textContent = "✉️ Email-Editor Einblenden";
+                }
+            });
+
+
             // Tabs für den E-Mail-Editor initialisieren
             const emailTabs = document.querySelectorAll('#emailTabs .nav-link');
             emailTabs.forEach(tab => {
@@ -743,6 +712,23 @@
             });
         });
 
+
+
+        // Funktion zum Ein-/Ausblenden des Settings-Panels
+        document.addEventListener("DOMContentLoaded", function () {
+            const settingsPanel = document.getElementById("settingsPanel");
+            const toggleSettingsButton = document.getElementById("toggle-settings");
+
+            // Ein- und Ausblenden des Settings Panels
+            toggleSettingsButton.addEventListener("click", function () {
+                if (settingsPanel.style.display === "none" || settingsPanel.style.display === "") {
+                    settingsPanel.style.display = "block";
+                } else {
+                    settingsPanel.style.display = "none";
+                }
+            });
+            // Der bestehende Code für Tabs, Laden und Speichern von Einstellungen bleibt hier unverändert.
+        });
         document.addEventListener("DOMContentLoaded", function () {
             const settingsPanel = document.getElementById("settingsPanel");
             const saveSettingsButton = document.getElementById("saveSettings");
@@ -992,6 +978,21 @@
             const hiddenFileInput = document.createElement("input");
             const validationMessage = document.getElementById("fileValidationMessage");
             let argumentCache = [];
+
+            // Ein-/Ausblenden des Shortcut-Erstellers
+            const toggleShortcutButton = document.getElementById("toggleShortcutCreator");
+            const shortcutCreatorPanel = document.getElementById("shortcutCreator");
+
+            toggleShortcutButton.addEventListener("click", function () {
+                if (shortcutCreatorPanel.style.display === "none" || shortcutCreatorPanel.style.display === "") {
+                    shortcutCreatorPanel.style.display = "block";
+                    toggleShortcutButton.textContent = "#️⃣🔗 Befehl-/Verknüpfungs-Ersteller Ausblenden";
+                } else {
+                    shortcutCreatorPanel.style.display = "none";
+                    toggleShortcutButton.textContent = "#️⃣🔗 Befehl-/Verknüpfungs-Ersteller Einblenden";
+                }
+            });
+
 
             // Fetch the executable path from the server
             fetch('/get-executable-path')
