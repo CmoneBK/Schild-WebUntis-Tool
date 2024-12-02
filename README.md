@@ -79,7 +79,8 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
 Dort gibt es oben rechts neben dem 'RAW' einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.
   
    ⚠️Derzeit kommte es zu falsch Positiv Meldungen (win64:evo-gen (trj)) von Norton u.a.</br>
-   Ich bin an der Sache dran und habe die Datei zur Neubewertung nach Norton geschickt.⚠️
+   Ich bin an der Sache dran und habe die Datei zur Neubewertung nach Norton geschickt. https://safeweb.norton.com/file_dispute; Prüfnummer: 8e0216e5-e864-4b46-8597-d306649b0879
+   Nutzen Sie in der Zwischenzeit https://nordvpn.com/de/file-checker/⚠️
    
 2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
