@@ -28,8 +28,10 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Schild_WebUntis_Tool\main - Copy.py" />
     <Compile Include="Schild_WebUntis_Tool\main.py" />
     <Compile Include="Schild_WebUntis_Tool\smtp.py" />
+    <Compile Include="Schild_WebUntis_Tool\__init__ - Copy.py" />
     <Compile Include="Schild_WebUntis_Tool\__init__.py" />
   </ItemGroup>
   <ItemGroup>
