@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generierte E-Mails</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .email-body {
+            margin-top: 10px;
+            white-space: pre-wrap; /* Zeilenumbrüche beibehalten */
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Generierte E-Mails</h1>
+
+        {% if emails %}
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                Vorschau der generierten E-Mails
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    {% for email in emails %}
+                    <li class="list-group-item">
+                        <strong>An:</strong> {{ email['to']|join(', ') }}<br>
+                        <strong>Betreff:</strong> {{ email['subject'] }}<br>
+                        <strong>Text:</strong>
+                        <div class="email-body mt-2">{{ email['body']|safe }}</div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="btn-group mt-4">
+            <button id="sendEmails" class="btn btn-success">Emails Senden</button>
+            <a href="/" class="btn btn-primary">Zurück zur Startseite</a>
+        </div>
+        {% else %}
+        <div class="alert alert-warning mt-4" role="alert">
+            ⚠️ Es wurden noch keine E-Mails generiert.
+        </div>
+        <a href="/" class="btn btn-primary mt-3">Zurück zur Startseite</a>
+        {% endif %}
+    </div>
+
+    <script>
+        document.getElementById("sendEmails")?.addEventListener("click", function () {
+            fetch("/send_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+            });
+        });
+    </script>
+</body>
+</html>

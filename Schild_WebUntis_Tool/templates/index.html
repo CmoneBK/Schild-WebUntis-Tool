@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schild-WebUntis-Tool</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <style>
+        .btn:hover {
+            opacity: 0.8;
+        }
+
+        .email-body {
+            margin-top: 10px;
+        }
+
+        #settingsPanel {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .nav-tabs {
+            margin-bottom: 15px;
+        }
+
+            .nav-tabs .nav-link {
+                color: #555;
+                background-color: #e9ecef;
+                border: 1px solid #ddd;
+                margin-right: 5px;
+                border-radius: 5px 5px 0 0;
+            }
+
+                .nav-tabs .nav-link.active {
+                    color: #000;
+                    background-color: #fff;
+                    border-bottom: 1px solid #fff;
+                }
+
+        #settingsContainer > div {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        .logo-img {
+            height: 8em; /* Adjust this value to match text size */
+            width: auto; /* Keep aspect ratio */
+        }
+
+        .d-flex {
+            display: flex;
+        }
+
+        .align-items-center {
+            align-items: center;
+        }
+
+        .ml-3 {
+            margin-left: 1rem; /* Space between logo and text */
+        }
+
+        .mb-0 {
+            margin-bottom: 0; /* Remove bottom margin for the title */
+        }
+
+        .d-flex button {
+            height: 100%; /* Ensures buttons fill the height of the flexbox container */
+            max-height: 40px; /* Sets a consistent max height for all buttons */
+            display: inline-flex; /* Flex alignment within the button itself */
+            align-items: center; /* Centers text/icon vertically */
+            justify-content: center; /* Centers text/icon horizontally */
+            padding: 0; /* Removes excess padding that might affect alignment */
+            margin: 0; /* Normalizes spacing between buttons */
+        }
+
+        .d-flex .btn {
+            line-height: 1.2; /* Ensures text and icons are balanced vertically */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="d-flex align-items-center">
+            <!-- Logo -->
+            <img src="{{ url_for('static', filename='favicon.jpg') }}" alt="Logo" class="logo-img">
+
+            <!-- Title -->
+            <h1 class="ml-3 mb-0">Schild-WebUntis-Tool</h1>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-primary text-white">
+                Hauptbereich
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="use_abschlussdatum" name="use_abschlussdatum" {% if use_abschlussdatum %}checked{% endif %}>
+                        <label class="form-check-label" for="use_abschlussdatum">Benutze Vorrauss. Abschlussdatum als Entlassdatum, falls dieses früher liegt oder kein Entlassdatum existiert</label>
+                    </div>
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="create_second_file" name="create_second_file" {% if create_second_file %}checked{% endif %}>
+                        <label class="form-check-label" for="create_second_file">Erstelle Liste mit fehlenden Entlassdatumsangaben</label>
+                    </div>
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="warn_entlassdatum" name="warn_entlassdatum" {% if warn_entlassdatum %}checked{% endif %}>
+                        <label class="form-check-label" for="warn_entlassdatum">Warnungen für Entlassdatum erstellen</label>
+                    </div>
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="warn_aufnahmedatum" name="warn_aufnahmedatum" {% if warn_aufnahmedatum %}checked{% endif %}>
+                        <label class="form-check-label" for="warn_aufnahmedatum">Warnungen für Aufnahmedatum erstellen</label>
+                    </div>
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="warn_klassenwechsel" name="warn_klassenwechsel" {% if warn_klassenwechsel %}checked{% endif %}>
+                        <label class="form-check-label" for="warn_klassenwechsel">Warnungen für Klassenwechsel erstellen</label>
+                    </div>
+                    <div class="btn-group mt-4">
+                        <button type="submit" class="btn btn-primary">▶️ Verarbeiten</button>
+                        <button id="generateEmails" type="button" class="btn btn-info">✍ Emails Generieren</button>
+                        <button id="sendEmails" type="button" class="btn btn-success">📨 Emails Senden</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="container mt-5">
+            {% if errors %}
+            <div class="alert alert-danger" role="alert">
+                <ul>
+                    {% for error in errors %}
+                    <li>❌ {{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if warnings_messages %}
+            <div class="alert alert-warning" role="alert">
+                <ul>
+                    {% for warning in warnings_messages %}
+                    <li>⚠️ {{ warning }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if confirmation %}
+            <div class="alert alert-success" role="alert">
+                ✅ {{ confirmation }}
+            </div>
+            {% endif %}
+        </div>
+
+        {% if warnings %}
+        <h3 class="mt-5">Warnungen:</h3>
+        <table class="table table-striped">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Schüler</th>
+                    <th>Klasse</th>
+                    <th>Warnung</th>
+                    <th>Details</th>
+                    <th>Klassenlehrkräfte</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for warning in warnings %}
+                <tr>
+                    <td>{{ warning['Vorname'] }} {{ warning['Nachname'] }}</td>
+                    <td>{{ warning.get('Klasse', 'N/A') }}</td>
+                    <td>{{ warning['warning_message'] }}</td>
+                    <td>
+                        {% if 'Zeitraum_nicht_dokumentiert' in warning %}
+                        <strong>Zeitraum nicht dokumentiert:</strong> {{ warning['Zeitraum_nicht_dokumentiert'] }}<br>
+                        {% endif %}
+                        {% if 'neues_entlassdatum' in warning %}
+                        <strong>Neues Entlassdatum:</strong> {{ warning['neues_entlassdatum'] }}<br>
+                        <strong>Altes Entlassdatum:</strong> {{ warning['altes_entlassdatum'] }}<br>
+                        {% endif %}
+                        {% if 'neues_aufnahmedatum' in warning %}
+                        <strong>Neues Aufnahmedatum:</strong> {{ warning['neues_aufnahmedatum'] }}<br>
+                        <strong>Altes Aufnahmedatum:</strong> {{ warning['altes_aufnahmedatum'] }}<br>
+                        {% endif %}
+                        {% if 'neue_klasse' in warning %}
+                        <strong>Alte Klasse:</strong> {{ warning.get('alte_klasse', 'N/A') }}<br>
+                        <strong>Neue Klasse:</strong> {{ warning.get('neue_klasse', 'N/A') }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{ warning['Klassenlehrkraft_1_Email'] }})<br>
+                        <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{ warning['Klassenlehrkraft_2_Email'] }})
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+
+
+        {% if emails %}
+        <h3 class="mt-5">Generierte Emails:</h3>
+        <ul class="list-group">
+            {% for email in emails %}
+            <li class="list-group-item">
+                <strong>An:</strong> {{ email['to']|join(', ') }}<br>
+                <strong>Betreff:</strong> {{ email['subject'] }}<br>
+                <strong>Text:</strong><br>
+                <div class="email-body">
+                    {{ email['body']|safe }}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+
+    <div class="container mt-5">
+        <div class="d-flex justify-content-between align-items-center mb-3" style="height: 60px;">
+            <button id="toggleEditor" class="btn btn-secondary w-100 mr-2">✉️ Email-Vorlagen Editor Ein-/Ausblenden</button>
+            <button id="toggleShortcutCreator" class="btn btn-info w-100 mx-2">#️⃣🔗Befehl-/Verknüpfungs-Ersteller Einblenden</button>
+            <button id="toggle-settings" class="btn btn-primary w-100 ml-2">⚙️ Einstellungen</button>
+        </div>
+
+
+        <div id="settingsPanel" class="mt-4" style="display: none;">
+            <h4 class="mb-4">Einstellungen bearbeiten</h4>
+            <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="directories-tab" data-toggle="tab" href="#directories" role="tab" aria-controls="directories" aria-selected="true">📁 Verzeichnisse</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="processing-tab" data-toggle="tab" href="#processing" role="tab" aria-controls="processing" aria-selected="false">🛠️ Verarbeitung</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="warnings-tab" data-toggle="tab" href="#warnings" role="tab" aria-controls="warnings" aria-selected="false">⚠️ Warnungen</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="console-tab" data-toggle="tab" href="#console" role="tab" aria-controls="console" aria-selected="false">🎛️ Konsole</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="smtp-tab" data-toggle="tab" href="#smtp" role="tab" aria-controls="smtp" aria-selected="false">📤 SMTP</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="oauth-tab" data-toggle="tab" href="#oauth" role="tab" aria-controls="oauth" aria-selected="false">🔐 OAuth</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="admin-tab" data-toggle="tab" href="#admin" role="tab" aria-controls="admin" aria-selected="false"> 📧 Admin-Kontakt</a>
+                </li>
+            </ul>
+            <div class="tab-content mt-3">
+                <!-- Standard-Verzeichnisse -->
+                <div class="tab-pane fade show active" id="directories" role="tabpanel" aria-labelledby="directories-tab">
+                    <form id="form-directories">
+                        <div class="form-group">
+                            <label for="classes_directory">🏫 Klassendatenverzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="classes_directory" name="classes_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="classes_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="teachers_directory">🧑‍🏫 Lehrerdatenverzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="teachers_directory" name="teachers_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="teachers_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="log_directory">📋 Logverzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="log_directory" name="log_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="log_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="xlsx_directory">𝄜 Excel-Verzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="xlsx_directory" name="xlsx_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="xlsx_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="import_directory">⬇️ Importverzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="import_directory" name="import_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="import_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <!-- Verarbeitung -->
+                <div class="tab-pane fade" id="processing" role="tabpanel" aria-labelledby="processing-tab">
+                    <form id="form-processing">
+                        <div class="form-group">
+                            <label for="use_abschlussdatum">🗓️ Immer Vorraussichtliches Abschlussdatum verwenden, sofern dieses früher liegt oder kein Entlassdatum existiert:</label>
+                            <select class="form-control" id="use_abschlussdatum" name="use_abschlussdatum">
+                                <option value="True">Ja</option>
+                                <option value="False">Nein</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="create_second_file">🔎 Immer Datei zur Analyse fehlender Entlassdaten erstellen:</label>
+                            <select class="form-control" id="create_second_file" name="create_second_file">
+                                <option value="True">Ja</option>
+                                <option value="False">Nein</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <!-- Warnungen -->
+                <div class="tab-pane fade" id="warnings" role="tabpanel" aria-labelledby="warnings-tab">
+                    <form id="form-warnings">
+                        <div class="form-group">
+                            <label for="warn_entlassdatum">⬅️ Immer Warnungen für Entlassdatum generieren:</label>
+                            <select class="form-control" id="warn_entlassdatum" name="warn_entlassdatum">
+                                <option value="True">Aktiv</option>
+                                <option value="False">Inaktiv</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="warn_aufnahmedatum">➡️ Immer Warnungen für Aufnahmedatum generieren:</label>
+                            <select class="form-control" id="warn_aufnahmedatum" name="warn_aufnahmedatum">
+                                <option value="True">Aktiv</option>
+                                <option value="False">Inaktiv</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="warn_klassenwechsel">🔄 Immer Warnungen für Klassenwechsel generieren:</label>
+                            <select class="form-control" id="warn_klassenwechsel" name="warn_klassenwechsel">
+                                <option value="True">Aktiv</option>
+                                <option value="False">Inaktiv</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <!-- Konsole -->
+                <div class="tab-pane fade" id="console" role="tabpanel" aria-labelledby="console-tab">
+                    <form id="form-console">
+                        <div class="form-group">
+                            <label for="timeframe_hours">⏳ Zeitfenster (in Stunden):</label>
+                            <input type="number" class="form-control" id="timeframe_hours" name="timeframe_hours">
+                        </div>
+                    </form>
+                </div>
+                <!-- SMTP -->
+                <div class="tab-pane fade" id="smtp" role="tabpanel" aria-labelledby="smtp-tab">
+                    <form id="form-smtp">
+                        <div class="form-group">
+                            <label for="smtp_server">🖧 SMTP-Server:</label>
+                            <input type="text" class="form-control" id="smtp_server" name="smtp_server">
+                        </div>
+                        <div class="form-group">
+                            <label for="smtp_port">🏗 SMTP-Port:</label>
+                            <input type="number" class="form-control" id="smtp_port" name="smtp_port">
+                        </div>
+                        <div class="form-group">
+                            <label for="smtp_user">👤 SMTP-Benutzername:</label>
+                            <input type="text" class="form-control" id="smtp_user" name="smtp_user">
+                        </div>
+                        <div class="form-group">
+                            <label for="smtp_password">🔑 SMTP-Passwort:</label>
+                            <input type="password" class="form-control" id="smtp_password" name="smtp_password">
+                        </div>
+                        <div class="form-group">
+                            <label for="smtp_encryption">🛡️ SMTP-Verschlüsselung:</label>
+                            <select class="form-control" id="smtp_encryption" name="smtp_encryption">
+                                <option value="starttls">STARTTLS</option>
+                                <option value="ssl">SSL</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <!-- OAuth -->
+                <div class="tab-pane fade" id="oauth" role="tabpanel" aria-labelledby="oauth-tab">
+                    <form id="form-oauth">
+                        <div class="form-group">
+                            <label for="use_oauth">🔐 O-Auth verwenden:</label>
+                            <select class="form-control" id="use_oauth" name="use_oauth">
+                                <option value="True">Ja</option>
+                                <option value="False">Nein</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="credentials_path">🔑 Pfad zu den Anmeldedaten:</label>
+                            <input type="text" class="form-control" id="credentials_path" name="credentials_path">
+                        </div>
+                    </form>
+                </div>
+                <!-- Admin-Kontakt -->
+                <div class="tab-pane fade" id="admin" role="tabpanel" aria-labelledby="admin-tab">
+                    <form id="form-admin">
+                        <div class="form-group">
+                            <label for="admin_email">📨 Admin-E-Mail-Adresse:</label>
+                            <input type="email" class="form-control" id="admin_email" name="admin_email">
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <button id="saveSettings" class="btn btn-primary mt-4">Einstellungen speichern</button>
+        </div>
+
+        <div id="emailEditor" class="mt-4" style="display: none;">
+            <h4 class="mb-4">✉️ Email-Vorlagen bearbeiten</h4>
+            <ul class="nav nav-tabs" id="emailTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" id="entlass-tab" data-toggle="tab" href="#entlass" role="tab" aria-controls="entlass" aria-selected="true">➡️ Entlassdatum</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="aufnahme-tab" data-toggle="tab" href="#aufnahme" role="tab" aria-controls="aufnahme" aria-selected="false">⬅️ Aufnahmedatum</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="klassenwechsel-tab" data-toggle="tab" href="#klassenwechsel" role="tab" aria-controls="klassenwechsel" aria-selected="false">🔄 Klassenwechsel</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="email-info-tab" data-toggle="tab" href="#email-info" role="tab" aria-controls="email-info" aria-selected="false">🗝️ℹ️Schlüssel-Info</a>
+                </li>
+            </ul>
+            <div class="tab-content mt-3">
+                <!-- Entlassdatum -->
+                <div class="tab-pane fade show active" id="entlass" role="tabpanel" aria-labelledby="entlass-tab">
+                    <form id="entlassForm">
+                        <div class="form-group">
+                            <label for="subjectEntlassdatum">📧 Betreff:</label>
+                            <input type="text" class="form-control" id="subjectEntlassdatum" name="subject_entlassdatum">
+                        </div>
+                        <div class="form-group">
+                            <label for="bodyEntlassdatum">📜 Nachricht:</label>
+                            <div id="editorBodyEntlassdatum" class="quill-editor"></div>
+                            <textarea id="bodyEntlassdatum" name="body_entlassdatum" class="form-control d-none"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <!-- Aufnahmedatum -->
+                <div class="tab-pane fade" id="aufnahme" role="tabpanel" aria-labelledby="aufnahme-tab">
+                    <form id="aufnahmeForm">
+                        <div class="form-group">
+                            <label for="subjectAufnahmedatum">📧 Betreff:</label>
+                            <input type="text" class="form-control" id="subjectAufnahmedatum" name="subject_aufnahmedatum">
+                        </div>
+                        <div class="form-group">
+                            <label for="bodyAufnahmedatum">📜 Nachricht:</label>
+                            <div id="editorBodyAufnahmedatum" class="quill-editor"></div>
+                            <textarea id="bodyAufnahmedatum" name="body_aufnahmedatum" class="form-control d-none"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <!-- Klassenwechsel -->
+                <div class="tab-pane fade" id="klassenwechsel" role="tabpanel" aria-labelledby="klassenwechsel-tab">
+                    <form id="klassenwechselForm">
+                        <div class="form-group">
+                            <label for="subjectKlassenwechsel">📧 Betreff:</label>
+                            <input type="text" class="form-control" id="subjectKlassenwechsel" name="subject_klassenwechsel">
+                        </div>
+                        <div class="form-group">
+                            <label for="bodyKlassenwechsel">📜 Nachricht:</label>
+                            <div id="editorBodyKlassenwechsel" class="quill-editor"></div>
+                            <textarea id="bodyKlassenwechsel" name="body_klassenwechsel" class="form-control d-none"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <!-- Schlüssel-Info -->
+                <div class="tab-pane fade" id="email-info" role="tabpanel" aria-labelledby="email-info-tab">
+                    <h5>Verfügbare Schlüssel</h5>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Kategorie</th>
+                                <th>Schlüssel</th>
+                                <th>Beschreibung</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Generelle Schlüssel -->
+                            <tr>
+                                <td rowspan="6">Generell</td>
+                                <td>$Vorname</td>
+                                <td>Vorname des Schülers/der Schülerin</td>
+                            </tr>
+                            <tr>
+                                <td>$Nachname</td>
+                                <td>Nachname des Schülers/der Schülerin</td>
+                            </tr>
+                            <tr>
+                                <td>$Klasse</td>
+                                <td>Klasse des Schülers/der Schülerin</td>
+                            </tr>
+                            <tr>
+                                <td>$Klassenlehrkraft_1</td>
+                                <td>Name der ersten Klassenlehrkraft</td>
+                            </tr>
+                            <tr>
+                                <td>$Klassenlehrkraft_1_Email</td>
+                                <td>E-Mail-Adresse der ersten Klassenlehrkraft</td>
+                            </tr>
+                            <tr>
+                                <td>$Klassenlehrkraft_2</td>
+                                <td>Name der zweiten Klassenlehrkraft</td>
+                            </tr>
+                            <!-- Warnung Entlassdatum -->
+                            <tr>
+                                <td rowspan="3">Entlassdatum</td>
+                                <td>$neues_entlassdatum</td>
+                                <td>Neues Entlassdatum</td>
+                            </tr>
+                            <tr>
+                                <td>$altes_entlassdatum</td>
+                                <td>Altes Entlassdatum</td>
+                            </tr>
+                            <tr>
+                                <td>$zeitraum_text</td>
+                                <td>Zusätzlicher Zeitraumtext (falls verfügbar)</td>
+                            </tr>
+                            <!-- Warnung Aufnahmedatum -->
+                            <tr>
+                                <td rowspan="3">Aufnahmedatum</td>
+                                <td>$neues_aufnahmedatum</td>
+                                <td>Neues Aufnahmedatum</td>
+                            </tr>
+                            <tr>
+                                <td>$altes_aufnahmedatum</td>
+                                <td>Altes Aufnahmedatum</td>
+                            </tr>
+                            <tr>
+                                <td>$zeitraum_text</td>
+                                <td>Zusätzlicher Zeitraumtext (falls verfügbar)</td>
+                            </tr>
+                            <!-- Warnung Klassenwechsel -->
+                            <tr>
+                                <td rowspan="2">Klassenwechsel</td>
+                                <td>$alte_klasse</td>
+                                <td>Alte Klasse des Schülers/der Schülerin</td>
+                            </tr>
+                            <tr>
+                                <td>$neue_klasse</td>
+                                <td>Neue Klasse des Schülers/der Schülerin</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <button id="saveEmailTemplates" class="btn btn-primary mt-4">Speichern</button>
+        </div>
+    </div>
+    <div class="container mt-5">
+        <div class="card">
+            <div id="shortcutCreator" class="card" style="display: none;">
+                <div class="card-header bg-secondary text-white">
+                    Kommando- und Verknüpfungs-Erstelltool
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        Mit diesem Tool können Sie Befehle erstellen, um das Programm direkt mit bestimmten Konfigurationsoptionen
+                        (Argumenten) auszuführen ohne diese etwa im Browser auslösen zu müssen. Außerdem können Sie eine Verknüpfung 
+                        erstellen, die bequem vom Desktop oder einem beliebigen anderen Ort aus aufgerufen werden kann. 
+                        Fügen Sie gewünschte Argumente hinzu, und generieren Sie entweder einen Befehl zum Ausführen in der Windows-Eingabeaufforderung (CMD) oder eine Verknüpfung.
+                    </p>
+                    <form id="shortcutForm">
+                        <div class="form-group">
+                            <label for="exePath">Pfad der Ausführungs-Datei:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="exePath" value="Schild-WebUntis-Tool.exe" placeholder="Pfad zur ausführbaren Datei">
+                            </div>
+                            <small id="fileValidationMessage" class="form-text text-danger"></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="availableArgs">Verfügbare Argumente:</label>
+                            <div class="input-group">
+                                <select id="availableArgs" class="form-control">
+                                    <!-- Arguments will be populated dynamically -->
+                                </select>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" id="addArg">Argument hinzufügen</button>
+                                </div>
+                            </div>
+                            <small id="argDescription" class="form-text text-muted">Select an argument to see its description.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="args">Verwendete Argumente:</label>
+                            <input type="text" class="form-control" id="args" placeholder="Argumente hier hinzufügen">
+                        </div>
+                        <div class="form-group">
+                            <label for="outputCommand">Generierter Befehl:</label>
+                            <input type="text" class="form-control" id="outputCommand" readonly>
+                        </div>
+                        <button type="button" class="btn btn-primary" id="generateCommand">Befehl Generieren (für CMD)</button>
+                        <button type="button" class="btn btn-success" id="createShortcut">Verknüpfung Erstellen (Desktop)</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Initialisiere WYSIWYG-Editoren
+            const editorOptions = { theme: 'snow' };
+            const editorBodyEntlassdatum = new Quill('#editorBodyEntlassdatum', { theme: 'snow' });
+            const editorBodyAufnahmedatum = new Quill('#editorBodyAufnahmedatum', { theme: 'snow' });
+            const editorBodyKlassenwechsel = new Quill('#editorBodyKlassenwechsel', { theme: 'snow' });
+
+            // Load templates dynamically
+            fetch("/get_templates")
+                .then(response => response.json())
+                .then(data => {
+                    // Populate subject fields
+                    document.getElementById("subjectEntlassdatum").value = data.subject_entlassdatum || "";
+                    document.getElementById("subjectAufnahmedatum").value = data.subject_aufnahmedatum || "";
+                    document.getElementById("subjectKlassenwechsel").value = data.subject_klassenwechsel || "";
+
+                    // Populate body fields in Quill editors
+                    editorBodyEntlassdatum.root.innerHTML = data.body_entlassdatum || "";
+                    editorBodyAufnahmedatum.root.innerHTML = data.body_aufnahmedatum || "";
+                    editorBodyKlassenwechsel.root.innerHTML = data.body_klassenwechsel || "";
+                })
+                .catch(error => {
+                    console.error("Error loading email templates:", error);
+                    alert("Fehler beim Laden der E-Mail-Vorlagen.");
+                });
+
+            // Save templates
+            document.getElementById("saveEmailTemplates").addEventListener("click", function () {
+                // Synchronisiere Quill-Inhalte
+                document.getElementById('bodyEntlassdatum').value = editorBodyEntlassdatum.root.innerHTML;
+                document.getElementById('bodyAufnahmedatum').value = editorBodyAufnahmedatum.root.innerHTML;
+                document.getElementById('bodyKlassenwechsel').value = editorBodyKlassenwechsel.root.innerHTML;
+
+                const formData = new FormData();
+                formData.append("subject_entlassdatum", document.getElementById("subjectEntlassdatum").value);
+                formData.append("body_entlassdatum", document.getElementById("bodyEntlassdatum").value);
+                formData.append("subject_aufnahmedatum", document.getElementById("subjectAufnahmedatum").value);
+                formData.append("body_aufnahmedatum", document.getElementById("bodyAufnahmedatum").value);
+                formData.append("subject_klassenwechsel", document.getElementById("subjectKlassenwechsel").value);
+                formData.append("body_klassenwechsel", document.getElementById("bodyKlassenwechsel").value);
+
+                fetch("/update_templates", {
+                    method: "POST",
+                    body: formData
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                    })
+                    .catch(error => {
+                        console.error("Error saving email templates:", error);
+                        alert("Fehler beim Speichern der E-Mail-Vorlagen.");
+                    });
+            });
+
+            // Ein-/Ausblenden des E-Mail-Editors
+            document.getElementById("toggleEditor").addEventListener("click", function () {
+                const editor = document.getElementById("emailEditor");
+                editor.style.display = editor.style.display === "none" || editor.style.display === "" ? "block" : "none";
+            });
+
+            // Tabs für den E-Mail-Editor initialisieren
+            const emailTabs = document.querySelectorAll('#emailTabs .nav-link');
+            emailTabs.forEach(tab => {
+                tab.addEventListener("click", function (e) {
+                    e.preventDefault();
+
+                    // Aktive Tabs wechseln
+                    emailTabs.forEach(t => t.classList.remove("active"));
+                    tab.classList.add("active");
+
+                    // Content-Panels wechseln
+                    const allPanels = document.querySelectorAll(".tab-content > .tab-pane");
+                    allPanels.forEach(panel => panel.classList.remove("show", "active"));
+                    const targetPanel = document.querySelector(tab.getAttribute("href"));
+                    if (targetPanel) {
+                        targetPanel.classList.add("show", "active");
+                    }
+                });
+            });
+        });
+
+
+
+        // Funktion zum Ein-/Ausblenden des Settings-Panels
+        document.addEventListener("DOMContentLoaded", function () {
+            const settingsPanel = document.getElementById("settingsPanel");
+            const toggleSettingsButton = document.getElementById("toggle-settings");
+
+            // Ein- und Ausblenden des Settings Panels
+            toggleSettingsButton.addEventListener("click", function () {
+                if (settingsPanel.style.display === "none" || settingsPanel.style.display === "") {
+                    settingsPanel.style.display = "block";
+                } else {
+                    settingsPanel.style.display = "none";
+                }
+            });
+            // Der bestehende Code für Tabs, Laden und Speichern von Einstellungen bleibt hier unverändert.
+        });
+        document.addEventListener("DOMContentLoaded", function () {
+            const settingsPanel = document.getElementById("settingsPanel");
+            const saveSettingsButton = document.getElementById("saveSettings");
+            const toggleSettingsButton = document.getElementById("toggle-settings");
+            const directoryPicker = document.getElementById("directory-picker");
+
+            async function selectDirectory(inputId) {
+                if (window.showDirectoryPicker) {
+                    try {
+                        const directoryHandle = await window.showDirectoryPicker();
+                        const formData = new FormData();
+                        formData.append("directoryName", directoryHandle.name);
+
+                        // Optional: Sende den vollständigen Pfad an das Backend
+                        const response = await fetch("/process-directory", {
+                            method: "POST",
+                            body: formData,
+                        });
+
+                        if (response.ok) {
+                            const result = await response.json();
+                            const directoryPath = result.fullPath || directoryHandle.name;
+
+                            // Konvertiere Backslashes in Forward Slashes (INI-kompatibel)
+                            const formattedPath = directoryPath.replace(/\\/g, "/");
+                            document.getElementById(inputId).value = formattedPath; // Aktualisiere das Eingabefeld
+                        } else {
+                            console.error("Error processing directory:", response.statusText);
+                        }
+                    } catch (error) {
+                        console.error("Directory selection was cancelled or failed:", error);
+                    }
+                } else {
+                    alert("Your browser does not support the directory picker. Please enter manually.");
+                }
+            }
+
+
+            // Initialize event handlers for directory selection
+            document.querySelectorAll("button[data-directory-input]").forEach((button) => {
+                button.addEventListener("click", function () {
+                    const inputId = this.getAttribute("data-directory-input");
+                    if (inputId) {
+                        selectDirectory(inputId);
+                    }
+                });
+            });
+
+            // Tabs und Inhalte initialisieren
+            const tabs = [
+                { id: "directories", form: "form-directories" },
+                { id: "processing", form: "form-processing" },
+                { id: "warnings", form: "form-warnings" },
+                { id: "console", form: "form-console" },
+                { id: "smtp", form: "form-smtp" },
+                { id: "oauth", form: "form-oauth" },
+                { id: "admin", form: "form-admin" },
+            ];
+
+            // Einstellungen laden
+            async function loadSettings() {
+                try {
+                    const response = await fetch("/load-settings");
+                    if (response.ok) {
+                        const settings = await response.json();
+
+                        // Map keys to forms
+                        const keyToFormId = {
+                            // Directories
+                            "classes_directory": "form-directories",
+                            "teachers_directory": "form-directories",
+                            "log_directory": "form-directories",
+                            "xlsx_directory": "form-directories",
+                            "import_directory": "form-directories",
+                            // ProcessingOptions
+                            "use_abschlussdatum": "form-processing",
+                            "create_second_file": "form-processing",
+                            // Warnings
+                            "warn_entlassdatum": "form-warnings",
+                            "warn_aufnahmedatum": "form-warnings",
+                            "warn_klassenwechsel": "form-warnings",
+                            // Console
+                            "timeframe_hours": "form-console",
+                            // Email settings
+                            "smtp_server": "form-smtp",
+                            "smtp_port": "form-smtp",
+                            "smtp_user": "form-smtp",
+                            "smtp_password": "form-smtp",
+                            "smtp_encryption": "form-smtp",
+                            // OAuth
+                            "use_oauth": "form-oauth",
+                            "credentials_path": "form-oauth",
+                            // Admin
+                            "admin_email": "form-admin",
+                        };
+
+                        // Loop over settings and populate forms
+                        Object.entries(settings).forEach(([section, sectionValues]) => {
+                            Object.entries(sectionValues).forEach(([key, value]) => {
+                                const formId = keyToFormId[key];
+                                if (formId) {
+                                    const form = document.getElementById(formId);
+                                    if (form) {
+                                        const input = form.querySelector(`[name="${key}"]`);
+                                        if (input) {
+                                            input.value = value;
+                                        }
+                                    }
+                                }
+                            });
+                        });
+                    } else {
+                        console.error("Fehler beim Laden der Einstellungen:", response.statusText);
+                    }
+                } catch (error) {
+                    console.error("Fehler beim Laden der Einstellungen:", error);
+                }
+            }
+            document.getElementById("saveSettings").addEventListener("click", saveSettings);
+            // Einstellungen speichern
+            async function saveSettings() {
+                const settings = {};
+
+                // Map keys to sections
+                const keyToSection = {
+                    // Directories
+                    "classes_directory": "Directories",
+                    "teachers_directory": "Directories",
+                    "log_directory": "Directories",
+                    "xlsx_directory": "Directories",
+                    "import_directory": "Directories",
+                    // ProcessingOptions
+                    "use_abschlussdatum": "ProcessingOptions",
+                    "create_second_file": "ProcessingOptions",
+                    "warn_entlassdatum": "ProcessingOptions",
+                    "warn_aufnahmedatum": "ProcessingOptions",
+                    "warn_klassenwechsel": "ProcessingOptions",
+                    "timeframe_hours": "ProcessingOptions",
+                    // Email settings
+                    "smtp_server": "Email",
+                    "smtp_port": "Email",
+                    "smtp_user": "Email",
+                    "smtp_password": "Email",
+                    "smtp_encryption": "Email",
+                    // OAuth
+                    "use_oauth": "OAuth",
+                    "credentials_path": "OAuth",
+                    // Admin
+                    "admin_email": "Email", // Since admin_email is under [Email] section
+                };
+
+                // Collect data from all forms
+                tabs.forEach((tab) => {
+                    const form = document.getElementById(tab.form);
+                    if (form) {
+                        const formData = new FormData(form);
+                        formData.forEach((value, key) => {
+                            const section = keyToSection[key];
+                            if (section) {
+                                if (!settings[section]) settings[section] = {};
+                                settings[section][key] = value;
+                            }
+                        });
+                    }
+                });
+
+                try {
+                    // Send settings to server
+                    const response = await fetch("/save-settings", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ settings }),
+                    });
+                    if (!response.ok) {
+                        console.error("Fehler beim Speichern der Einstellungen:", response.statusText);
+                        alert("Fehler beim Speichern der Einstellungen.");
+                    } else {
+                        alert("Einstellungen erfolgreich gespeichert!");
+                    }
+                } catch (error) {
+                    console.error("Fehler beim Speichern der Einstellungen:", error);
+                    alert("Fehler beim Speichern der Einstellungen.");
+                }
+            }
+            // Load settings when the page loads
+            loadSettings();
+        });
+
+
+        const labels = {
+            timeframe_hours: "Zeitfenster in Stunden für die Vergleiche.",
+            import_directory: "Verzeichnis, in dem die Import-Dateien gespeichert werden.",
+            classes_directory: "Verzeichnis für die Klassendaten. Sie werden für die Klassenlehrkraft-Zuordnung für die Warnungs-Funktion benötigt.",
+            teachers_directory: "Verzeichnis für die Lehrerdaten. Sie werden für die Namensermittlung und Email-Adressen-Ermittlung für die Warnungs-Funktion benötigt.",
+            log_directory: "Verzeichnis für die Log-Dateien. Darunter Änderungs-Logs zwischen der neuesten und vorherigen Import-Datei, aber auch Logs für den Logs-Versand an die Admin-Email Adresse.",
+            xlsx_directory: "Verzeichnis für die Excel-Dateien. Dies sind ebenfalls Log-Datein aber als ganze Tabelle mit markierten Änderungen.",
+            smtp_server: "SMTP-Server-Adresse für den E-Mail-Versand.",
+            smtp_port: "Port des SMTP-Servers (z. B. 587 für STARTTLS).",
+            smtp_user: "Benutzername für den SMTP-Server.",
+            smtp_password: "Passwort für den SMTP-Server.",
+            admin_email: "E-Mail-Adresse des Administrators für Benachrichtigungen. Darunter Admin-Warnungen bei im Vergleich zum Schild-Export fehlenden Klassen- und Lehrkraftdaten, aber auch zum Versandt von Log-Emails und -Datein."
+        };
+
+        function getLabel(key) {
+            return labels[key] || key; // Fallback auf den Key, falls kein Label existiert
+        }
+
+        document.querySelectorAll("label").forEach(label => {
+            const key = label.getAttribute("for");
+            if (key && labels[key]) {
+                label.innerHTML += `<small class="text-muted"> (${getLabel(key)})</small>`;
+            }
+        });
+    </script>
+
+
+    <script>
+        document.getElementById("generateEmails")?.addEventListener("click", function () {
+            fetch("/generate_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+                if (data.emails) {
+                    window.location.href = "/view_generated_emails";
+                }
+            });
+        });
+
+        document.getElementById("sendEmails")?.addEventListener("click", function () {
+            fetch("/send_emails", {
+                method: "POST"
+            }).then(response => response.json()).then(data => {
+                alert(data.message);
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const toggleButton = document.getElementById("toggleShortcutCreator");
+            const shortcutCreator = document.getElementById("shortcutCreator");
+            const exePathInput = document.getElementById("exePath");
+            const argsInput = document.getElementById("args");
+            const availableArgs = document.getElementById("availableArgs");
+            const argDescription = document.getElementById("argDescription");
+            const browseButton = document.getElementById("browseExePath");
+            const hiddenFileInput = document.createElement("input");
+            const validationMessage = document.getElementById("fileValidationMessage");
+            let argumentCache = [];
+
+            // Toggle visibility of the shortcut creator
+            toggleButton.addEventListener("click", function () {
+                if (shortcutCreator.style.display === "none" || shortcutCreator.style.display === "") {
+                    shortcutCreator.style.display = "block";
+                    toggleButton.textContent = "#️⃣🔗 Befehl-/Verknüpfungs-Ersteller Ausblenden";
+                } else {
+                    shortcutCreator.style.display = "none";
+                    toggleButton.textContent = "#️⃣🔗 Befehl-/Verknüpfungs-Ersteller Einblenden";
+                }
+            });
+
+            // Fetch the executable path from the server
+            fetch('/get-executable-path')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.exePath) {
+                        exePathInput.value = data.exePath;
+                        validationMessage.textContent = "Ausführungspfad geladen.";
+                        validationMessage.classList.remove("text-danger");
+                        validationMessage.classList.add("text-success");
+                    } else {
+                        validationMessage.textContent = "Ausführungspfad konnte nicht ermittelt werden.";
+                        validationMessage.classList.add("text-danger");
+                    }
+                })
+                .catch(error => {
+                    console.error("Fehler beim Laden des Ausführungspfads:", error);
+                    validationMessage.textContent = "Fehler beim Laden des Ausführungspfads.";
+                    validationMessage.classList.add("text-danger");
+                });
+
+            // Fetch available arguments and descriptions from the backend
+            fetch("/get-arguments")
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        argumentCache = data.arguments; // Cache arguments for later use
+                        data.arguments.forEach((arg) => {
+                            const option = document.createElement("option");
+                            option.value = arg.name;
+                            option.textContent = `${arg.name}`;
+                            availableArgs.appendChild(option);
+                        });
+
+                        // Set initial description
+                        argDescription.textContent =
+                            data.arguments[0]?.description || "Select an argument to see its description.";
+                    } else {
+                        console.error("Failed to fetch arguments:", data.error);
+                    }
+                });
+
+            // Update the argument description on selection
+            availableArgs.addEventListener("change", function () {
+                const selectedArg = availableArgs.value;
+                const argDetails = argumentCache.find((arg) => arg.name === selectedArg);
+                argDescription.textContent = argDetails?.description || "Description not available.";
+            });
+
+            // Add selected argument to the args input field
+            document.getElementById("addArg").addEventListener("click", function () {
+                const selectedArg = availableArgs.value;
+                if (selectedArg) {
+                    argsInput.value = argsInput.value ? `${argsInput.value} ${selectedArg}` : selectedArg;
+                }
+            });
+
+            // Generate the command
+            document.getElementById("generateCommand").addEventListener("click", function () {
+                const command = `"${exePathInput.value}" ${argsInput.value}`;
+                document.getElementById("outputCommand").value = command;
+            });
+
+            // Create the shortcut
+            document.getElementById("createShortcut").addEventListener("click", function () {
+                const exePathValue = exePathInput.value;
+                const argsValue = argsInput.value;
+
+                if (exePathValue) {
+                    fetch("/create-shortcut", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ exePath: exePathValue, args: argsValue }),
+                    })
+                        .then((response) => response.json())
+                        .then((data) => {
+                            if (data.success) {
+                                alert("Shortcut created successfully!");
+                            } else {
+                                alert("Error creating shortcut: " + data.error);
+                            }
+                        });
+                } else {
+                    alert("Please provide the path to the executable file.");
+                }
+            });
+        });
+
+    </script>
+
+
+
+
+
+
+
+</body>
+</html>
