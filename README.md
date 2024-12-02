@@ -175,6 +175,8 @@ In der Konsole sehen Sie den Prozess durchlaufen.
   <img src="/Screenshots/Beispiel EMail.png" alt="Beispiel EMail" width="500" />
   <br>
   <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="500" />
+  <br>
+  <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl-und Verknüpfungsersteller" width="500" />
 
  
 ## Updates
