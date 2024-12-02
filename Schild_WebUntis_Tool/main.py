@@ -8,7 +8,7 @@ from openpyxl.styles import Font, PatternFill
 def run(use_abschlussdatum=True, create_second_file=True,
         warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True,
         no_log=False, no_xlsx=False):
-
+    # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
     print(f'Inside your_script.py - use_abschlussdatum: {use_abschlussdatum}')  # Debug print
     warnings = []  # Liste für Warnungen
     class_change_warnings = []  # Liste für Klassenwechsel-Warnungen
@@ -378,7 +378,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
 
     # Prüfen, ob der Ordner für Klassendaten existiert
     if not os.path.exists(classes_dir):
-        print(f"Warnung: Der Ordner '{classes_dir}' existiert nicht. Es werden Dummy-Klassendaten verwendet.")
+        print(f"Warnung: Der Ordner '{classes_dir}' existiert nicht.")
         dummy_classes = {
             "dummy_class_1": {
                 "Klassenlehrkraft_1": "Max Muster",
@@ -392,7 +392,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
     # Neueste Klassen-CSV-Datei finden
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
     if not class_csv_files:
-        print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden. Es werden Dummy-Klassendaten verwendet.")
+        print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden.")
         dummy_classes = {
             "dummy_class_1": {
                 "Klassenlehrkraft_1": "Max Muster",
@@ -407,7 +407,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
 
     # Prüfen, ob der Ordner für Lehrerdaten existiert
     if not os.path.exists(teachers_dir):
-        print(f"Warnung: Der Ordner '{teachers_dir}' existiert nicht. Es werden Dummy-Lehrerdaten verwendet.")
+        print(f"Warnung: Der Ordner '{teachers_dir}' existiert nicht.")
         teachers = {
             "dummy_teacher_1": {"email": "lehrer1@example.com", "forename": "Anna", "longname": "Lehrkraft"},
             "dummy_teacher_2": {"email": "lehrer2@example.com", "forename": "Tom", "longname": "Muster"},
@@ -416,7 +416,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
         # Neueste Lehrkräfte-CSV-Datei finden
         teacher_csv_files = [f for f in os.listdir(teachers_dir) if f.endswith('.csv')]
         if not teacher_csv_files:
-            print(f"Warnung: Keine Lehrkräfte-CSV-Dateien im Ordner '{teachers_dir}' gefunden. Es werden Dummy-Lehrerdaten verwendet.")
+            print(f"Warnung: Keine Lehrkräfte-CSV-Dateien im Ordner '{teachers_dir}' gefunden.")
             teachers = {
                 "dummy_teacher_1": {"email": "lehrer1@example.com", "forename": "Anna", "longname": "Lehrkraft"},
                 "dummy_teacher_2": {"email": "lehrer2@example.com", "forename": "Tom", "longname": "Muster"},
