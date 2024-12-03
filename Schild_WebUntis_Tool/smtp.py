@@ -107,7 +107,6 @@ def send_email(subject, body, to_addresses, attachment_path=None):
         for i in range(retries):
             try:
                 server.sendmail(smtp_user, to_addresses, msg.as_string())
-                print_success("E-Mail erfolgreich gesendet!")
                 break
             except smtplib.SMTPResponseException as e:
                 if e.smtp_code in [450, 503]:

@@ -20,19 +20,22 @@ def thread_safe_print(color, message):
 
 # Hilfsfunktionen
 def print_error(message):
-    thread_safe_print(Fore.RED, message)
+    thread_safe_print(Fore.RED, f"❌ {message}")
 
 def print_warning(message):
-    thread_safe_print(Fore.YELLOW, message)
+    thread_safe_print(Fore.YELLOW, f"⚠️ {message}")
+
+def print_warningtext(message):
+    thread_safe_print(Fore.MAGENTA, f"👾 {message}")
 
 def print_success(message):
-    thread_safe_print(Fore.GREEN, message)
+    thread_safe_print(Fore.GREEN, f"✅ {message}")
 
 def print_info(message):
-    thread_safe_print(Fore.CYAN, message)
+    thread_safe_print(Fore.CYAN, f"ℹ️ {message}")
 
 def print_creation(message):
-    thread_safe_print(Fore.WHITE, message)
+    thread_safe_print(Fore.WHITE, f"✨ {message}")
 
 def run(use_abschlussdatum=True, create_second_file=True,
         warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True,
@@ -66,13 +69,10 @@ def run(use_abschlussdatum=True, create_second_file=True,
 
     # Warnungen erstellen basierend auf der Benutzerauswahl
     if warn_entlassdatum:
-        print_info("Erstelle Entlassdatum-Warnungen...")
         warnings = create_warnings(classes_by_name, students_by_id)
     if warn_klassenwechsel:
-        print_info("Erstelle Klassenwechsel-Warnungen...")
         class_change_warnings = create_class_change_warnings(classes_by_name, students_by_id)
     if warn_aufnahmedatum:
-        print_info("Erstelle Aufnahmedatum-Warnungen...")
         admission_date_warnings = create_admission_date_warnings(classes_by_name, students_by_id)
 
     # Alle Warnungen zusammenführen
@@ -87,11 +87,10 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_warnings(admission_date_warnings)
 
     # Dateien speichern
-    print_info("Speichere Ausgabedateien...")
     save_files(output_data_students, all_warnings, create_second_file)
 
     # Vergleiche die letzten beiden Dateien
-    print_info("Vergleiche die neuesten Importdateien zum Zweck der Log-Erstellung...")
+    print_info("Initialisiere Log-Erstellung")
     compare_latest_imports(no_log=no_log, no_xlsx=no_xlsx)
 
     print_success("Hauptverarbeitung abgeschlossen.")
@@ -125,12 +124,16 @@ def read_csv(file_path):
 
 def compare_latest_imports(no_log=False, no_xlsx=False):
     # Funktion zum Vergleichen der neuesten Importdateien und Erfassen von Änderungen
-    print_info("Starte Vergleich der neuesten Importdateien...")
+    print_info("Prüfe Einstellungen zu gewünschten Log-Dateien...")
     # Überspringen der Erstellung je nach Flags
     if no_log:
         print_info("Log-Datei-Erstellung wurde deaktiviert.")
     if no_xlsx:
         print_info("Excel-Datei-Erstellung wurde deaktiviert.")
+    # Abbruch, wenn sowohl no_log als auch no_xlsx aktiviert sind
+    if no_log and no_xlsx:
+        print_warning("Vergleich abgebrochen: Sowohl Log- als auch Excel-Datei-Erstellung wurden deaktiviert.")
+        return
 
     # Verzeichnisse definieren
     import_dir = get_directory('import_directory', './WebUntis Importe')
@@ -147,6 +150,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     os.makedirs(xlsx_dir, exist_ok=True)
 
     # Neueste zwei Dateien im Importverzeichnis finden
+    print_info("Suchen der zwei neuesten Dateien im Importverzeichnis...")
     csv_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
     if len(csv_files) < 2:
         print_warning(f"Nicht genügend Dateien im Verzeichnis {import_dir} vorhanden, um einen Vergleich durchzuführen. Abbruch der Log-Erstellung.")
@@ -157,7 +161,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     latest_file = csv_files[0]
     previous_file = csv_files[1]
 
-    print_info(f"Vergleiche Dateien: {previous_file} und {latest_file}")
+    print_info(f"Vergleiche Dateien:\n {previous_file} und\n {latest_file}")
 
     # Dateien einlesen
     previous_data = read_csv(os.path.join(import_dir, previous_file))
@@ -186,6 +190,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
             changes.append({"student_id": student_id, "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}", "changes": change_details, "row": updated_row})
     if not changes:
         print_warning("Keine Änderungen zwischen den Dateien festgestellt. Abbruch der Log-Erstellung.")
+        print_warningtext("Prüfen Sie, ob Sie die selbe Schild-Export Datei zwei mal verarbeitet haben.")
         return
 
     # Datum und Uhrzeit für Dateinamen
@@ -202,7 +207,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
                 for field, values in change['changes'].items():
                     log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
                 log_file.write("\n")
-        print_success("Log-Datei erfolgreich erstellt.")
+        print_success(".log Log-Datei erfolgreich erstellt.")
 
     # Excel-Datei erstellen
     if not no_xlsx and changes:
@@ -244,7 +249,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
                     cell.fill = red_fill
 
         wb.save(excel_file_path)
-        print_success("Excel-Datei erfolgreich erstellt.")
+        print_success("Excel-Log-Datei erfolgreich erstellt.")
     print_success("Vergleich der neuesten Importdateien abgeschlossen.")
 
 from smtp import send_email
@@ -273,6 +278,7 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
     os.makedirs(xlsx_dir, exist_ok=True)
 
     # Überprüfung des letzten E-Mail-Versands
+    print_info(f"Überprüfe, ob in den letzten {timeframe_hours} Stunden schon eine Log-E-Mail versendet wurde...")
     email_log_path = os.path.join(log_dir, "last_email_sent.log")
     if os.path.exists(email_log_path):
         with open(email_log_path, "r") as email_log:
@@ -292,12 +298,14 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
     csv_files.sort(key=lambda f: os.path.getctime(os.path.join(import_dir, f)), reverse=True)
 
     # Datei suchen, die älter als der Zeitrahmen ist
+    print_info(f"Suche neueste WebUntis-Import-Datei mit einem Mintestalter von {timeframe_hours} Stunden.")
     previous_file = next(
         (f for f in csv_files if datetime.fromtimestamp(os.path.getmtime(os.path.join(import_dir, f))) < cutoff_time),
         None
     )
 
     # Neueste Datei finden
+    print_info(f"Suche neuste WebUntis-Import-Datei.")
     latest_file = csv_files[0] if csv_files else None
 
     if not latest_file:
@@ -308,7 +316,7 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
         print_warning(f"Keine Dateien gefunden, die älter als {timeframe_hours} Stunden sind.")
         return
 
-    print_info(f"Vergleiche Dateien: {previous_file} und {latest_file}")
+    print_info(f"Vergleiche Dateien:\n {previous_file} und\n {latest_file}")
 
     previous_data = read_csv(os.path.join(import_dir, previous_file)) if previous_file else {}
     latest_data = read_csv(os.path.join(import_dir, latest_file))
@@ -351,7 +359,7 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
                 for field, values in change['changes'].items():
                     log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
                 log_file.write("\n")
-        print_success("Log-Datei erfolgreich erstellt.")
+        print_success(".log Log-Datei erfolgreich erstellt.")
 
     # Excel-Datei erstellen
     if not no_xlsx:
@@ -385,9 +393,10 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
                     cell.fill = red_fill
 
         wb.save(excel_file_path)
-        print_success("Excel-Datei erfolgreich erstellt.")
+        print_success("Excel-Log-Datei erfolgreich erstellt.")
 
     # E-Mail mit den Änderungen senden
+    print_info(f"Erstelle und sende E-Mails mit HTML-Tabelle und Excel-Datei im Anhang...")
     if changes:
         subject = "Änderungen im WebUntis Import"
         body = f"""
@@ -429,21 +438,17 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
             print_success(f"E-Mail mit Änderungen an {admin_email} gesendet.")
 
             # Zeitstempel des E-Mail-Versands speichern
+            print_info(f"Schreiben des Zeitstempels des Versands in {email_log_path} zur Verhinderung weiter E-Mails innerhalb der nächsten {timeframe_hours} Stunden...")
             with open(email_log_path, "w") as email_log:
                 email_log.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            print_success(f"Zeit [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]notiert.")
         except Exception as e:
             print_error(f"Fehler beim Senden der E-Mail: {e}")
-
 
 
 def read_classes(classes_dir, teachers_dir, return_teachers=False):
     # Funktion zum Einlesen der Klassen- und Lehrerdaten
     print_info("Lese Klassen- und Lehrerdaten ein...")
-    # Normalisiere Pfade
-    classes_dir = os.path.normpath(classes_dir)
-    teachers_dir = os.path.normpath(teachers_dir)
-    print_info(f"Klassendatenverzeichnis: {classes_dir}")
-    print_info(f"Lehrerdatenverzeichnis: {teachers_dir}")
 
     # Prüfen, ob der Ordner für Klassendaten existiert
     if not os.path.exists(classes_dir):
@@ -627,7 +632,7 @@ def create_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
+        print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -691,7 +696,7 @@ def create_class_change_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
+        print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -736,7 +741,7 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
+        print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -830,7 +835,7 @@ def save_files(output_data_students, warnings, create_second_file):
     with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
         writer = csv.writer(csvfile, delimiter=';')
         writer.writerows(output_data_students)
-    print_creation(f"Hauptausgabedatei gespeichert: {output_file}")
+    print_creation(f"Hauptausgabedatei (Neue WebUntis-Import_Datei) gespeichert:\n {output_file}")
 
     # Zweite Ausgabedatei speichern, falls gewünscht
     if create_second_file:
@@ -846,7 +851,7 @@ def save_files(output_data_students, warnings, create_second_file):
 
         # Daten für zweite Datei extrahieren
         newest_file = max(csv_files, key=os.path.getctime)
-        print_info(f"Verwende Datei für zweite Ausgabe: {newest_file}")
+        print_info(f"Verwende Datei für zweite Ausgabe:\n {newest_file}")
         with open(newest_file, 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -858,8 +863,8 @@ def save_files(output_data_students, warnings, create_second_file):
                 writer = csv.writer(csvfile, delimiter=';')
                 writer.writerow(second_output_columns)  # Header für die zweite Datei
                 writer.writerows(second_output_data)
-            print_creation(f"Zweite Ausgabedatei gespeichert: {second_output_file}")
+            print_creation(f"Zweite Ausgabedatei gespeichert:\n {second_output_file}")
         else:
             print_warning("Keine Daten für die zweite Ausgabedatei gefunden.")
     else:
-        print_info("Erstellung der zweiten Ausgabedatei wurde deaktiviert.")
+        print_info("Keine zweite Ausgabedatei da die Erstellung der zweiten Ausgabedatei deaktiviert wurde.")
