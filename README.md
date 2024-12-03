@@ -200,7 +200,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
         <a href="/Screenshots/Email Editor NEU.png" target="_blank">
           <img src="/Screenshots/Email Editor NEU.png" alt="E-Mail Vorlagen Editor" width="300">
         </a>
-        <p>EMail Vorlagen Editor</p>
+        <p>E-Mail Vorlagen Editor</p>
       </td>
     </tr>
     <tr>
@@ -208,7 +208,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
         <a href="/Screenshots/Beispiel EMail.png" target="_blank">
           <img src="/Screenshots/Beispiel EMail.png" alt="Beispiel E-Mail" width="300">
         </a>
-        <p>Beispiel EMail</p>
+        <p>Beispiel E-Mail</p>
       </td>
       <td>
         <a href="/Screenshots/Einstellungs-Editor.png" target="_blank">
