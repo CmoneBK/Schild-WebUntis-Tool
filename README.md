@@ -75,7 +75,7 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
 
 
 ## Installation
-1. Die .exe Dateie finden Sie unter: </br>[Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe) (für Test-Umgebung) </br>[Schild-WebUntis-Tool-WServer.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) (für Produktions-Umgebung).</br>
+1. Die .exe Dateie finden Sie unter: </br>[Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe) (für Test-Umgebung, wird nicht mehr aktualisiert) </br>[Schild-WebUntis-Tool-WServer.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) (für Produktions-Umgebung).</br>
 Dort gibt es oben rechts neben dem 'RAW' einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.
   
    ⚠️Derzeit kommte es zu falsch Positiv Meldungen (win64:evo-gen (trj)) von Norton u.a.</br>
