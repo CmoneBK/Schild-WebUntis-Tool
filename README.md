@@ -173,52 +173,69 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Screenshots:** 
 
 # Bildergalerie
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Bildergalerie</title>
+</head>
+<body>
+  <h1>Bildergalerie</h1>
+  <table border="1" cellspacing="10" cellpadding="5" align="center">
+    <tr>
+      <td>
+        <a href="/Screenshots/Start Ohne Daten.png" target="_blank">
+          <img src="/Screenshots/Start Ohne Daten.png" alt="Start Ohne Daten" width="300">
+        </a>
+        <p>Start Ohne Daten</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Start mit Daten.png" target="_blank">
+          <img src="/Screenshots/Start mit Daten.png" alt="Start mit Daten" width="300">
+        </a>
+        <p>Start mit Daten</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="/Screenshots/Beispiel Warnungen.png" target="_blank">
+          <img src="/Screenshots/Beispiel Warnungen.png" alt="Beispiel Warnungen" width="300">
+        </a>
+        <p>Beispiel Warnungen</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Email Editor NEU.png" target="_blank">
+          <img src="/Screenshots/Email Editor NEU.png" alt="EMail Vorlagen Editor" width="300">
+        </a>
+        <p>EMail Vorlagen Editor</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="/Screenshots/Beispiel EMail.png" target="_blank">
+          <img src="/Screenshots/Beispiel EMail.png" alt="Beispiel EMail" width="300">
+        </a>
+        <p>Beispiel EMail</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Einstellungs-Editor.png" target="_blank">
+          <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="300">
+        </a>
+        <p>Einstellungs-Editor</p>
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2" align="center">
+        <a href="/Screenshots/Befehl-und Verknüpfungsersteller.png" target="_blank">
+          <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl und Verknüpfungsersteller" width="300">
+        </a>
+        <p>Befehl und Verknüpfungsersteller</p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
 
-  <br>
-  <img src="/Screenshots/Start Ohne Daten.png" alt="Start Ohne Daten" width="500" />
-  <br>
-  <img src="/Screenshots/Start mit Daten.png" alt="Start mit Daten" width="500" />
-  <br>
-  <img src="/Screenshots/Beispiel Warnungen.png" alt="Beispiel Warnungen" width="500" />
-  <br>
-  <img src="/Screenshots/Email Editor NEU.png" alt="EMail Vorlagen Editor" width="500" />
-  <br>
-  <img src="/Screenshots/Beispiel EMail.png" alt="Beispiel EMail" width="500" />
-  <br>
-  <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="500" />
-  <br>
-  <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl-und Verknüpfungsersteller" width="500" />
-
-
-# Bildergalerie
-
-<a href="#!">
-  <img src="/Screenshots/Start Ohne Daten.png" alt="Start Ohne Daten" width="500">
-</a>
-<br>
-<a href="#!">
-  <img src="/Screenshots/Start mit Daten.png" alt="Start mit Daten" width="500">
-</a>
-<br>
-<a href="#!">
-  <img src="/Screenshots/Beispiel Warnungen.png" alt="Beispiel Warnungen" width="500">
-</a>
-<br>
-<a href="#!">
-  <img src="/Screenshots/Email Editor NEU.png" alt="EMail Vorlagen Editor" width="500">
-</a>
-<br>
-<a href="#!">
-  <img src="/Screenshots/Beispiel EMail.png" alt="Beispiel EMail" width="500">
-</a>
-<br>
-<a href="#!">
-  <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="500">
-</a>
-<br>
-<a href="#!">
-  <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl-und Verknüpfungsersteller" width="500">
-</a>
 
 
 
