@@ -218,9 +218,15 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Änderungs-Log Funktion:** Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten. 
 - **Mehr Kommandozeilen-Argumente:** Es möglich die Erstellung der Änderungs-Logs per Kommandozeilen-Argumente zu unterbinden und Änderungs-Logs per E-Mail (auch auf Grundlage eines Zeitintervalls für das Mindestalter der Vergleichs-Datei) zur zu erhalten. 
 </details>
-
-### Update 2.4
+<details>
+<summary><b>Update 2.4</b></summary>
+  
 - **FrontEnd-Einstellungs-Editor:** Alle Standard-Einstellungen lassen sich jetzt über einen Editor im Browser ändern. Darunter Verzeichnisse, Warn-Einstellungen, SMTP-Einstellungen, die Admin-Email Adresse für die Logs,... . Einfach alles :).
 - **Befehl-/Verknüpfungs-Ersteller:** Es wurde ein Tool hinzugefügt, mit dem Sie Verknüpfungen und Eingabeaufforderungs-Befehle erstellen können, die bei Ausführung sämtliche gewünschten Funktionen ausführen ohne im (sich nur noch optional öffnenden) WebEnd etwas klicken zu müssen.
 - **Alle Verzeichnisse frei wählbar:** Auch das Verzeichnis für die WebUntis Importe ist jetzt frei wählbar.
 - **Logo hinzugefügt:** Logo und Favicon für den Browser und die .exe Datei hinzugefügt.
+</details>
+
+### Update 2.5
+- **Release der Version für die Produktionsumgebung:** Die Entwicklung des Tools ist größtenteils abgeschlossen. Es wurde daher nun auch eine Version für die Produktionsumgebung veröffentlicht. Die Entwicklungsversion wird nicht mehr aktualisiert.
+- **Verbesserung der Konsolen-Lesbarkeit:** Die Ausgabe auf der Konsole wurden überarbeitet (erweitert und vervollständigt) und farbcodiert, sodass man Sie besser lesen kann.
