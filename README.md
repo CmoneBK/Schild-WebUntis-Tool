@@ -75,10 +75,10 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
 
 
 ## Installation
-1. Die .exe Dateie finden Sie unter: </br>[Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe) (für Test-Umgebung) </br>[Schild-WebUntis-Tool-WServer.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) (für Produktions-Umgebung).</br>
+1. Die .exe Dateien finden Sie unter: </br>[Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe) (für Test-Umgebung, wird nicht mehr aktualisiert) </br>[Schild-WebUntis-Tool-WServer.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) (für Produktions-Umgebung).</br>
 Dort gibt es oben rechts neben dem 'RAW' einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.
   
-   ⚠️Derzeit kommte es zu falsch Positiv Meldungen (win64:evo-gen (trj)) von Norton u.a.</br>
+   ⚠️Derzeit kommte es zu falsch Positiv Meldungen (Win64:Evo-gen [Trj]) von Norton und ggf. auch anderen.</br>
    Ich bin an der Sache dran und habe die Datei zur Neubewertung nach Norton geschickt. </br>
    https://safeweb.norton.com/file_dispute; Prüfnummer: 8e0216e5-e864-4b46-8597-d306649b0879 </br>
    Nutzen Sie in der Zwischenzeit https://nordvpn.com/de/file-checker/⚠️
@@ -218,9 +218,15 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Änderungs-Log Funktion:** Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten. 
 - **Mehr Kommandozeilen-Argumente:** Es möglich die Erstellung der Änderungs-Logs per Kommandozeilen-Argumente zu unterbinden und Änderungs-Logs per E-Mail (auch auf Grundlage eines Zeitintervalls für das Mindestalter der Vergleichs-Datei) zur zu erhalten. 
 </details>
-
-### Update 2.4
+<details>
+<summary><b>Update 2.4</b></summary>
+  
 - **FrontEnd-Einstellungs-Editor:** Alle Standard-Einstellungen lassen sich jetzt über einen Editor im Browser ändern. Darunter Verzeichnisse, Warn-Einstellungen, SMTP-Einstellungen, die Admin-Email Adresse für die Logs,... . Einfach alles :).
 - **Befehl-/Verknüpfungs-Ersteller:** Es wurde ein Tool hinzugefügt, mit dem Sie Verknüpfungen und Eingabeaufforderungs-Befehle erstellen können, die bei Ausführung sämtliche gewünschten Funktionen ausführen ohne im (sich nur noch optional öffnenden) WebEnd etwas klicken zu müssen.
 - **Alle Verzeichnisse frei wählbar:** Auch das Verzeichnis für die WebUntis Importe ist jetzt frei wählbar.
 - **Logo hinzugefügt:** Logo und Favicon für den Browser und die .exe Datei hinzugefügt.
+</details>
+
+### Update 2.5
+- **Release der Version für die Produktionsumgebung:** Die Entwicklung des Tools ist größtenteils abgeschlossen. Es wurde daher nun auch eine Version für die Produktionsumgebung veröffentlicht. Die Entwicklungsversion wird nicht mehr aktualisiert.
+- **Verbesserung der Konsolen-Lesbarkeit:** Die Ausgabe auf der Konsole wurden überarbeitet (erweitert und vervollständigt) und farbcodiert, sodass man Sie besser lesen kann.
