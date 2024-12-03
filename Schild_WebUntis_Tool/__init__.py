@@ -19,6 +19,38 @@ from flask import Flask, render_template, request, jsonify, session  # Flask-Web
 from main import run, read_students, read_classes, compare_timeframe_imports  # Import von Funktionen aus eigenen Modulen
 from smtp import send_email  # Funktion zum Versenden von E-Mails aus eigenem Modul
 from waitress import serve
+import colorama
+from colorama import Fore, Back, Style, init
+
+# Colorama initialisieren
+init(autoreset=True)
+
+# Thread-sicherer Zugriff
+console_lock = threading.Lock()
+
+def thread_safe_print(color, message):
+    with console_lock:
+        print(f"{color}{message}{Style.RESET_ALL}", flush=True)
+
+# Hilfsfunktionen
+def print_error(message):
+    thread_safe_print(Fore.RED, message)
+
+def print_warning(message):
+    thread_safe_print(Fore.YELLOW, message)
+
+def print_warningtext(message):
+    thread_safe_print(Fore.MAGENTA, message)
+
+def print_success(message):
+    thread_safe_print(Fore.GREEN, message)
+
+def print_info(message):
+    thread_safe_print(Fore.CYAN, message)
+
+def print_creation(message):
+    thread_safe_print(Fore.WHITE, message)
+
 
 # Globale Variablen für Warnungen und generierte E-Mails
 global warnings_cache, generated_emails_cache
@@ -57,12 +89,12 @@ def process_data(no_log=False, no_xlsx=False):
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
     
     # Aktuelle Einstellungen in der Konsole ausgeben
-    print("Starting processing with the following options:")
-    print(f"use_abschlussdatum: {use_abschlussdatum}")
-    print(f"create_second_file: {create_second_file}")
-    print(f"warn_entlassdatum: {warn_entlassdatum}")
-    print(f"warn_aufnahmedatum: {warn_aufnahmedatum}")
-    print(f"warn_klassenwechsel: {warn_klassenwechsel}")
+    print_info("Beginne Verarbeitung mit folgenden Optionen:...")
+    print_info(f"use_abschlussdatum: {use_abschlussdatum}")
+    print_info(f"create_second_file: {create_second_file}")
+    print_info(f"warn_entlassdatum: {warn_entlassdatum}")
+    print_info(f"warn_aufnahmedatum: {warn_aufnahmedatum}")
+    print_info(f"warn_klassenwechsel: {warn_klassenwechsel}")
 
     # Argumente aus der Kommandozeile (falls vorhanden)
     args = argparse.Namespace()
@@ -79,7 +111,7 @@ def process_data(no_log=False, no_xlsx=False):
         no_log=no_log,
         no_xlsx=no_xlsx
     )
-    print("Processing completed.")
+    print_success("Verarbeitung abgeschlossen.")
     return all_warnings
 
 
@@ -148,13 +180,13 @@ body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_
     if not settings_ini_exists:
         with open("settings.ini", "w") as file:
             file.write(settings_ini_content)
-        print("settings.ini wurde erstellt.")
+        print_creation("settings.ini wurde erstellt.")
 
     # Prüfen, ob email_settings.ini existiert, und ggf. erstellen
     if not os.path.exists("email_settings.ini"):
         with open("email_settings.ini", "w") as file:
             file.write(email_settings_ini_content)
-        print("email_settings.ini wurde erstellt.")
+        print_creation("email_settings.ini wurde erstellt.")
 
     # Sicherstellen, dass die in settings.ini definierten Ordner existieren
     config = configparser.ConfigParser()
@@ -172,20 +204,20 @@ body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_
         directory = config.get("Directories", key, fallback=default_path)
         if not os.path.exists(directory):
             os.makedirs(directory)
-            print(f"Ordner '{directory}' wurde erstellt.")
+            print_creation(f"Ordner '{directory}' wurde erstellt.")
 
     # Sicherstellen, dass der Import-Ordner existiert
     import_dir = "WebUntis Importe"
     if not os.path.exists(import_dir):
         os.makedirs(import_dir)
-        print(f"Ordner '{import_dir}' wurde erstellt.")
+        print_creation(f"Ordner '{import_dir}' wurde erstellt.")
 
 def admin_warnings(send_email_flag=False):
     global admin_warnings_cache
     admin_warnings_cache = []
 
     # Admin-Warnungen werden erstellt
-    print("Erstelle Admin-Warnungen...")
+    print_info("Erstelle Admin-Warnungen...")
 
     # Haupt-Import-Datei einlesen
     students_output, students_by_id = read_students(use_abschlussdatum=False)
@@ -226,7 +258,7 @@ def admin_warnings(send_email_flag=False):
     # Überprüfen, ob CSV-Dateien im Klassenverzeichnis vorhanden sind
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
     if not class_csv_files:
-        print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden.")
+        print_warning(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden.")
         return admin_warnings_cache  # Gibt leere Warnungsliste zurück oder handle dies mit Dummy-Daten
 
     # Neueste Klassen-CSV-Datei bestimmen
@@ -246,18 +278,20 @@ def admin_warnings(send_email_flag=False):
                     })
 
     # Admin-Warnungen in der Konsole ausgeben
-    print("Admin-Warnungen:")
-    for warning in admin_warnings_cache:
-        print(f"Typ: {warning['Typ']}, Details: {warning['Details']}")
+    if admin_warnings_cache:
+        print_warning("Admin-Warnungen:")
+        for warning in admin_warnings_cache:
+            print_warning(f"Typ: {warning['Typ']}, Details: {warning['Details']}")
+        print_warningtext("Für die korrekte Funktion Warn-Funktionalität sollten Sie Ihre Klassen- und Lehrerdaten aktualisieren.")
     else:
-        print("Keine Admin-Warnungen gefunden.")
+        print_success("Keine Admin-Warnungen gefunden.")
 
     # E-Mail senden, falls das Kommandozeilenargument verwendet wurde
     if send_email_flag and admin_warnings_cache:
         config.read('email_settings.ini')
         admin_email = config.get('Email', 'admin_email', fallback=None)
         if not admin_email:
-            print("Admin-E-Mail-Adresse fehlt in email_settings.ini.")
+            print_error("Admin-E-Mail-Adresse fehlt in email_settings.ini.")
             return admin_warnings_cache
 
         subject = "Admin-Warnungen von WebUntis"
@@ -268,9 +302,9 @@ def admin_warnings(send_email_flag=False):
 
         try:
             send_email(subject, body, [admin_email])
-            print(f"Admin-Warnungen wurden erfolgreich an {admin_email} gesendet.")
+            print_success(f"Admin-Warnungen wurden erfolgreich an {admin_email} gesendet.")
         except Exception as e:
-            print(f"Fehler beim Senden der Admin-Warnungen: {e}")
+            print_error(f"Fehler beim Senden der Admin-Warnungen: {e}")
 
     return admin_warnings_cache
 
@@ -319,17 +353,17 @@ def index():
     main_csv_exists = any(f.endswith('.csv') for f in os.listdir('.') if not os.path.isdir(f))
     if not main_csv_exists:
         errors.append("Die Haupt-CSV-Datei fehlt im Hauptverzeichnis und wird für die Verarbeitung benötigt.")
-        print("Fehler: Haupt-CSV-Datei fehlt im Hauptverzeichnis.")
+        print_error("Fehler: Haupt-CSV-Datei fehlt im Hauptverzeichnis.")
 
     # Überprüfen, ob die Klassendaten verfügbar sind
     if not os.path.exists(classes_dir) or not any(f.endswith('.csv') for f in os.listdir(classes_dir)):
         warnings_messages.append("Die Klassendaten fehlen oder es sind keine CSV-Dateien im konfigurierten Ordner vorhanden.")
-        print(f"Warnung: Keine Klassendaten im Ordner '{classes_dir}' gefunden.")
+        print_warning(f"Warnung: Keine Klassendaten im Ordner '{classes_dir}' gefunden.")
 
     # Überprüfen, ob die Lehrerdaten verfügbar sind
     if not os.path.exists(teachers_dir) or not any(f.endswith('.csv') for f in os.listdir(teachers_dir)):
         warnings_messages.append("Die Lehrerdaten fehlen oder es sind keine CSV-Dateien im konfigurierten Ordner vorhanden.")
-        print(f"Warnung: Keine Lehrerdaten im Ordner '{teachers_dir}' gefunden.")
+        print_warning(f"Warnung: Keine Lehrerdaten im Ordner '{teachers_dir}' gefunden.")
 
     if request.method == 'POST' and not errors:
         # Aktuelle Werte aus dem Formular lesen und die Auswahl des Benutzers speichern
@@ -342,7 +376,7 @@ def index():
         # Übergebe die Auswahl an die Run-Funktion
         try:
             # Datenverarbeitung basierend auf den Benutzereinstellungen
-            print("Starte Verarbeitung über die Weboberfläche...")
+            print_info("Starte Verarbeitung über die Weboberfläche...")
             warnings = run(
                 use_abschlussdatum=use_abschlussdatum,
                 create_second_file=create_second_file,
@@ -356,10 +390,10 @@ def index():
 
             # Setzt eine Bestätigungsnachricht nach erfolgreicher Ausführung
             confirmation = "Verarbeitung erfolgreich abgeschlossen."
-            print("Verarbeitung über die Weboberfläche erfolgreich abgeschlossen.")
+            print_success("Verarbeitung über die Weboberfläche erfolgreich abgeschlossen.")
         except Exception as e:
             errors.append(f"Fehler während der Verarbeitung: {str(e)}")
-            print(f"Fehler während der Verarbeitung über die Weboberfläche: {str(e)}")
+            print_error(f"Fehler während der Verarbeitung über die Weboberfläche: {str(e)}")
 
     # Seite mit aktuellen Checkbox-Zuständen, Warnungen, Fehlern und Bestätigung rendern
     return render_template(
@@ -389,7 +423,7 @@ def generate_emails():
     generated_emails_cache = []  # Globaler Cache für generierte E-Mails
 
     if warnings_cache:
-        print("Generiere E-Mails basierend auf den vorhandenen Warnungen...")
+        print_info("Generiere E-Mails basierend auf den vorhandenen Warnungen...")
         # Lade die Vorlagen aus der email_settings.ini
         config = configparser.ConfigParser()
         config.read("email_settings.ini")
@@ -422,7 +456,7 @@ def generate_emails():
                 body_template = config.get("Templates", f"body_{warning_type}")
             except configparser.NoOptionError:
                 error_message = f"Vorlage für {warning_type} fehlt in der Konfigurationsdatei."
-                print(error_message)
+                print_error(error_message)
                 return jsonify({"message": f"Vorlage für {warning_type} fehlt in der Konfigurationsdatei."}), 400
 
             # Verwende Template-System zur Verarbeitung der Vorlagen
@@ -434,7 +468,7 @@ def generate_emails():
                 )
             except KeyError as e:
                 error_message = f"Fehlender Platzhalter: {e} in der Vorlage für {warning_type}"
-                print(error_message)
+                print_error(error_message)
                 return jsonify({"message": f"Fehlender Platzhalter: {e} in der Vorlage für {warning_type}"}), 400
 
             # E-Mail zur Liste hinzufügen
@@ -443,20 +477,21 @@ def generate_emails():
                 'body': body,
                 'to': [warning.get('Klassenlehrkraft_1_Email', 'N/A'), warning.get('Klassenlehrkraft_2_Email', 'N/A')]
             })
-        print("E-Mails wurden erfolgreich generiert.")
+        print_success("E-Mails wurden erfolgreich generiert.")
         return jsonify({"message": "Die E-Mails wurden erfolgreich generiert.", "emails": generated_emails_cache})
     else:
-        print("Keine Warnungen vorhanden, um E-Mails zu generieren.")
+        print_info("Keine Warnungen vorhanden, um E-Mails zu generieren.")
         return jsonify({"message": "Keine Warnungen verfügbar, um E-Mails zu generieren."})
 
 
 @app.route('/get_templates', methods=['GET'])
 def get_templates():
     # Lädt die E-Mail-Vorlagen aus der Konfigurationsdatei
-    print("Lade E-Mail-Vorlagen aus 'email_settings.ini'...")
+    print_info("Lade E-Mail-Vorlagen aus 'email_settings.ini' für den E-Mail-Vorlagen Editor...")
     config = configparser.ConfigParser()
     try:
         config.read('email_settings.ini')
+        print_success("E-Mail-Vorlagen erfolgreich geladen.")
         return jsonify({
             "subject_entlassdatum": config.get("Templates", "subject_entlassdatum", fallback=""),
             "body_entlassdatum": config.get("Templates", "body_entlassdatum", fallback=""),
@@ -465,15 +500,14 @@ def get_templates():
             "subject_klassenwechsel": config.get("Templates", "subject_klassenwechsel", fallback=""),
             "body_klassenwechsel": config.get("Templates", "body_klassenwechsel", fallback="")
         })
-        print("E-Mail-Vorlagen erfolgreich geladen.")
     except Exception as e:
         error_message = f"Fehler beim Laden der E-Mail-Vorlagen: {str(e)}"
-        print(error_message)
+        print_error(error_message)
         return jsonify({"error": str(e)}), 500
 @app.route('/update_templates', methods=['POST'])
 def update_templates():
     # Aktualisiert die E-Mail-Vorlagen basierend auf den vom Benutzer gesendeten Daten
-    print("Aktualisiere E-Mail-Vorlagen in 'email_settings.ini'...")
+    print_info("Aktualisiere E-Mail-Vorlagen in 'email_settings.ini'...")
     try:
         # E-Mail-Einstellungen laden
         email_config = configparser.ConfigParser()
@@ -490,11 +524,11 @@ def update_templates():
         # Änderungen in die Datei schreiben
         with open('email_settings.ini', 'w') as configfile:
             email_config.write(configfile)
-        print("E-Mail-Vorlagen wurden erfolgreich aktualisiert.")
+        print_success("E-Mail-Vorlagen wurden erfolgreich aktualisiert.")
         return jsonify({'message': 'E-Mail-Vorlagen erfolgreich gespeichert!'})
     except Exception as e:
         error_message = f'Fehler beim Speichern der E-Mail-Vorlagen: {str(e)}'
-        print(error_message)
+        print_error(error_message)
         return jsonify({'message': f'Fehler beim Speichern der E-Mail-Vorlagen: {str(e)}'}), 500
 
 
@@ -503,7 +537,7 @@ def update_templates():
 def send_emails():
     global generated_emails_cache
     if generated_emails_cache:
-        print("Beginne mit dem Senden der generierten E-Mails...")
+        print_info("Beginne mit dem Senden der generierten E-Mails...")
         # Verwende den Cache zum Senden der E-Mails
         for email in generated_emails_cache:
             try:
@@ -512,24 +546,24 @@ def send_emails():
                     body=email['body'],
                     to_addresses=email['to']
                 )
-                print(f"E-Mail an {email['to']} erfolgreich gesendet.")
+                print_success(f"E-Mail an {email['to']} erfolgreich gesendet.")
             except Exception as e:
-                print(f"Fehler beim Senden der E-Mail an {email['to']}: {str(e)}")
-        print("Alle E-Mails wurden verarbeitet.")
+                print_error(f"Fehler beim Senden der E-Mail an {email['to']}: {str(e)}")
+        print_success("Alle E-Mails wurden verarbeitet.")
         return jsonify({"message": "Die E-Mails wurden erfolgreich versendet."})
     else:
-        print("Keine generierten E-Mails zum Senden vorhanden.")
+        print_warning("Keine generierten E-Mails zum Senden vorhanden.")
         return jsonify({"message": "Keine generierten E-Mails verfügbar, um sie zu versenden."})
 @app.route('/view_generated_emails', methods=['GET'])
 def view_generated_emails():
     global generated_emails_cache
-    print("Anzeige der generierten E-Mails im Webinterface...")
+    print_info("Anzeige der generierten E-Mails im Webinterface...")
     # Rendert die Seite zum Anzeigen der generierten E-Mails
     return render_template('view_emails.html', emails=generated_emails_cache)
 
 @app.route('/load-settings', methods=['GET'])
 def load_settings():
-    print("Lade Einstellungen aus 'settings.ini' und 'email_settings.ini'...")
+    print_info("Lade Einstellungen aus 'settings.ini' und 'email_settings.ini' für das Einstellungen-Panel...")
     settings = {}
     # settings.ini laden
     config = configparser.ConfigParser()
@@ -546,56 +580,56 @@ def load_settings():
         if section not in settings:
             settings[section] = {}
         settings[section].update({key: email_config.get(section, key, fallback="") for key in email_config[section]})
-    print("Einstellungen erfolgreich geladen.")
+    print_success("Einstellungen erfolgreich geladen bzw. aktualisiert.")
     return jsonify(settings)
 
 def save_to_settings_ini(settings):
     # Funktion zum Speichern der Einstellungen in die Datei 'settings.ini'
-    print("Speichere Einstellungen in 'settings.ini'...")
+    print_info("Speichere Einstellungen in 'settings.ini'...")
     config = configparser.ConfigParser()
     config.read("settings.ini")
     for section, values in settings.items():
         if not config.has_section(section):
             config.add_section(section)
-            print(f"Abschnitt '{section}' hinzugefügt.")
+            print_info(f"Abschnitt '{section}' hinzugefügt.")
         for key, value in values.items():
             # Ersetze Backslashes durch Forward Slashes für Pfade
             if "directory" in key:
                 value = value.replace("\\", "/")
-                print(f"Pfad angepasst für '{key}': {value}")
+                print_info(f"Pfad angepasst für '{key}': {value}")
             config.set(section, key, str(value))
-            print(f"Einstellung gesetzt: [{section}] {key} = {value}")
+            print_info(f"Einstellung gesetzt: [{section}] {key} = {value}")
     with open("settings.ini", "w") as configfile:
         config.write(configfile)
-    print("Einstellungen wurden erfolgreich in 'settings.ini' gespeichert.")
+    print_success("Einstellungen wurden erfolgreich in 'settings.ini' gespeichert.")
 
 def save_to_email_settings_ini(settings):
     # Funktion zum Speichern der E-Mail-Einstellungen in 'email_settings.ini'
-    print("Speichere E-Mail-Einstellungen in 'email_settings.ini'...")
+    print_info("Speichere E-Mail-Einstellungen in 'email_settings.ini'...")
     config = configparser.ConfigParser()
     config.read("email_settings.ini")
     # Bestehende Abschnitte beibehalten
     existing_sections = config.sections()
     # Aktualisiere nur die bereitgestellten Abschnitte
     for section, values in settings.items():
-        print(f"Aktualisiere Abschnitt '{section}'...")
+        print_info(f"Aktualisiere Abschnitt '{section}'...")
         if section in existing_sections:
             for key, value in values.items():
                 config.set(section, key, str(value))
-                print(f"Einstellung aktualisiert: [{section}] {key} = {value}")
+                print_info(f"Einstellung aktualisiert: [{section}] {key} = {value}")
         else:
-            print(f"Füge neuen Abschnitt '{section}' hinzu...")
+            print_info(f"Füge neuen Abschnitt '{section}' hinzu...")
             config[section] = values
             for key, value in values.items():
-                print(f"Einstellung hinzugefügt: [{section}] {key} = {value}")
+                print_info(f"Einstellung hinzugefügt: [{section}] {key} = {value}")
     # Einstellungen in die Datei schreiben
     with open("email_settings.ini", "w") as configfile:
         config.write(configfile)
-    print("E-Mail-Einstellungen wurden erfolgreich in 'email_settings.ini' gespeichert.")
+    print_success("E-Mail-Einstellungen wurden erfolgreich in 'email_settings.ini' gespeichert.")
 
 @app.route('/save-settings', methods=['POST'])
 def save_settings():
-    print("Speichere Einstellungen in 'settings.ini' und 'email_settings.ini'...")
+    print_info("Speichere Einstellungen in 'settings.ini' und 'email_settings.ini'...")
     settings = request.json.get('settings', {})
     settings_ini_data = {}
     email_settings_ini_data = {}
@@ -619,16 +653,16 @@ def save_settings():
     if email_settings_ini_data:
         save_to_email_settings_ini(email_settings_ini_data)
 
-    print("Einstellungen wurden erfolgreich gespeichert.")
+    print_success("Einstellungen wurden erfolgreich gespeichert.")
     return jsonify({"status": "success"})
 
 @app.route('/process-directory', methods=['POST'])
 def process_directory():
-    print("Verarbeite ausgewähltes Verzeichnis...")
+    print_info("Verarbeite ausgewähltes Verzeichnis...")
     directory_name = request.form.get("directoryName")
     if not directory_name:
         error_message = "Verzeichnisname ist erforderlich."
-        print(f"Fehler: {error_message}")
+        print_error(f"Fehler: {error_message}")
         return jsonify({"error": error_message}), 400
 
     # Beispiel: Verarbeite das Verzeichnis (Anpassung an Ihr System erforderlich)
@@ -646,82 +680,82 @@ def process_directory():
 def get_arguments():
     # Route zum Abrufen der verfügbaren Kommandozeilenargumente mit ihren Beschreibungen
     # Diese Funktion wird vom Frontend aufgerufen, um die Argumente für den Verknüpfungsersteller bereitzustellen
-    print("Bereite Liste der verfügbaren Kommandozeilenargumente vor...")
+    print_info(f"Bereite Liste der verfügbaren Kommandozeilenargumente für das Befehl- und Verknüpfungs-Erstelltool vor...")
     # Liste der Argumente mit Beschreibungen
     arguments = [
         {"name": "--process", "description": "Führt den Hauptprozess aus (Verarbeitung des Schild-Exports, Erstellungen von Warnungen, Erstellung der Log-Dateien)."},
-        {"name": "--generate-emails --send-emails", "description": "Generiert und sendet die Warn-Emails auf Grundlage der gespeicherten Einstellungen. (Davor ist --process erforderlich.)"},
-        {"name": "--send-admin-warnings", "description": "Sendet Admin-Warnungen per Email an die hinterlegte Admin Email-Adresse, wenn im SchildExport Klassen oder Klassenlehrkräfte vorkommen, die in den Klassen- oder Lehrkraftdaten fehlen."},
+        {"name": "--generate-emails --send-emails", "description": "Generiert und sendet die Warn-E-Mails auf Grundlage der gespeicherten Einstellungen. (Davor ist --process erforderlich.)"},
+        {"name": "--send-admin-warnings", "description": "Sendet Admin-Warnungen per E-Mail an die hinterlegte Admin E-Mail-Adresse, wenn im SchildExport Klassen oder Klassenlehrkräfte vorkommen, die in den Klassen- oder Lehrkraftdaten fehlen."},
         {"name": "--no-web", "description": "Verhindert das Öffnen des Web-Interfaces."},
-        {"name": "--send-log-email", "description": "Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin Email-Adresse."},
+        {"name": "--send-log-email", "description": "Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin E-Mail-Adresse."},
         {"name": "--skip-admin-warnings", "description": "Überspringt die Erstellung von Admin-Warnungen. (Darf nicht mit --send admin-warnings kombiniert werden.)"},
         {"name": "--no-log", "description": "Verhindert die Erstellung der .log Logdateien."},
         {"name": "--no-xlsx", "description": "Verhindert die Erstellung der Excel Logdateien. (Darf nicht mit --send-log-email kombiniert werden.)"}
     ]
-    print("Liste der verfügbaren Kommandozeilenargumente wurde erstellt.")
+    print_success(f"Liste der verfügbaren Kommandozeilenargumente wurde erstellt.")
     return jsonify({"success": True, "arguments": arguments})
 @app.route('/get-executable-path', methods=['GET'])
 def get_executable_path():
     # Route zum Abrufen des Pfads der ausführbaren Datei
-    print("Bestimme den Pfad der ausführbaren Datei...")
+    print_info(f"Bestimme den Pfad der ausführbaren Datei für das Befehl- und Verknüpfungs-Erstelltool...")
     # Bestimmen des Pfads der ausführbaren Datei
     if getattr(sys, 'frozen', False):
         # Wenn die Anwendung eingefroren ist (in eine .exe kompiliert mit PyInstaller)
         exe_path = sys.executable
-        print(f"Anwendung ist eingefroren. Pfad der ausführbaren Datei: {exe_path}")
+        print_info(f"Pfad der ausführbaren Datei: {exe_path}")
     else:
         # Wenn die Anwendung in einer Standard-Python-Umgebung läuft
         exe_path = os.path.abspath(sys.argv[0])
-        print(f"Anwendung läuft in der Python-Umgebung. Pfad der ausführbaren Datei: {exe_path}")
+        print_info(f"Anwendung läuft in der Python-Umgebung. Pfad der ausführbaren Datei: {exe_path}")
     return jsonify({"exePath": exe_path})
 @app.route('/create-shortcut', methods=['POST'])
 def create_shortcut():
     # Route zum Erstellen einer Desktop-Verknüpfung für die Anwendung mit den angegebenen Argumenten
-    print("Erstelle Desktop-Verknüpfung...")
+    print_info("Erstelle Desktop-Verknüpfung...")
     data = request.json
     exe_path = data.get('exePath')
     args = data.get('args', '')
 
     # Empfangenen Pfad und Argumente ausgeben
-    print(f"Empfangener exe_path: {exe_path}")
-    print(f"Empfangene Argumente: {args}")
-    print(f"Existiert exe_path? {os.path.exists(exe_path)}")
+    print_info(f"Empfangener exe_path: {exe_path}")
+    print_info(f"Empfangene Argumente: {args}")
+    print_info(f"Existiert exe_path? {os.path.exists(exe_path)}")
 
     if not exe_path or not os.path.exists(exe_path):
         error_message = f"Pfad der ausführbaren Datei nicht gefunden: {exe_path}"
-        print(f"Fehler: {error_message}")
+        print_error(f"Fehler: {error_message}")
         return jsonify({"success": False, "error": error_message})
 
     try:
         # COM-Bibliothek initialisieren
         import pythoncom
         pythoncom.CoInitialize()  # Initialize COM
-        print("COM-Bibliothek initialisiert.")
+        print_info("COM-Bibliothek initialisiert.")
         
         # Desktop-Pfad abrufen
         import winshell
         desktop = winshell.desktop()
-        print(f"Desktop-Pfad: {desktop}")
+        print_info(f"Desktop-Pfad: {desktop}")
 
         # Pfad für die Verknüpfung festlegen
         shortcut_path = os.path.join(desktop, "Schild-WebUntis-Tool.lnk")
-        print(f"Verknüpfungspfad: {shortcut_path}")
+        print_info(f"Verknüpfungspfad: {shortcut_path}")
 
         # Verknüpfung erstellen
         with winshell.shortcut(shortcut_path) as shortcut:
             shortcut.path = exe_path
             shortcut.arguments = args
             shortcut.description = "Shortcut for Schild-WebUntis-Tool"
-        print("Verknüpfung erfolgreich erstellt.")
+        print_success("Verknüpfung erfolgreich erstellt.")
         return jsonify({"success": True})
     except Exception as e:
         error_message = f"Fehler beim Erstellen der Verknüpfung: {str(e)}"
-        print(error_message)
+        print_error(error_message)
         return jsonify({"success": False, "error": error_message})
     finally:
         # COM-Bibliothek deinitialisieren
         pythoncom.CoUninitialize()
-        print("COM-Bibliothek deinitialisiert.")
+        print_info("COM-Bibliothek deinitialisiert.")
 
 # Öffnet den Standardbrowser automatisch auf die lokale URL
 def open_browser():
@@ -777,43 +811,43 @@ if __name__ == "__main__":
 
     # Verarbeitung starten
     if args.process:
-        print("Starte Datenverarbeitung...")
+        print_info("Starte Datenverarbeitung...")
         # Übergabe der Argumente no_log und no_xlsx an process_data
         warnings_cache = process_data(
             no_log=args.no_log,
             no_xlsx=args.no_xlsx
         )
-        print("Datenverarbeitung erfolgreich abgeschlossen.")
+        print_success("Datenverarbeitung erfolgreich abgeschlossen.")
 
     # Timeframe-Import vergleichen und ggf. E-Mail versenden
     if args.send_log_email:
-        print("Vergleiche Import-Dateien basierend auf dem definierten Zeitrahmen...")
+        print_info("Vergleiche Import-Dateien basierend auf dem definierten Zeitrahmen...")
         compare_timeframe_imports(
             no_log=args.no_log,
             no_xlsx=args.no_xlsx
         )
-        print("Vergleich abgeschlossen.")
+        print_success("Vergleich abgeschlossen.")
 
     # E-Mails generieren
     if args.generate_emails:
         if not warnings_cache:
-            print("Es sind zum Generieren von E-Mails keine Warnungen im Cache vorhanden.")
+            print_info("Es sind zum Generieren von E-Mails keine Warnungen im Cache vorhanden.")
         else:
-            print("Generiere E-Mails...")
+            print_info("Generiere E-Mails...")
             from flask import current_app
             with app.app_context():
                 generate_emails()
-            print("E-Mails erfolgreich generiert.")
+            print_success("E-Mails erfolgreich generiert.")
 
     # E-Mails senden
     if args.send_emails:
         if not generated_emails_cache:
-            print("Es sind keine generierten E-Mails zum Senden im Cache vorhanden.")
+            print_info("Es sind keine generierten E-Mails zum Senden im Cache vorhanden.")
         else:
-            print("Sende E-Mails...")
+            print_info("Sende E-Mails...")
             for email in generated_emails_cache:
                 send_email(email['subject'], email['body'], email['to'])
-            print("E-Mails erfolgreich gesendet.")
+            print_success("E-Mails erfolgreich gesendet.")
 
 
     # Starten des WSGI-Servers mit Waitress
@@ -823,7 +857,7 @@ if __name__ == "__main__":
     try:
         serve(app, host='0.0.0.0', port=5000)
     except Exception as e:
-        print(f"Fehler beim Starten des WSGI-Servers: {e}")
+        print_error(f"Fehler beim Starten des WSGI-Servers: {e}")
 
 
 

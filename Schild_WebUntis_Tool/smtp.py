@@ -9,6 +9,37 @@ import google.auth.transport.requests
 import google.oauth2.service_account
 import html2text
 import time
+import threading
+import colorama
+from colorama import Fore, Style, init
+
+# Colorama initialisieren
+init(autoreset=True)
+
+# Thread-sicherer Zugriff
+console_lock = threading.Lock()
+
+def thread_safe_print(color, message):
+    with console_lock:
+        print(f"{color}{message}{Style.RESET_ALL}", flush=True)
+
+# Hilfsfunktionen
+def print_error(message):
+    thread_safe_print(Fore.RED, message)
+
+def print_warning(message):
+    thread_safe_print(Fore.YELLOW, message)
+
+def print_success(message):
+    thread_safe_print(Fore.GREEN, message)
+
+def print_info(message):
+    thread_safe_print(Fore.CYAN, message)
+
+def print_creation(message):
+    thread_safe_print(Fore.WHITE, message)
+
+
 
 def send_email(subject, body, to_addresses, attachment_path=None):
     # Konfigurationsdatei einlesen
@@ -76,21 +107,21 @@ def send_email(subject, body, to_addresses, attachment_path=None):
         for i in range(retries):
             try:
                 server.sendmail(smtp_user, to_addresses, msg.as_string())
-                print("E-Mail erfolgreich gesendet!")
+                print_success("E-Mail erfolgreich gesendet!")
                 break
             except smtplib.SMTPResponseException as e:
                 if e.smtp_code in [450, 503]:
-                    print(f"Temporärer Fehler ({e.smtp_code}): {e.smtp_error}. Versuch {i + 1} von {retries}.")
+                    print_error(f"Temporärer Fehler ({e.smtp_code}): {e.smtp_error}. Versuch {i + 1} von {retries}.")
                     time.sleep(5)  # Wartezeit zwischen den Versuchen
                 else:
                     raise e
         server.quit()
     except Exception as e:
-        print(f"Fehler beim Senden der E-Mail: {e}")
+        print_error(f"Fehler beim Senden der E-Mail: {e}")
 
 def log_sent_email(subject, body, to_addresses):
-    print("Gesendete E-Mail:")
-    print(f"Empfänger: {', '.join(to_addresses)}")
-    print(f"Betreff: {subject}")
-    print("Inhalt:")
-    print(html2text.html2text(body))
+    print_creation("Gesendete E-Mail:")
+    print_creation(f"Empfänger: {', '.join(to_addresses)}")
+    print_creation(f"Betreff: {subject}")
+    print_creation("Inhalt:")
+    print_creation(html2text.html2text(body))
