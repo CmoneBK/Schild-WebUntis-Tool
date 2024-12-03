@@ -172,15 +172,8 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
 - **Screenshots:** 
 
-# Bildergalerie
-<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="UTF-8">
-  <title>Bildergalerie</title>
-</head>
 <body>
-  <h1>Bildergalerie</h1>
+  <h1>Screenshot-Galerie</h1>
   <table border="1" cellspacing="10" cellpadding="5" align="center">
     <tr>
       <td>
@@ -234,7 +227,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
     </tr>
   </table>
 </body>
-</html>
+
 
 
 
