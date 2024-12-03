@@ -6,17 +6,17 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
 *Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht,...).
 
 ## Funktionen
-- **Datenumwandlung:** Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.
-- **Warnungen:** Generiert (auf Wunsch) Warnungen für:
+- **🔄Datenumwandlung:** Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.
+- **⚠️Warnungen:** Generiert (auf Wunsch) Warnungen für:
   - Entlassdaten, die in die Zukunft verschoben werden und zu einem nicht dokumentierten Zeitraum führen.
   - Aufnahmedaten, die in die Vergangenheit verschoben werden und Dokumentationslücken verursachen.
   - Klassenwechsel, die eine manuelle Nachbearbeitung in WebUntis erfordern.
-- **E-Mail-Benachrichtigungen:** Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen.
-- **Benutzerfreundliches Web-Interface:** Auswahl von Kriterien für Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie allen anderen Einstellungen direkt über den Browser.
-- **Automatische Konfiguration:** Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.
-- **Admin Warnungen:** Der Nutzer erhält per Konsole (optional Mail) Meldungen, wenn in den Schild-Daten (plötzlich) Klassen oder Klassenlehrkräfte vorkommen die in den bereitgestellten Klassen- und Lehrkräftedaten noch fehlen.
-- **Änderungs-Log-Dateien:** Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten.
-- **Kommandozeilen-Modus:** Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-mail.
+- **📩E-Mail-Benachrichtigungen:** Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen.
+- **🖥️Benutzerfreundliches Web-Interface:** Auswahl von Kriterien für Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie allen anderen Einstellungen direkt über den Browser.
+- **🤖Automatische Konfiguration:** Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.
+- **📢Admin Warnungen:** Der Nutzer erhält per Konsole (optional Mail) Meldungen, wenn in den Schild-Daten (plötzlich) Klassen oder Klassenlehrkräfte vorkommen die in den bereitgestellten Klassen- und Lehrkräftedaten noch fehlen.
+- **🔃📜Änderungs-Log-Dateien:** Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten.
+- **#️⃣Kommandozeilen-Modus:** Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-mail.
 
 ## Voraussetzungen
 <details>
