@@ -4,68 +4,97 @@ import configparser
 from datetime import datetime, timedelta
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
+import colorama
+from colorama import Fore, Style, init
+import threading
+
+# Colorama initialisieren
+init(autoreset=True)
+
+# Thread-sicherer Zugriff
+console_lock = threading.Lock()
+
+def thread_safe_print(color, message):
+    with console_lock:
+        print(f"{color}{message}{Style.RESET_ALL}", flush=True)
+
+# Hilfsfunktionen
+def print_error(message):
+    thread_safe_print(Fore.RED, message)
+
+def print_warning(message):
+    thread_safe_print(Fore.YELLOW, message)
+
+def print_success(message):
+    thread_safe_print(Fore.GREEN, message)
+
+def print_info(message):
+    thread_safe_print(Fore.CYAN, message)
+
+def print_creation(message):
+    thread_safe_print(Fore.WHITE, message)
 
 def run(use_abschlussdatum=True, create_second_file=True,
         warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True,
         no_log=False, no_xlsx=False):
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
-    print("Starte Hauptverarbeitung mit den folgenden Optionen:")
-    print(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
-    print(f"  Erstelle zweite Datei: {create_second_file}")
-    print(f"  Warnung für Entlassdatum: {warn_entlassdatum}")
-    print(f"  Warnung für Aufnahmedatum: {warn_aufnahmedatum}")
-    print(f"  Warnung für Klassenwechsel: {warn_klassenwechsel}")
-    print(f"  Log-Dateien erstellen: {'Nein' if no_log else 'Ja'}")
-    print(f"  Excel-Dateien erstellen: {'Nein' if no_xlsx else 'Ja'}")
+    print_info("Starte Hauptverarbeitung mit den folgenden Optionen:")
+    print_info(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
+    print_info(f"  Erstelle zweite Datei: {create_second_file}")
+    print_info(f"  Warnung für Entlassdatum: {warn_entlassdatum}")
+    print_info(f"  Warnung für Aufnahmedatum: {warn_aufnahmedatum}")
+    print_info(f"  Warnung für Klassenwechsel: {warn_klassenwechsel}")
+    print_info(f"  Log-Dateien erstellen: {'Nein' if no_log else 'Ja'}")
+    print_info(f"  Excel-Dateien erstellen: {'Nein' if no_xlsx else 'Ja'}")
     warnings = []  # Liste für Entlassdatum-Warnungen
     class_change_warnings = []  # Liste für Klassenwechsel-Warnungen
     admission_date_warnings = []  # Liste für Aufnahmedatum-Warnungen
 
     # Konfigurationsdatei einlesen
-    print("Lese 'settings.ini' Konfigurationsdatei ein...")
+    print_info("Lese 'settings.ini' Konfigurationsdatei ein...")
     config = configparser.ConfigParser()
     config.read('settings.ini')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
-    print(f"Klassendatenverzeichnis: {classes_dir}")
-    print(f"Lehrerdatenverzeichnis: {teachers_dir}")
+    print_info(f"Klassendatenverzeichnis: {classes_dir}")
+    print_info(f"Lehrerdatenverzeichnis: {teachers_dir}")
 
     # Daten einlesen und verarbeiten
-    print("Lese Klassen- und Schülerdaten ein...")
+    print_info("Lese Klassen- und Schülerdaten ein...")
     classes_by_name = read_classes(classes_dir, teachers_dir)
     output_data_students, students_by_id = read_students(use_abschlussdatum)
 
     # Warnungen erstellen basierend auf der Benutzerauswahl
     if warn_entlassdatum:
-        print("Erstelle Entlassdatum-Warnungen...")
+        print_info("Erstelle Entlassdatum-Warnungen...")
         warnings = create_warnings(classes_by_name, students_by_id)
     if warn_klassenwechsel:
-        print("Erstelle Klassenwechsel-Warnungen...")
+        print_info("Erstelle Klassenwechsel-Warnungen...")
         class_change_warnings = create_class_change_warnings(classes_by_name, students_by_id)
     if warn_aufnahmedatum:
-        print("Erstelle Aufnahmedatum-Warnungen...")
+        print_info("Erstelle Aufnahmedatum-Warnungen...")
         admission_date_warnings = create_admission_date_warnings(classes_by_name, students_by_id)
 
     # Alle Warnungen zusammenführen
     all_warnings = warnings + class_change_warnings + admission_date_warnings
 
     # Separate Konsolenausgabe der verschiedenen Warnungen
-    print("==================== ENTLASSDATUM WARNUNGEN ====================")
+    print_warning("==================== ENTLASSDATUM WARNUNGEN ====================")
     print_warnings(warnings)
-    print("==================== KLASSENWECHSEL WARNUNGEN ==================")
+    print_warning("==================== KLASSENWECHSEL WARNUNGEN ==================")
     print_warnings(class_change_warnings)
-    print("==================== AUFNAHMEDATUM WARNUNGEN ===================")
+    print_warning("==================== AUFNAHMEDATUM WARNUNGEN ===================")
     print_warnings(admission_date_warnings)
 
     # Dateien speichern
-    print("Speichere Ausgabedateien...")
+    print_info("Speichere Ausgabedateien...")
     save_files(output_data_students, all_warnings, create_second_file)
 
     # Vergleiche die letzten beiden Dateien
-    print("Vergleiche die neuesten Importdateien...")
+    print_info("Vergleiche die neuesten Importdateien zum Zweck der Log-Erstellung...")
     compare_latest_imports(no_log=no_log, no_xlsx=no_xlsx)
 
-    print("Hauptverarbeitung abgeschlossen.")
+    print_success("Hauptverarbeitung abgeschlossen.")
     return all_warnings
 
 def get_directory(key, default=None):
@@ -77,7 +106,7 @@ def get_directory(key, default=None):
 
 def read_csv(file_path):
     # Funktion zum Einlesen einer CSV-Datei und Rückgabe eines Dictionaries mit den Daten
-    print(f"Lese CSV-Datei: {file_path}")
+    print_info(f"Lese CSV-Datei: {file_path}")
     data = {}
     try:
         with open(file_path, 'r', encoding='utf-8-sig', newline='') as csvfile:
@@ -88,20 +117,20 @@ def read_csv(file_path):
                 student_id = cleaned_row.get('Interne ID-Nummer')  # oder anderer eindeutiger Schlüssel
                 if student_id:
                     data[student_id] = cleaned_row
-        print(f"CSV-Datei erfolgreich eingelesen. Anzahl Datensätze: {len(data)}")
+        print_info(f"CSV-Datei erfolgreich eingelesen. Anzahl Datensätze: {len(data)}")
     except Exception as e:
-        print(f"Fehler beim Lesen der Datei {file_path}: {e}")
+        print_error(f"Fehler beim Lesen der Datei {file_path}: {e}")
     return data
 
 
 def compare_latest_imports(no_log=False, no_xlsx=False):
     # Funktion zum Vergleichen der neuesten Importdateien und Erfassen von Änderungen
-    print("Starte Vergleich der neuesten Importdateien...")
+    print_info("Starte Vergleich der neuesten Importdateien...")
     # Überspringen der Erstellung je nach Flags
     if no_log:
-        print("Log-Datei-Erstellung wurde deaktiviert.")
+        print_info("Log-Datei-Erstellung wurde deaktiviert.")
     if no_xlsx:
-        print("Excel-Datei-Erstellung wurde deaktiviert.")
+        print_info("Excel-Datei-Erstellung wurde deaktiviert.")
 
     # Verzeichnisse definieren
     import_dir = get_directory('import_directory', './WebUntis Importe')
@@ -120,7 +149,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     # Neueste zwei Dateien im Importverzeichnis finden
     csv_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
     if len(csv_files) < 2:
-        print(f"Nicht genügend Dateien im Verzeichnis {import_dir} vorhanden, um einen Vergleich durchzuführen.")
+        print_warning(f"Nicht genügend Dateien im Verzeichnis {import_dir} vorhanden, um einen Vergleich durchzuführen. Abbruch der Log-Erstellung.")
         return
 
     # Nach Erstellungszeit sortieren und die letzten beiden Dateien auswählen
@@ -128,7 +157,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     latest_file = csv_files[0]
     previous_file = csv_files[1]
 
-    print(f"Vergleiche Dateien: {previous_file} und {latest_file}")
+    print_info(f"Vergleiche Dateien: {previous_file} und {latest_file}")
 
     # Dateien einlesen
     previous_data = read_csv(os.path.join(import_dir, previous_file))
@@ -156,7 +185,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
         if row_changed:
             changes.append({"student_id": student_id, "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}", "changes": change_details, "row": updated_row})
     if not changes:
-        print("Keine Änderungen zwischen den Dateien festgestellt.")
+        print_warning("Keine Änderungen zwischen den Dateien festgestellt. Abbruch der Log-Erstellung.")
         return
 
     # Datum und Uhrzeit für Dateinamen
@@ -166,18 +195,18 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
 
     # Log-Datei erstellen
     if not no_log:
-        print(f"Erstelle Log-Datei: {log_file_path}")
+        print_creation(f"Erstelle Log-Datei: {log_file_path}")
         with open(log_file_path, 'w', encoding='utf-8') as log_file:
             for change in changes:
                 log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']})\n")
                 for field, values in change['changes'].items():
                     log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
                 log_file.write("\n")
-        print("Log-Datei erfolgreich erstellt.")
+        print_success("Log-Datei erfolgreich erstellt.")
 
     # Excel-Datei erstellen
     if not no_xlsx and changes:
-        print(f"Erstelle Excel-Datei: {excel_file_path}")
+        print_creation(f"Erstelle Excel-Datei: {excel_file_path}")
         wb = Workbook()
         ws = wb.active
         ws.title = "Änderungen"
@@ -215,13 +244,13 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
                     cell.fill = red_fill
 
         wb.save(excel_file_path)
-        print("Excel-Datei erfolgreich erstellt.")
-    print("Vergleich der neuesten Importdateien abgeschlossen.")
+        print_success("Excel-Datei erfolgreich erstellt.")
+    print_success("Vergleich der neuesten Importdateien abgeschlossen.")
 
 from smtp import send_email
 def compare_timeframe_imports(no_log=False, no_xlsx=False):
     # Funktion zum Vergleichen von Importdateien innerhalb eines bestimmten Zeitrahmens und Senden von E-Mails bei Änderungen
-    print("Starte Vergleich der Importdateien im definierten Zeitrahmen...")
+    print_info("Starte Vergleich der Importdateien im definierten Zeitrahmen...")
 
     # Verzeichnisse und Einstellungen
     config = configparser.ConfigParser()
@@ -236,7 +265,7 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
     admin_email = email_config.get("Email", "admin_email", fallback=None)
 
     if not admin_email:
-        print("Keine Admin-E-Mail-Adresse in der email_settings.ini definiert. E-Mail-Versand deaktiviert.")
+        print_warning("Keine Admin-E-Mail-Adresse in der email_settings.ini definiert. E-Mail-Versand deaktiviert.")
         send_log_email = False
 
     os.makedirs(import_dir, exist_ok=True)
@@ -249,7 +278,7 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
         with open(email_log_path, "r") as email_log:
             last_email_time = datetime.strptime(email_log.read().strip(), "%Y-%m-%d %H:%M:%S")
         if datetime.now() - last_email_time < timedelta(hours=timeframe_hours):
-            print("Eine E-Mail wurde bereits innerhalb des definierten Zeitrahmens gesendet. Kein neuer Versand.")
+            print_warning("Eine E-Mail wurde bereits innerhalb des definierten Zeitrahmens gesendet. Kein neuer Versand.")
             return
     else:
         last_email_time = None
@@ -272,14 +301,14 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
     latest_file = csv_files[0] if csv_files else None
 
     if not latest_file:
-        print("Keine Dateien gefunden.")
+        print_warning("Keine Dateien gefunden.")
         return
 
     if not previous_file:
-        print(f"Keine Dateien gefunden, die älter als {timeframe_hours} Stunden sind.")
+        print_warning(f"Keine Dateien gefunden, die älter als {timeframe_hours} Stunden sind.")
         return
 
-    print(f"Vergleiche Dateien: {previous_file} und {latest_file}")
+    print_info(f"Vergleiche Dateien: {previous_file} und {latest_file}")
 
     previous_data = read_csv(os.path.join(import_dir, previous_file)) if previous_file else {}
     latest_data = read_csv(os.path.join(import_dir, latest_file))
@@ -306,7 +335,7 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
             changes.append({"student_id": student_id, "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}", "changes": change_details, "row": updated_row})
 
     if not changes:
-        print("Keine Änderungen festgestellt.")
+        print_warning("Keine Änderungen festgestellt.")
         return
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -315,18 +344,18 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
 
     # Log-Datei erstellen
     if not no_log:
-        print(f"Erstelle Log-Datei: {log_file_path}")
+        print_creation(f"Erstelle Log-Datei: {log_file_path}")
         with open(log_file_path, 'w', encoding='utf-8') as log_file:
             for change in changes:
                 log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']})\n")
                 for field, values in change['changes'].items():
                     log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
                 log_file.write("\n")
-        print("Log-Datei erfolgreich erstellt.")
+        print_success("Log-Datei erfolgreich erstellt.")
 
     # Excel-Datei erstellen
     if not no_xlsx:
-        print(f"Erstelle Excel-Datei: {excel_file_path}")
+        print_creation(f"Erstelle Excel-Datei: {excel_file_path}")
         wb = Workbook()
         ws = wb.active
         ws.title = "Änderungen"
@@ -356,7 +385,7 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
                     cell.fill = red_fill
 
         wb.save(excel_file_path)
-        print("Excel-Datei erfolgreich erstellt.")
+        print_success("Excel-Datei erfolgreich erstellt.")
 
     # E-Mail mit den Änderungen senden
     if changes:
@@ -397,28 +426,28 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
                 to_addresses=[admin_email],
                 attachment_path=excel_file_path
             )
-            print(f"E-Mail mit Änderungen an {admin_email} gesendet.")
+            print_success(f"E-Mail mit Änderungen an {admin_email} gesendet.")
 
             # Zeitstempel des E-Mail-Versands speichern
             with open(email_log_path, "w") as email_log:
                 email_log.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         except Exception as e:
-            print(f"Fehler beim Senden der E-Mail: {e}")
+            print_error(f"Fehler beim Senden der E-Mail: {e}")
 
 
 
 def read_classes(classes_dir, teachers_dir, return_teachers=False):
     # Funktion zum Einlesen der Klassen- und Lehrerdaten
-    print("Lese Klassen- und Lehrerdaten ein...")
+    print_info("Lese Klassen- und Lehrerdaten ein...")
     # Normalisiere Pfade
     classes_dir = os.path.normpath(classes_dir)
     teachers_dir = os.path.normpath(teachers_dir)
-    print(f"Klassendatenverzeichnis: {classes_dir}")
-    print(f"Lehrerdatenverzeichnis: {teachers_dir}")
+    print_info(f"Klassendatenverzeichnis: {classes_dir}")
+    print_info(f"Lehrerdatenverzeichnis: {teachers_dir}")
 
     # Prüfen, ob der Ordner für Klassendaten existiert
     if not os.path.exists(classes_dir):
-        print(f"Warnung: Der Ordner '{classes_dir}' existiert nicht.")
+        print_warning(f"Warnung: Der Ordner '{classes_dir}' existiert nicht.")
         dummy_classes = {
             "dummy_class_1": {
                 "Klassenlehrkraft_1": "Max Muster",
@@ -432,7 +461,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
     # Neueste Klassen-CSV-Datei finden
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
     if not class_csv_files:
-        print(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden.")
+        print_warning(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden.")
         dummy_classes = {
             "dummy_class_1": {
                 "Klassenlehrkraft_1": "Max Muster",
@@ -444,11 +473,11 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
         return (dummy_classes, {}) if return_teachers else dummy_classes
 
     newest_class_file = max(class_csv_files, key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))
-    print(f"Verwende Klassen-Datei: {newest_class_file}")
+    print_info(f"Verwende Klassen-Datei: {newest_class_file}")
 
     # Prüfen, ob der Ordner für Lehrerdaten existiert
     if not os.path.exists(teachers_dir):
-        print(f"Warnung: Der Ordner '{teachers_dir}' existiert nicht.")
+        print_warning(f"Warnung: Der Ordner '{teachers_dir}' existiert nicht.")
         teachers = {
             "dummy_teacher_1": {"email": "lehrer1@example.com", "forename": "Anna", "longname": "Lehrkraft"},
             "dummy_teacher_2": {"email": "lehrer2@example.com", "forename": "Tom", "longname": "Muster"},
@@ -457,13 +486,14 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
         # Neueste Lehrkräfte-CSV-Datei finden
         teacher_csv_files = [f for f in os.listdir(teachers_dir) if f.endswith('.csv')]
         if not teacher_csv_files:
-            print(f"Warnung: Keine Lehrkräfte-CSV-Dateien im Ordner '{teachers_dir}' gefunden.")
+            print_warning(f"Warnung: Keine Lehrkräfte-CSV-Dateien im Ordner '{teachers_dir}' gefunden.")
             teachers = {
                 "dummy_teacher_1": {"email": "lehrer1@example.com", "forename": "Anna", "longname": "Lehrkraft"},
                 "dummy_teacher_2": {"email": "lehrer2@example.com", "forename": "Tom", "longname": "Muster"},
             }
         else:
             newest_teacher_file = max(teacher_csv_files, key=lambda f: os.path.getctime(os.path.join(teachers_dir, f)))
+            print_info(f"Verwende Lehrkräfte-Datei: {newest_teacher_file}")
 
             # Lehrkräfte in ein Dictionary einlesen
             teachers = {}
@@ -478,11 +508,11 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
                             'longname': row.get('longName', '')
                         }
             except Exception as e:
-                print(f"Fehler beim Einlesen der Lehrkräfte-Datei: {e}")
+                print_error(f"Fehler beim Einlesen der Lehrkräfte-Datei: {e}")
                 teachers = {}  # Fallback auf leere Lehrer-Daten
 
     # Klassen-CSV-Datei einlesen und Lehrkräfte-Emails zuordnen
-    print("Verarbeite Klassen-CSV-Datei und ordne Lehrkräfte zu...")
+    print_info("Verarbeite Klassen-CSV-Datei und ordne Lehrkräfte zu...")
     classes_by_name = {}
     with open(os.path.join(classes_dir, newest_class_file), 'r', newline='', encoding='utf-8-sig') as class_file:
         class_reader = csv.reader(class_file, delimiter=';')
@@ -502,23 +532,23 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
                 'Klassenlehrkraft_2': f"{teachers.get(row[8], {}).get('forename', '')} {teachers.get(row[8], {}).get('longname', '')}",
                 'Klassenlehrkraft_2_Email': teachers.get(row[8], {}).get('email', 'Keine E-Mail gefunden')
             }
-    print("Klassen- und Lehrerdaten erfolgreich eingelesen.")
+    print_success("Klassen- und Lehrerdaten erfolgreich eingelesen.")
     return (classes_by_name, teachers) if return_teachers else classes_by_name
 
 
 def read_students(use_abschlussdatum):
     # Funktion zum Einlesen der Schülerdaten aus der neuesten CSV-Datei im aktuellen Verzeichnis
-    print("Lese Schülerdaten ein...")
+    print_info("Lese Schülerdaten ein...")
     import_dir = get_directory('import_directory', './WebUntis Importe')
     # Überprüfen, ob das Importverzeichnis existiert, falls nicht, erstellen
     if not os.path.exists(import_dir):
         os.makedirs(import_dir)
-        print(f"Importverzeichnis '{import_dir}' wurde erstellt.")
+        print_success(f"Importverzeichnis '{import_dir}' wurde erstellt.")
 
     # Überprüfen, ob .csv Dateien im aktuellen Verzeichnis vorhanden sind
     csv_files = [f for f in os.listdir('.') if f.endswith('.csv')]
     if not csv_files:
-        print("Keine CSV-Dateien im aktuellen Verzeichnis gefunden.")
+        print_error("Keine CSV-Dateien im aktuellen Verzeichnis gefunden.")
         return [], {}
 
     # Neueste CSV-Datei bestimmen
@@ -540,7 +570,7 @@ def read_students(use_abschlussdatum):
         header.append('Schulpflicht')
         header.append('Aktiv')
         output_data_students.append(output_columns)
-        print("Beginne mit dem Verarbeiten der Schülerdaten...")
+        print_info("Beginne mit dem Verarbeiten der Schülerdaten...")
         for row in reader:
             filtered_row = {k: v for k, v in row.items() if k in columns_to_filter}
 
@@ -560,13 +590,13 @@ def read_students(use_abschlussdatum):
                     abschlussdatum_date = datetime.strptime(abschlussdatum, '%d.%m.%Y')
                     if use_abschlussdatum and abschlussdatum_date < entlassdatum_date:
                         entlassdatum = abschlussdatum
-                        print(f"Entlassdatum für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']} auf Abschlussdatum aktualisiert.")
+                        print_info(f"Entlassdatum für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']} auf Abschlussdatum aktualisiert.")
                 except ValueError:
-                    print(f"Fehler beim Konvertieren von Datumsangaben für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']}.")
+                    print_error(f"Fehler beim Konvertieren von Datumsangaben für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']}.")
                     pass # Ignoriere ungültige Datumsangaben
             elif not entlassdatum and abschlussdatum and use_abschlussdatum:
                 entlassdatum = abschlussdatum
-                print(f"Entlassdatum für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']} gesetzt auf Abschlussdatum.")
+                print_creation(f"Entlassdatum für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']} gesetzt auf Abschlussdatum.")
 
             filtered_row['Entlassdatum'] = entlassdatum
             
@@ -584,12 +614,12 @@ def read_students(use_abschlussdatum):
             # Speichere den Schüler im Dictionary nach Interner ID
             students_by_id[filtered_row['Interne ID-Nummer']] = filtered_row
 
-    print("Schülerdaten erfolgreich eingelesen und verarbeitet.")
+    print_success("Schülerdaten erfolgreich eingelesen und verarbeitet.")
     return output_data_students, students_by_id
 
 def create_warnings(classes_by_name, students_by_id):
     # Funktion zum Erstellen von Warnungen bei Änderungen des Entlassdatums
-    print("Erstelle Entlassdatum-Warnungen...")
+    print_info("Erstelle Entlassdatum-Warnungen...")
     warnings = []
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
@@ -597,7 +627,7 @@ def create_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
+        print_info(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -621,7 +651,7 @@ def create_warnings(classes_by_name, students_by_id):
                             klasse = row['Klasse'].strip().lower()
                             klassen_info = classes_by_name.get(klasse, {})
                             if not klassen_info:
-                                print(f"Klasse '{klasse}' nicht in Klasseninformationen gefunden.")
+                                print_warning(f"Klasse '{klasse}' nicht in Klasseninformationen gefunden.")
 
                             # Warnung hinzufügen
                             warnings.append({
@@ -642,18 +672,18 @@ def create_warnings(classes_by_name, students_by_id):
                                     "und es gibt einen nicht dokumentierten Zeitraum."
                                 )
                             })
-                            print(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Entlassdatum verschoben.")
+                            print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Entlassdatum verschoben.")
                     except ValueError:
-                        print(f"Ungültiges Datum für Schüler {row['Nachname']}, {row['Vorname']}. Warnung nicht erstellt.")
+                        print_error(f"Ungültiges Datum für Schüler {row['Nachname']}, {row['Vorname']}. Warnung nicht erstellt.")
                         pass  # Ignoriere ungültige Datumsangaben
     else:
-        print("Keine vorherige Importdatei zum Vergleich gefunden.")
-    print(f"Anzahl der erstellten Entlassdatum-Warnungen: {len(warnings)}")
+        print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
+    print_info(f"Anzahl der erstellten Entlassdatum-Warnungen: {len(warnings)}")
     return warnings
 
 def create_class_change_warnings(classes_by_name, students_by_id):
     # Funktion zum Erstellen von Warnungen bei Klassenwechseln
-    print("Erstelle Klassenwechsel-Warnungen...")
+    print_info("Erstelle Klassenwechsel-Warnungen...")
     warnings = []
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
@@ -661,7 +691,7 @@ def create_class_change_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
+        print_info(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -674,7 +704,7 @@ def create_class_change_warnings(classes_by_name, students_by_id):
                         klasse = previous_class.strip().lower()
                         klassen_info = classes_by_name.get(klasse, {})
                         if not klassen_info:
-                            print(f"Klasse '{klasse}' nicht in Klasseninformationen gefunden.")
+                            print_warning(f"Klasse '{klasse}' nicht in Klasseninformationen gefunden.")
 
                         # Warnung hinzufügen
                         warnings.append({
@@ -690,15 +720,15 @@ def create_class_change_warnings(classes_by_name, students_by_id):
                             'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),  # Status Schlüssel hinzufügen
                             'warning_message': "Klassenwechsel muss im Digitalen Klassenbuch manuell korrigiert werden, da die Änderung im System ab dem aktuellen Tag gilt."
                         })
-                        print(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class}.")
+                        print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class}.")
     else:
-        print("Keine vorherige Importdatei zum Vergleich gefunden.")
-    print(f"Anzahl der erstellten Klassenwechsel-Warnungen: {len(warnings)}")
+        print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
+    print_info(f"Anzahl der erstellten Klassenwechsel-Warnungen: {len(warnings)}")
     return warnings
 
 def create_admission_date_warnings(classes_by_name, students_by_id):
     # Funktion zum Erstellen von Warnungen bei Änderungen des Aufnahmedatums
-    print("Erstelle Aufnahmedatum-Warnungen...")
+    print_info("Erstelle Aufnahmedatum-Warnungen...")
     warnings = []
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
@@ -706,7 +736,7 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
+        print_info(f"Vergleiche mit vorheriger Importdatei: {newest_output_file}")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -749,44 +779,44 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
                                     "und es gibt einen nicht dokumentierten Zeitraum."
                                 )
                             })
-                            print(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Aufnahmedatum geändert.")
+                            print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Aufnahmedatum geändert.")
                     except ValueError:
-                        print(f"Ungültiges Datum für Schüler {row['Nachname']}, {row['Vorname']}. Warnung nicht erstellt.")
+                        print_error(f"Ungültiges Datum für Schüler {row['Nachname']}, {row['Vorname']}. Warnung nicht erstellt.")
                         pass  # Ignoriere ungültige Datumsangaben
     else:
-        print("Keine vorherige Importdatei zum Vergleich gefunden.")
-    print(f"Anzahl der erstellten Aufnahmedatum-Warnungen: {len(warnings)}")
+        print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
+    print_info(f"Anzahl der erstellten Aufnahmedatum-Warnungen: {len(warnings)}")
     return warnings
 
 def print_warnings(warnings):
     # Funktion zur Ausgabe der Warnungen in der Konsole
     for warning in warnings:
-        print("===================== WARNUNG =====================")
-        print(f"Nachname: {warning['Nachname']}")
-        print(f"Vorname: {warning['Vorname']}")
+        print_warning("===================== WARNUNG =====================")
+        print_warning(f"Nachname: {warning['Nachname']}")
+        print_warning(f"Vorname: {warning['Vorname']}")
         if 'neues_aufnahmedatum' in warning:
-            print(f"Klasse: {warning.get('Klasse', 'N/A')}")
-            print(f"Neues Aufnahmedatum: {warning['neues_aufnahmedatum']}")
-            print(f"Altes Aufnahmedatum: {warning['altes_aufnahmedatum']}")
+            print_warning(f"Klasse: {warning.get('Klasse', 'N/A')}")
+            print_warning(f"Neues Aufnahmedatum: {warning['neues_aufnahmedatum']}")
+            print_warning(f"Altes Aufnahmedatum: {warning['altes_aufnahmedatum']}")
         if 'neues_entlassdatum' in warning:
-            print(f"Klasse: {warning.get('Klasse', 'N/A')}")
-            print(f"Neues Entlassdatum: {warning['neues_entlassdatum']}")
-            print(f"Altes Entlassdatum: {warning['altes_entlassdatum']}")
+            print_warning(f"Klasse: {warning.get('Klasse', 'N/A')}")
+            print_warning(f"Neues Entlassdatum: {warning['neues_entlassdatum']}")
+            print_warning(f"Altes Entlassdatum: {warning['altes_entlassdatum']}")
         if 'neue_klasse' in warning:
-            print(f"Alte Klasse: {warning['alte_klasse']}")
-            print(f"Neue Klasse: {warning['neue_klasse']}")
+            print_warning(f"Alte Klasse: {warning['alte_klasse']}")
+            print_warning(f"Neue Klasse: {warning['neue_klasse']}")
         # Einheitliche Ausgabe der Warnungsnachricht
         if 'warning_message' in warning:
-            print(f"Warnung: {warning['warning_message']}")
-        print(f"Klassenlehrkraft 1: {warning['Klassenlehrkraft_1']}")
-        print(f"Klassenlehrkraft 1 Email: {warning['Klassenlehrkraft_1_Email']}")
-        print(f"Klassenlehrkraft 2: {warning['Klassenlehrkraft_2']}")
-        print(f"Klassenlehrkraft 2 Email: {warning['Klassenlehrkraft_2_Email']}")
-        print("====================================================")
+            print_warning(f"Warnung: {warning['warning_message']}")
+        print_warning(f"Klassenlehrkraft 1: {warning['Klassenlehrkraft_1']}")
+        print_warning(f"Klassenlehrkraft 1 E-Mail: {warning['Klassenlehrkraft_1_Email']}")
+        print_warning(f"Klassenlehrkraft 2: {warning['Klassenlehrkraft_2']}")
+        print_warning(f"Klassenlehrkraft 2 E-Mail: {warning['Klassenlehrkraft_2_Email']}")
+        print_warning("====================================================")
 
 def save_files(output_data_students, warnings, create_second_file):
     # Funktion zum Speichern der Ausgabedateien
-    print("Speichere Ausgabedateien...")
+    print_info("Speichere Ausgabedateien...")
     import_dir = get_directory('import_directory', './WebUntis Importe')
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     output_file = os.path.join(import_dir, f'WebUntis Import {now}.csv')
@@ -794,29 +824,29 @@ def save_files(output_data_students, warnings, create_second_file):
 
     # Sicherstellen, dass das Importverzeichnis existiert
     os.makedirs(import_dir, exist_ok=True)
-    print(f"Importverzeichnis '{import_dir}' ist vorhanden oder wurde erstellt.")
+    print_info(f"Importverzeichnis '{import_dir}' ist vorhanden oder wurde erstellt.")
 
     # Hauptausgabedatei speichern
     with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
         writer = csv.writer(csvfile, delimiter=';')
         writer.writerows(output_data_students)
-    print(f"Hauptausgabedatei gespeichert: {output_file}")
+    print_creation(f"Hauptausgabedatei gespeichert: {output_file}")
 
     # Zweite Ausgabedatei speichern, falls gewünscht
     if create_second_file:
-        print("Erstelle zweite Ausgabedatei für fehlende Entlassdatumsangaben...")
+        print_info("Erstelle zweite Ausgabedatei für fehlende Entlassdatumsangaben...")
         second_output_columns = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Geburtsdatum', 'Klasse', 'Geschlecht', 'Entlassdatum']
         second_output_data = []
 
         # Suche die neueste Datei im Hauptverzeichnis
         csv_files = [f for f in os.listdir('.') if f.endswith('.csv')]
         if not csv_files:
-            print("Fehler: Keine CSV-Dateien im Hauptverzeichnis gefunden.")
+            print_error("Fehler: Keine CSV-Dateien im Hauptverzeichnis gefunden.")
             return
 
         # Daten für zweite Datei extrahieren
         newest_file = max(csv_files, key=os.path.getctime)
-        print(f"Verwende Datei für zweite Ausgabe: {newest_file}")
+        print_info(f"Verwende Datei für zweite Ausgabe: {newest_file}")
         with open(newest_file, 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -828,8 +858,8 @@ def save_files(output_data_students, warnings, create_second_file):
                 writer = csv.writer(csvfile, delimiter=';')
                 writer.writerow(second_output_columns)  # Header für die zweite Datei
                 writer.writerows(second_output_data)
-            print(f"Zweite Ausgabedatei gespeichert: {second_output_file}")
+            print_creation(f"Zweite Ausgabedatei gespeichert: {second_output_file}")
         else:
-            print("Keine Daten für die zweite Ausgabedatei gefunden.")
+            print_warning("Keine Daten für die zweite Ausgabedatei gefunden.")
     else:
-        print("Erstellung der zweiten Ausgabedatei wurde deaktiviert.")
+        print_info("Erstellung der zweiten Ausgabedatei wurde deaktiviert.")
