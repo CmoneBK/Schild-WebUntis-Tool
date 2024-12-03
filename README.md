@@ -171,6 +171,9 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 ## Hinweise
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
 - **Screenshots:** 
+
+# Bildergalerie
+
   <br>
   <img src="/Screenshots/Start Ohne Daten.png" alt="Start Ohne Daten" width="500" />
   <br>
@@ -185,6 +188,40 @@ In der Konsole sehen Sie den Prozess durchlaufen.
   <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="500" />
   <br>
   <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl-und Verknüpfungsersteller" width="500" />
+
+
+# Bildergalerie
+
+<a href="#!">
+  <img src="/Screenshots/Start Ohne Daten.png" alt="Start Ohne Daten" width="500">
+</a>
+<br>
+<a href="#!">
+  <img src="/Screenshots/Start mit Daten.png" alt="Start mit Daten" width="500">
+</a>
+<br>
+<a href="#!">
+  <img src="/Screenshots/Beispiel Warnungen.png" alt="Beispiel Warnungen" width="500">
+</a>
+<br>
+<a href="#!">
+  <img src="/Screenshots/Email Editor NEU.png" alt="EMail Vorlagen Editor" width="500">
+</a>
+<br>
+<a href="#!">
+  <img src="/Screenshots/Beispiel EMail.png" alt="Beispiel EMail" width="500">
+</a>
+<br>
+<a href="#!">
+  <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="500">
+</a>
+<br>
+<a href="#!">
+  <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl-und Verknüpfungsersteller" width="500">
+</a>
+
+
+
 
  
 ## Updates
