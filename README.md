@@ -167,7 +167,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - `--send-log-email` Ermöglicht den Versand eines Änderungs-Logs (HMTL Tabelle + .xlsx-Datei) per Mail auf Grundlage eines Zeitintervalls für das Mindestalter der Vergleichs-Datei
 - `--no-directory-change` Verhindert, dass Verzeichnisse über das WebEnd geändert werden können. Dazu wird der Tab in den Einstellungen entfernt und im BackEnd Funktionen blockiert.
 - `--enable-upload` Ermöglicht einen Upload von Dateien in die Verzeichnisse.⚠️ Aus Sicherheitsgründen sollte --enable-upload niemals ohne --no-directory-change verwendet werden!⚠️
-
+</details>
 
 ## Hinweise
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
