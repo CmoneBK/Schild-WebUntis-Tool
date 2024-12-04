@@ -773,8 +773,9 @@ def get_arguments():
         {"name": "--no-log", "description": "Verhindert die Erstellung der .log Logdateien."},
         {"name": "--no-xlsx", "description": "Verhindert die Erstellung der Excel Logdateien. (Darf nicht mit --send-log-email kombiniert werden.)"},
         {"name": "--no-directory-change", "description": "Verhindert, dass Verzeichnisse über das WebEnd geändert werden können. Dazu wird der Tab in den Einstellungen entfernt und im BackEnd Funktionen blockiert."},
-        {"name": "--no-directory-change --enable-upload", "description": "Verhindert, dass Verzeichnisse über das WebEnd geändert werden können und ermöglicht einen Upload von Dateien in die Verzeichnisse.\n⚠️ Aus Sicherheitsgründen sollte --enable-upload niemals ohne --no-directory-change verwendet werden!⚠️"}
-
+        {"name": "--no-directory-change --enable-upload", "description": "Verhindert, dass Verzeichnisse über das WebEnd geändert werden können und ermöglicht einen Upload von Dateien in die Verzeichnisse.\n⚠️ Aus Sicherheitsgründen sollte --enable-upload niemals ohne --no-directory-change verwendet werden!⚠️"},
+        {"name": "--host", "description": "IP-Adresse, auf der der Server laufen soll (Standard: 0.0.0.0)"},
+        {"name": "--port", "description": "Port, auf dem der Server laufen soll (Standard: 5000)"},
     ]
     print_success(f"Liste der verfügbaren Kommandozeilenargumente für das Befehl- und Verknüpfungs-Erstelltool wurde erstellt.")
     return jsonify({"success": True, "arguments": arguments})
@@ -918,7 +919,15 @@ def allowed_file(filename):
 
 # Öffnet den Standardbrowser automatisch auf die lokale URL
 def open_browser():
-    webbrowser.open_new("http://127.0.0.1:5000/")
+    host = cli_args.get("host", "127.0.0.1")
+    port = cli_args.get("port", 5000)
+    # Wenn der Host '0.0.0.0' ist, setzen wir ihn auf '127.0.0.1' für die Browser-URL
+    if host == '0.0.0.0':
+        display_host = '127.0.0.1'
+    else:
+        display_host = host
+    url = f"http://{display_host}:{port}/"
+    webbrowser.open_new(url)
 
 # Globale Variable für CLI-Argumente
 cli_args = {}
@@ -941,6 +950,8 @@ if __name__ == "__main__":
     parser.add_argument('--send-log-email', action='store_true', help="Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin E-Mail-Adresse.")
     parser.add_argument('--no-directory-change', action='store_true', help="Verhindert, dass Verzeichnisse über das WebEnd geändert werden können. Dazu wird der Tab in den Einstellungen entfernt und im BackEnd Funktionen blockiert.")
     parser.add_argument('--enable-upload', action='store_true', help="Ermöglicht einen Upload von Dateien in die Verzeichnisse.\n⚠️ Aus Sicherheitsgründen sollte --enable-upload niemals ohne --no-directory-change verwendet werden!⚠️")
+    parser.add_argument('--host', type=str, default='0.0.0.0', help="IP-Adresse, auf der der Server laufen soll (Standard: 0.0.0.0)")
+    parser.add_argument('--port', type=int, default=5000, help="Port, auf dem der Server laufen soll (Standard: 5000)")
 
     args = parser.parse_args()
 
@@ -957,6 +968,8 @@ if __name__ == "__main__":
         "send_log_email": args.send_log_email,
         "no_directory_change": args.no_directory_change,
         "enable_upload": args.enable_upload,
+        "host": args.host,
+        "port": args.port,
     }
 
 
@@ -1018,10 +1031,12 @@ if __name__ == "__main__":
     if not args.no_web:
         browser_thread = threading.Thread(target=open_browser)
         browser_thread.start()
+
     try:
-        serve(app, host='0.0.0.0', port=5000)
+        serve(app, host=cli_args.get("host", "0.0.0.0"), port=cli_args.get("port", 5000))
     except Exception as e:
         print_error(f"Fehler beim Starten des WSGI-Servers: {e}")
+
 
 
 
