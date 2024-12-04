@@ -38,6 +38,15 @@
             background-color: #f9f9f9;
             border-radius: 8px;
         }
+
+        #uploadArea {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+
         .nav-tabs {
             margin-bottom: 15px;
         }
@@ -240,6 +249,7 @@
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-3" style="height: 60px;">
             <button id="toggleEditor" class="btn btn-secondary w-100 mr-2">✉️ Email-Vorlagen Editor</button>
+            {% if enable_upload %}<button id="toggleUploadArea" class="btn btn-warning w-100 mx-2">⬆️ Dateien Hochladen</button>{% endif %}
             <button id="toggleShortcutCreator" class="btn btn-info w-100 mx-2">#️⃣🔗Befehl- und Verknüpfungs-Erstelltool</button>
             <button id="toggle-settings" class="btn btn-primary w-100 ml-2">⚙️ Einstellungen</button>
         </div>
@@ -247,9 +257,11 @@
         <div id="settingsPanel" class="mt-4" style="display: none;">
             <h4 class="mb-4">⚙️ Einstellungen</h4>
             <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+                {% if not no_directory_change %}
                 <li class="nav-item">
                     <a class="nav-link active" id="directories-tab" data-toggle="tab" href="#directories" role="tab" aria-controls="directories" aria-selected="true">📁 Verzeichnisse</a>
                 </li>
+                {% endif %}
                 <li class="nav-item">
                     <a class="nav-link" id="processing-tab" data-toggle="tab" href="#processing" role="tab" aria-controls="processing" aria-selected="false">🛠️ Verarbeitung</a>
                 </li>
@@ -260,7 +272,7 @@
                     <a class="nav-link" id="console-tab" data-toggle="tab" href="#console" role="tab" aria-controls="console" aria-selected="false">🎛️ Konsole</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="smtp-tab" data-toggle="tab" href="#smtp" role="tab" aria-controls="smtp" aria-selected="false">📨 SMTP</a>
+                    <a class="nav-link" id="smtp-tab" data-toggle="tab" href="#smtp" role="tab" aria-controls="smtp" aria-selected="false">📤 SMTP</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" id="oauth-tab" data-toggle="tab" href="#oauth" role="tab" aria-controls="oauth" aria-selected="false">🔐 OAuth</a>
@@ -271,6 +283,7 @@
             </ul>
             <div class="tab-content mt-3">
                 <!-- Standard-Verzeichnisse -->
+                {% if not no_directory_change %}
                 <div class="tab-pane fade show active" id="directories" role="tabpanel" aria-labelledby="directories-tab">
                     <form id="form-directories">
                         <div class="form-group">
@@ -329,6 +342,7 @@
                         </div>
                     </form>
                 </div>
+                {% endif %}
                 <!-- Verarbeitung -->
                 <div class="tab-pane fade" id="processing" role="tabpanel" aria-labelledby="processing-tab">
                     <form id="form-processing">
@@ -586,7 +600,7 @@
             <div class="card-body">
                 <p class="text-muted">
                     Mit diesem Tool können Sie Befehle erstellen, um das Programm direkt mit bestimmten Konfigurationsoptionen
-                    (Argumenten) auszuführen ohne diese im Browser auslösen zu müssen. <br />Außerdem können Sie eine Verknüpfung 
+                    (Argumenten) auszuführen ohne diese im Browser auslösen zu müssen. <br />Außerdem können Sie eine Verknüpfung
                     erstellen, die bequem vom Desktop oder einem beliebigen anderen Ort aus aufgerufen werden kann. <br />
                     Fügen Sie gewünschte Argumente hinzu, und generieren Sie entweder einen Befehl zum Ausführen in der Windows-Eingabeaufforderung (CMD) oder eine Verknüpfung.
                 </p>
@@ -623,6 +637,25 @@
                 </form>
             </div>
         </div>
+        <div id="uploadArea" class="mt-4" style="display: none;">
+            <h4 class="mb-4">⬆️ Dateien Hochladen</h4>
+            <p>Wählen Sie die Dateien aus, die Sie hochladen möchten:</p>
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="classDataFiles">Klassendaten hochladen:</label>
+                    <input type="file" class="form-control-file" id="classDataFiles" name="class_data_files" multiple>
+                </div>
+                <div class="form-group">
+                    <label for="teacherDataFiles">Lehrerdaten hochladen:</label>
+                    <input type="file" class="form-control-file" id="teacherDataFiles" name="teacher_data_files" multiple>
+                </div>
+                <div class="form-group">
+                    <label for="schildExportFiles">Schild-Export Dateien hochladen:</label>
+                    <input type="file" class="form-control-file" id="schildExportFiles" name="schild_export_files" multiple>
+                </div>
+                <button type="submit" class="btn btn-primary">Dateien hochladen</button>
+            </form>
+        </div>
     </div>
 
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
@@ -644,16 +677,34 @@
                 toggleShortcutButton: document.getElementById("toggleShortcutCreator"),
             };
 
+            const settingsTabs = document.querySelectorAll("#settingsPanel .nav-link");
+            const settingsContentPanels = document.querySelectorAll("#settingsPanel .tab-content > .tab-pane");
+
             function togglePanel(panelKey) {
                 Object.entries(panels).forEach(([key, panel]) => {
                     if (key === panelKey) {
-                        // Zeige das ausgewählte Panel
+                        // Show the selected panel
                         panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "block" : "none";
+                        if (panelKey === "settingsPanel") {
+                            activateFirstTab();
+                        }
                     } else {
-                        // Blende alle anderen Panels aus
+                        // Hide other panels
                         panel.style.display = "none";
                     }
                 });
+            }
+
+            function activateFirstTab() {
+                // Reset all tabs and content panels
+                settingsTabs.forEach((tab) => tab.classList.remove("active"));
+                settingsContentPanels.forEach((content) => content.classList.remove("show", "active"));
+
+                // Activate the first tab and its content
+                if (settingsTabs.length > 0 && settingsContentPanels.length > 0) {
+                    settingsTabs[0].classList.add("active");
+                    settingsContentPanels[0].classList.add("show", "active");
+                }
             }
 
             // Event listener for Settings Panel
@@ -788,33 +839,6 @@
                     alert("Your browser does not support the directory picker. Please enter manually.");
                 }
             }
-
-
-            // Initialize event handlers for directory selection
-            document.querySelectorAll("button[data-directory-input]").forEach((button) => {
-                button.addEventListener("click", function () {
-                    const inputId = this.getAttribute("data-directory-input");
-                    if (inputId) {
-                        // Aufruf der neuen Route zum Öffnen der Dateiauswahl
-                        fetch('/select-directory', {
-                            method: 'POST'
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.selected_directory) {
-                                    document.getElementById(inputId).value = data.selected_directory;
-                                } else {
-                                    alert("Keine Auswahl getroffen.");
-                                }
-                            })
-                            .catch(error => {
-                                console.error("Fehler beim Auswählen des Verzeichnisses:", error);
-                                alert("Fehler beim Auswählen des Verzeichnisses.");
-                            });
-                    }
-                });
-            });
-
 
             // Tabs und Inhalte initialisieren
             const tabs = [
@@ -982,6 +1006,87 @@
             const key = label.getAttribute("for");
             if (key && labels[key]) {
                 label.innerHTML += `<small class="text-muted"> (${getLabel(key)})</small>`;
+            }
+        });
+    </script>
+
+    {% if not no_directory_change %}
+    <script>
+        document.querySelectorAll("button[data-directory-input]").forEach((button) => {
+            button.addEventListener("click", function () {
+                const inputId = this.getAttribute("data-directory-input");
+                if (inputId) {
+                    // Aufruf der neuen Route zum Öffnen der Dateiauswahl
+                    fetch('/select-directory', {
+                        method: 'POST'
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.selected_directory) {
+                                document.getElementById(inputId).value = data.selected_directory;
+                            } else {
+                                alert("Keine Auswahl getroffen.");
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Fehler beim Auswählen des Verzeichnisses:", error);
+                            alert("Fehler beim Auswählen des Verzeichnisses.");
+                        });
+                }
+            });
+        });
+    </script>
+    {% endif %}
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const uploadArea = document.getElementById("uploadArea");
+            const toggleUploadButton = document.getElementById("toggleUploadArea");
+
+            if (toggleUploadButton) {
+                toggleUploadButton.addEventListener("click", function () {
+                    uploadArea.style.display = uploadArea.style.display === "none" || uploadArea.style.display === "" ? "block" : "none";
+                });
+            }
+
+            // Handle the form submission
+            const uploadForm = document.getElementById("uploadForm");
+            if (uploadForm) {
+                uploadForm.addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    const formData = new FormData();
+
+                    // Append class data files
+                    const classDataFiles = document.getElementById("classDataFiles").files;
+                    for (let i = 0; i < classDataFiles.length; i++) {
+                        formData.append("class_data_files", classDataFiles[i]);
+                    }
+
+                    // Append teacher data files
+                    const teacherDataFiles = document.getElementById("teacherDataFiles").files;
+                    for (let i = 0; i < teacherDataFiles.length; i++) {
+                        formData.append("teacher_data_files", teacherDataFiles[i]);
+                    }
+
+                    // Append Schild-Export files
+                    const schildExportFiles = document.getElementById("schildExportFiles").files;
+                    for (let i = 0; i < schildExportFiles.length; i++) {
+                        formData.append("schild_export_files", schildExportFiles[i]);
+                    }
+
+                    fetch('/upload-files', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            alert(data.message);
+                        })
+                        .catch(error => {
+                            console.error("Fehler beim Hochladen der Dateien:", error);
+                            alert("Fehler beim Hochladen der Dateien.");
+                        });
+                });
             }
         });
     </script>

@@ -14,6 +14,7 @@ import secrets  # Generieren sicherer Zufallswerte (z.B. für Secret Keys)
 import winshell  # Interaktion mit der Windows-Shell (z.B. Erstellen von Verknüpfungen)
 import pythoncom  # Python COM-Schnittstelle für Windows
 import threading
+import werkzeug
 import tkinter as tk
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
 from flask import Flask, render_template, request, jsonify, session  # Flask-Webframework
@@ -21,6 +22,7 @@ from main import run, read_students, read_classes, compare_timeframe_imports  # 
 from smtp import send_email  # Funktion zum Versenden von E-Mails aus eigenem Modul
 from waitress import serve
 from tkinter import filedialog
+from werkzeug.utils import secure_filename
 import colorama
 from colorama import Fore, Back, Style, init
 
@@ -440,7 +442,9 @@ def index():
         subject_aufnahmedatum=subject_aufnahmedatum,
         body_aufnahmedatum=body_aufnahmedatum,
         subject_klassenwechsel=subject_klassenwechsel,
-        body_klassenwechsel=body_klassenwechsel
+        body_klassenwechsel=body_klassenwechsel,
+        no_directory_change=cli_args.get("no_directory_change", False),
+        enable_upload=cli_args.get("enable_upload", False),
     )
 
 from string import Template
@@ -684,6 +688,13 @@ def save_settings():
             if section not in settings_ini_data:
                 settings_ini_data[section] = {}
             settings_ini_data[section].update(values)
+
+    # If directory change is disabled, remove the Directories section or ignore changes to directories
+    if cli_args.get("no_directory_change", False):
+        if 'Directories' in settings_ini_data:
+            print_info("Directory changing is disabled via command-line argument. Ignoring changes to directories.")
+            del settings_ini_data['Directories']
+
     # Einstellungen speichern
     if settings_ini_data:
         save_to_settings_ini(settings_ini_data)
@@ -692,6 +703,7 @@ def save_settings():
 
     print_success("Einstellungen wurden erfolgreich gespeichert.")
     return jsonify({"status": "success"})
+
 
 @app.route('/process-directory', methods=['POST'])
 def process_directory():
@@ -759,7 +771,10 @@ def get_arguments():
         {"name": "--send-log-email", "description": "Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin E-Mail-Adresse."},
         {"name": "--skip-admin-warnings", "description": "Überspringt die Erstellung von Admin-Warnungen. (Darf nicht mit --send admin-warnings kombiniert werden.)"},
         {"name": "--no-log", "description": "Verhindert die Erstellung der .log Logdateien."},
-        {"name": "--no-xlsx", "description": "Verhindert die Erstellung der Excel Logdateien. (Darf nicht mit --send-log-email kombiniert werden.)"}
+        {"name": "--no-xlsx", "description": "Verhindert die Erstellung der Excel Logdateien. (Darf nicht mit --send-log-email kombiniert werden.)"},
+        {"name": "--no-directory-change", "description": "Verhindert, dass Verzeichnisse über das WebEnd geändert werden können. Dazu wird der Tab in den Einstellungen entfernt und im BackEnd Funktionen blockiert."},
+        {"name": "--no-directory-change --enable-upload", "description": "Verhindert, dass Verzeichnisse über das WebEnd geändert werden können und ermöglicht einen Upload von Dateien in die Verzeichnisse.\n⚠️ Aus Sicherheitsgründen sollte --enable-upload niemals ohne --no-directory-change verwendet werden!⚠️"}
+
     ]
     print_success(f"Liste der verfügbaren Kommandozeilenargumente für das Befehl- und Verknüpfungs-Erstelltool wurde erstellt.")
     return jsonify({"success": True, "arguments": arguments})
@@ -826,6 +841,81 @@ def create_shortcut():
         pythoncom.CoUninitialize()
         print_info("COM-Bibliothek deinitialisiert.")
 
+
+
+@app.route('/upload-files', methods=['POST'])
+def upload_files():
+    print_info("Empfange Dateien zum Hochladen...")
+    # Get directories from settings.ini
+    config = configparser.ConfigParser()
+    config.read("settings.ini")
+    classes_dir = config.get("Directories", "classes_directory", fallback="./Klassendaten")
+    teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
+    schildexport_dir = config.get("Directories", "schildexport_directory", fallback=".")
+
+    # Create directories if they do not exist
+    os.makedirs(classes_dir, exist_ok=True)
+    os.makedirs(teachers_dir, exist_ok=True)
+    os.makedirs(schildexport_dir, exist_ok=True)
+
+    # Process uploaded files
+    uploaded_files = request.files
+    success_messages = []
+    error_messages = []
+
+    # Handle class data files
+    class_data_files = request.files.getlist("class_data_files")
+    for file in class_data_files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(classes_dir, filename)
+            file.save(save_path)
+            success_messages.append(f"'{filename}' in Klassendaten hochgeladen.")
+            print_info(f"Datei '{filename}' in '{classes_dir}' gespeichert.")
+        else:
+            error_messages.append(f"Ungültige Datei: {file.filename}")
+            print_warning(f"Ungültige Datei: {file.filename}")
+
+    # Handle teacher data files
+    teacher_data_files = request.files.getlist("teacher_data_files")
+    for file in teacher_data_files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(teachers_dir, filename)
+            file.save(save_path)
+            success_messages.append(f"'{filename}' in Lehrerdaten hochgeladen.")
+            print_info(f"Datei '{filename}' in '{teachers_dir}' gespeichert.")
+        else:
+            error_messages.append(f"Ungültige Datei: {file.filename}")
+            print_warning(f"Ungültige Datei: {file.filename}")
+
+    # Handle Schild-Export files
+    schild_export_files = request.files.getlist("schild_export_files")
+    for file in schild_export_files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            save_path = os.path.join(schildexport_dir, filename)
+            file.save(save_path)
+            success_messages.append(f"'{filename}' in Schild-Export hochgeladen.")
+            print_info(f"Datei '{filename}' in '{schildexport_dir}' gespeichert.")
+        else:
+            error_messages.append(f"Ungültige Datei: {file.filename}")
+            print_warning(f"Ungültige Datei: {file.filename}")
+
+    # Prepare response message
+    message = ""
+    if success_messages:
+        message += "Erfolgreich hochgeladen:\n" + "\n".join(success_messages)
+    if error_messages:
+        message += "\nFehler beim Hochladen:\n" + "\n".join(error_messages)
+
+    return jsonify({"message": message})
+def allowed_file(filename):
+    # Allow only certain file extensions
+    allowed_extensions = {'csv'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+
 # Öffnet den Standardbrowser automatisch auf die lokale URL
 def open_browser():
     webbrowser.open_new("http://127.0.0.1:5000/")
@@ -840,15 +930,18 @@ if __name__ == "__main__":
 
     # Parser für Kommandozeilenargumente
     parser = argparse.ArgumentParser(description="Command-line interface for processing data.")
-    parser.add_argument('--process', action='store_true', help="Run the main processing task.")
-    parser.add_argument('--generate-emails', action='store_true', help="Generate warning emails.")
-    parser.add_argument('--send-emails', action='store_true', help="Send generated warning emails.")
-    parser.add_argument('--send-admin-warnings', action='store_true', help="Send admin warnings via email.")
-    parser.add_argument('--no-web', action='store_true', help="Prevent opening the web interface.")
-    parser.add_argument('--skip-admin-warnings', action='store_true', help="Skip the generation of admin warnings.")
-    parser.add_argument('--no-log', action='store_true', help="Prevent the creation of the log file.")
-    parser.add_argument('--no-xlsx', action='store_true', help="Prevent the creation of the Excel file.")
-    parser.add_argument('--send-log-email', action='store_true', help="Send the log and Excel comparison via email.")
+    parser.add_argument('--process', action='store_true', help="Führt den Hauptprozess aus (Verarbeitung des Schild-Exports, Erstellungen von Warnungen, Erstellung der Log-Dateien).")
+    parser.add_argument('--generate-emails', action='store_true', help="Generiert die Warn-E-Mails auf Grundlage der gespeicherten Einstellungen. (Davor ist --process erforderlich.)")
+    parser.add_argument('--send-emails', action='store_true', help="Sendet die Warn-E-Mails auf Grundlage der gespeicherten Einstellungen. (Davor sind --process und --generate-emails erforderlich.)")
+    parser.add_argument('--send-admin-warnings', action='store_true', help="Sendet Admin-Warnungen per E-Mail an die hinterlegte Admin E-Mail-Adresse, wenn im SchildExport Klassen oder Klassenlehrkräfte vorkommen, die in den Klassen- oder Lehrkraftdaten fehlen.")
+    parser.add_argument('--no-web', action='store_true', help="Verhindert das Öffnen des Web-Interfaces.")
+    parser.add_argument('--skip-admin-warnings', action='store_true', help="Überspringt die Erstellung von Admin-Warnungen. (Darf nicht mit --send admin-warnings kombiniert werden.)")
+    parser.add_argument('--no-log', action='store_true', help="Verhindert die Erstellung der .log Logdateien.")
+    parser.add_argument('--no-xlsx', action='store_true', help="Verhindert die Erstellung der Excel Logdateien. (Darf nicht mit --send-log-email kombiniert werden.)")
+    parser.add_argument('--send-log-email', action='store_true', help="Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin E-Mail-Adresse.")
+    parser.add_argument('--no-directory-change', action='store_true', help="Verhindert, dass Verzeichnisse über das WebEnd geändert werden können. Dazu wird der Tab in den Einstellungen entfernt und im BackEnd Funktionen blockiert.")
+    parser.add_argument('--enable-upload', action='store_true', help="Ermöglicht einen Upload von Dateien in die Verzeichnisse.\n⚠️ Aus Sicherheitsgründen sollte --enable-upload niemals ohne --no-directory-change verwendet werden!⚠️")
+
     args = parser.parse_args()
 
     # Speichern der CLI-Argumente in der globalen Variable
@@ -862,6 +955,8 @@ if __name__ == "__main__":
         "no_log": args.no_log,
         "no_xlsx": args.no_xlsx,
         "send_log_email": args.send_log_email,
+        "no_directory_change": args.no_directory_change,
+        "enable_upload": args.enable_upload,
     }
 
 
