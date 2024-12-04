@@ -80,16 +80,10 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
 
 ## Installation
 1. Die .exe Dateien finden Sie unter: </br>[Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe) (für Test-Umgebung, wird nicht mehr aktualisiert) </br>[Schild-WebUntis-Tool-WServer.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) (für Produktions-Umgebung).</br>
-Dort gibt es oben rechts neben dem 'RAW' einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.
-  
-   ⚠️Derzeit kommte es zu falsch Positiv Meldungen (Win64:Evo-gen [Trj]) von Norton und ggf. auch anderen.</br>
-   Ich bin an der Sache dran und habe die Datei zur Neubewertung nach Norton geschickt. </br>
-   https://safeweb.norton.com/file_dispute; Prüfnummer: 8e0216e5-e864-4b46-8597-d306649b0879 </br>
-   Nutzen Sie in der Zwischenzeit https://nordvpn.com/de/file-checker/⚠️
-   
-3. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
+Dort gibt es oben rechts neben dem 'RAW' einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.   
+2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
-4. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.
+3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.
 <details>
 <summary><b>4. (Optional für den Fall, dass Sie die Warnungs- und E-Mail Funktionen nutzen wollen)</b></summary>
 <br>
