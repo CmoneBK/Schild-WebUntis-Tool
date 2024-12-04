@@ -31,7 +31,6 @@
     <Compile Include="Schild_WebUntis_Tool\main - Unkommentiert.py" />
     <Compile Include="Schild_WebUntis_Tool\main.py" />
     <Compile Include="Schild_WebUntis_Tool\smtp.py" />
-    <Compile Include="Schild_WebUntis_Tool\__init__ - Copy.py" />
     <Compile Include="Schild_WebUntis_Tool\__init__ - Flask-Variante.py" />
     <Compile Include="Schild_WebUntis_Tool\__init__ - Unkommentiert.py" />
     <Compile Include="Schild_WebUntis_Tool\__init__.py" />

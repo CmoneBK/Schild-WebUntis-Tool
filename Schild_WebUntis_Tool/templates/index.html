@@ -260,7 +260,7 @@
                     <a class="nav-link" id="console-tab" data-toggle="tab" href="#console" role="tab" aria-controls="console" aria-selected="false">🎛️ Konsole</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="smtp-tab" data-toggle="tab" href="#smtp" role="tab" aria-controls="smtp" aria-selected="false">📤 SMTP</a>
+                    <a class="nav-link" id="smtp-tab" data-toggle="tab" href="#smtp" role="tab" aria-controls="smtp" aria-selected="false">📨 SMTP</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" id="oauth-tab" data-toggle="tab" href="#oauth" role="tab" aria-controls="oauth" aria-selected="false">🔐 OAuth</a>
@@ -310,20 +310,20 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="import_directory">⬇️ Importverzeichnis:</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="import_directory" name="import_directory" readonly>
-                                <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="import_directory">Durchsuchen</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="schildexport_directory">📂 Schild-Export Verzeichnis:</label>
+                            <label for="schildexport_directory">🟦📥 Schild Exporte :</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="schildexport_directory" name="schildexport_directory" readonly>
                                 <div class="input-group-append">
                                     <button type="button" class="btn btn-secondary" data-directory-input="schildexport_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="import_directory">🟧📤 WebUntis Importe:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="import_directory" name="import_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="import_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -961,7 +961,8 @@
 
         const labels = {
             timeframe_hours: "Zeitfenster in Stunden für die Vergleiche.",
-            import_directory: "Verzeichnis, in dem die Import-Dateien gespeichert werden.",
+            import_directory: "Verzeichnis, in dem die Import-Dateien für WebUntis gespeichert werden.",
+            schildexport_directory: "Verzeichnis, aus dem die Schild-Exporte abgerufen werden.",
             classes_directory: "Verzeichnis für die Klassendaten. Sie werden für die Klassenlehrkraft-Zuordnung für die Warnungs-Funktion benötigt.",
             teachers_directory: "Verzeichnis für die Lehrerdaten. Sie werden für die Namensermittlung und Email-Adressen-Ermittlung für die Warnungs-Funktion benötigt.",
             log_directory: "Verzeichnis für die Log-Dateien. Darunter Änderungs-Logs zwischen der neuesten und vorherigen Import-Datei, aber auch Logs für den Logs-Versand an die Admin-Email Adresse.",
@@ -970,7 +971,7 @@
             smtp_port: "Port des SMTP-Servers (z. B. 587 für STARTTLS).",
             smtp_user: "Benutzername für den SMTP-Server.",
             smtp_password: "Passwort für den SMTP-Server.",
-            admin_email: "E-Mail-Adresse des Administrators für Benachrichtigungen. Darunter Admin-Warnungen bei im Vergleich zum Schild-Export fehlenden Klassen- und Lehrkraftdaten, aber auch zum Versandt von Log-Emails und -Datein."
+            admin_email: "E-Mail-Adresse des Administrators für Benachrichtigungen. Darunter Admin-Warnungen bei im Vergleich zum Schild-Export fehlenden Klassen- und Lehrkraftdaten, aber auch zum Versand von Log-Emails und -Datein."
         };
 
         function getLabel(key) {
