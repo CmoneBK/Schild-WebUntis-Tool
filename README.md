@@ -7,18 +7,19 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
 
 ## Funktionen
       
-<details><summary><b>🔄Datenumwandlung:</b> Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.</summary></details>
+<details><summary><b>🔄Datenumwandlung:</b> Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.</summary>Daten wie Schulpflicht müssen boolsch umgekehrt werden damit sie passen. Beim Status wird bei Schild eine 2, 7, 8 ausgegeben, was in WebUntis auch Boolschen Werten (Aktiv, Inaktiv, Inaktiv) enspricht. Solche Umwandlungen können grade bei größeren Schulen und täglichem Import mühsam sein. Jetzt nicht mehr.</details>
 <details><summary><b>⚠️Warnungen für Klassenlehrkräfte:</b> Generiert (auf Wunsch) Warnungen:</summary>
-  
+Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schild zu ungünstigen Eingaben kommen die aber noch ungünstigere Konsequenzen haben. Hier werden Warnungen erstellt:
+      
   - für Entlassdaten, die in die Zukunft verschoben werden und zu einem nicht dokumentierten Zeitraum führen.
   - für Aufnahmedaten, die in die Vergangenheit verschoben werden und Dokumentationslücken verursachen.
   - für Klassenwechsel, die eine manuelle Nachbearbeitung in WebUntis erfordern.
     </details>
 <details><summary><b>📩E-Mail-Benachrichtigungen:</b> E-Mails für Klassenlehrkräfte</summary>Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen.</details>
-<details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von Kriterien für Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie allen anderen Einstellungen direkt über den Browser.</details>
+<details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von zu geneirenden Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie Ändern aller Einstellungen und Verzeichnisse direkt über den Browser.</details>
 <details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.</details>
 <details><summary><b>📢Admin Warnungen:</b> Wenn Ihre Daten durch Veralterung inkonsistent werden bekommen Sie Meldungen bevor was schiefgeht.</summary>Der Nutzer erhält per Konsole (optional Mail) Meldungen, wenn in den Schild-Daten (plötzlich) Klassen oder Klassenlehrkräfte vorkommen die in den bereitgestellten Klassen- und Lehrkräftedaten noch fehlen.</details>
-<details><summary><b>🔃📜Änderungs-Log-Dateien:</b> Alle Dateiumwandlugnen werden Protokolliert und bei Bedarf an Sie versendet.</summary>Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten.</details>
+<details><summary><b>🔃📜Änderungs-Log-Dateien:</b> Alle Dateiumwandlugnen werden protokolliert und bei Bedarf an Sie versendet.</summary>Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten. Bei Angabe einer E-Mail Adresse ist auch ein Versand an diese möglich.</details>
 <details><summary><b>#️⃣Kommandozeilen-Modus:</b> Einer Voll-Automatisierung steht nichts im Weg.</summary>Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-mail.</details>
 
 ## Voraussetzungen
