@@ -318,6 +318,15 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label for="schildexport_directory">📂 Schild-Export Verzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="schildexport_directory" name="schildexport_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="schildexport_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
                     </form>
                 </div>
                 <!-- Verarbeitung -->
@@ -786,10 +795,26 @@
                 button.addEventListener("click", function () {
                     const inputId = this.getAttribute("data-directory-input");
                     if (inputId) {
-                        selectDirectory(inputId);
+                        // Aufruf der neuen Route zum Öffnen der Dateiauswahl
+                        fetch('/select-directory', {
+                            method: 'POST'
+                        })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.selected_directory) {
+                                    document.getElementById(inputId).value = data.selected_directory;
+                                } else {
+                                    alert("Keine Auswahl getroffen.");
+                                }
+                            })
+                            .catch(error => {
+                                console.error("Fehler beim Auswählen des Verzeichnisses:", error);
+                                alert("Fehler beim Auswählen des Verzeichnisses.");
+                            });
                     }
                 });
             });
+
 
             // Tabs und Inhalte initialisieren
             const tabs = [
@@ -817,6 +842,7 @@
                             "log_directory": "form-directories",
                             "xlsx_directory": "form-directories",
                             "import_directory": "form-directories",
+                            "schildexport_directory": "form-directories",
                             // ProcessingOptions
                             "use_abschlussdatum": "form-processing",
                             "create_second_file": "form-processing",
@@ -874,6 +900,7 @@
                     "log_directory": "Directories",
                     "xlsx_directory": "Directories",
                     "import_directory": "Directories",
+                    "schildexport_directory": "Directories",
                     // ProcessingOptions
                     "use_abschlussdatum": "ProcessingOptions",
                     "create_second_file": "ProcessingOptions",
