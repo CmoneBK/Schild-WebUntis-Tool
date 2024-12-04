@@ -14,11 +14,13 @@ import secrets  # Generieren sicherer Zufallswerte (z.B. für Secret Keys)
 import winshell  # Interaktion mit der Windows-Shell (z.B. Erstellen von Verknüpfungen)
 import pythoncom  # Python COM-Schnittstelle für Windows
 import threading
+import tkinter as tk
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
 from flask import Flask, render_template, request, jsonify, session  # Flask-Webframework
 from main import run, read_students, read_classes, compare_timeframe_imports  # Import von Funktionen aus eigenen Modulen
 from smtp import send_email  # Funktion zum Versenden von E-Mails aus eigenem Modul
 from waitress import serve
+from tkinter import filedialog
 import colorama
 from colorama import Fore, Back, Style, init
 
@@ -51,13 +53,16 @@ def print_info(message):
 def print_creation(message):
     thread_safe_print(Fore.WHITE, f"✨ {message}")
 
+def get_directory(key, default=None):
+    # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
+    config = configparser.ConfigParser()
+    config.read('settings.ini')
+    return config.get('Directories', key, fallback=default)
 
-# Globale Variablen für Warnungen und generierte E-Mails
-global warnings_cache, generated_emails_cache
 
 
 def resource_path(relative_path):
-    """ Gibt den Pfad zu einer Ressource zurück, funktioniert für dev und bei PyInstaller """
+    # Gibt den Pfad zu einer Ressource zurück, funktioniert für dev und bei PyInstaller
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -70,6 +75,9 @@ app = Flask(__name__,
             template_folder=os.path.join(base_dir, 'templates'),
             static_folder=os.path.join(base_dir, 'static'))
 app.secret_key = secrets.token_hex(24) # Generierung eines zufälligen Secret Keys für die Session
+
+# Globale Variablen für Warnungen und generierte E-Mails
+global warnings_cache, generated_emails_cache
 
 # Globale Caches für Warnungen und generierte E-Mails
 warnings_cache = []  # Cache für Warnungen
@@ -122,14 +130,16 @@ def ensure_ini_files_exist():
     default_log_dir = "Logs"
     default_xlsx_dir = "ExcelExports"
     default_import_dir = "WebUntis Importe"
+    default_schildexport_dir = "."
 
     # Standard-Inhalt für settings.ini vorbereiten
     settings_ini_content = f"""[Directories]
-classes_directory = ./{default_classes_dir}
-teachers_directory = ./{default_teachers_dir}
-log_directory = ./{default_log_dir}
-xlsx_directory = ./{default_xlsx_dir}
-import_directory = ./{default_import_dir}
+classes_directory = {default_classes_dir}
+teachers_directory = {default_teachers_dir}
+log_directory = {default_log_dir}
+xlsx_directory = {default_xlsx_dir}
+import_directory = {default_import_dir}
+schildexport_directory = {default_schildexport_dir}
 
 [ProcessingOptions]
 use_abschlussdatum = False
@@ -139,6 +149,7 @@ warn_aufnahmedatum = True
 warn_klassenwechsel = True
 timeframe_hours = 24
 """
+
     # Standard-Inhalt für email_settings.ini vorbereiten
     email_settings_ini_content = """# Einstellungen für den E-Mail-Versand
 # Passen Sie diese Einstellungen an Ihren SMTP-Server an.
@@ -194,20 +205,29 @@ body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_
         config.read("settings.ini")
 
     directories = {
-        "classes_directory": f"./{default_classes_dir}",
-        "teachers_directory": f"./{default_teachers_dir}",
-        "log_directory": f"./{default_log_dir}",
-        "xlsx_directory": f"./{default_xlsx_dir}",
+        "classes_directory": default_classes_dir,
+        "teachers_directory": default_teachers_dir,
+        "log_directory": default_log_dir,
+        "xlsx_directory": default_xlsx_dir,
+        "schildexport_directory": default_schildexport_dir,
     }
 
     for key, default_path in directories.items():
-        directory = config.get("Directories", key, fallback=default_path)
+        directory = config.get("Directories", key, fallback=default_path, raw=True)
+        directory = os.path.normpath(directory)
+        print_info(f"Verwende Verzeichnis für '{key}': {directory}")
+        if not os.path.isabs(directory):
+            directory = os.path.abspath(directory)
+            print_info(f"Relativer Pfad erkannt. Absoluter Pfad: {directory}")
         if not os.path.exists(directory):
             os.makedirs(directory)
             print_creation(f"Ordner '{directory}' wurde erstellt.")
 
-    # Sicherstellen, dass der Import-Ordner existiert
-    import_dir = "WebUntis Importe"
+    # Import-Verzeichnis ähnlich behandeln
+    import_dir = config.get('Directories', 'import_directory', fallback=default_import_dir, raw=True)
+    import_dir = os.path.normpath(import_dir)
+    if not os.path.isabs(import_dir):
+        import_dir = os.path.abspath(import_dir)
     if not os.path.exists(import_dir):
         os.makedirs(import_dir)
         print_creation(f"Ordner '{import_dir}' wurde erstellt.")
@@ -350,7 +370,13 @@ def index():
     teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
 
     # Überprüfen, ob die Haupt-CSV-Datei vorhanden ist
-    main_csv_exists = any(f.endswith('.csv') for f in os.listdir('.') if not os.path.isdir(f))
+    schildexport_dir = get_directory('schildexport_directory', default='.')
+    if schildexport_dir in ('.', '', None):
+        schildexport_dir = os.getcwd()
+    main_csv_exists = any(
+        f.endswith('.csv') for f in os.listdir(schildexport_dir) if not os.path.isdir(os.path.join(schildexport_dir, f))
+    )
+
     if not main_csv_exists:
         errors.append("Die Haupt-CSV-Datei fehlt im Hauptverzeichnis und wird für die Verarbeitung benötigt.")
         print_error("Fehler: Haupt-CSV-Datei fehlt im Hauptverzeichnis und wird für die Verarbeitung benötigt.")
@@ -606,8 +632,8 @@ def save_to_settings_ini(settings):
         for key, value in values.items():
             # Ersetze Backslashes durch Forward Slashes für Pfade
             if "directory" in key:
-                value = value.replace("\\", "/")
-                print_info(f"Pfad angepasst für '{key}': {value}")
+                value = os.path.normpath(value)
+                print_info(f"Pfad normalisiert für '{key}': {value}")
             config.set(section, key, str(value))
             print_info(f"Einstellung gesetzt: [{section}] {key} = {value}")
     with open("settings.ini", "w") as configfile:
@@ -683,6 +709,38 @@ def process_directory():
     formatted_path = full_path.replace("\\", "/")
 
     return jsonify({"fullPath": formatted_path})
+
+@app.route('/select-directory', methods=['POST'])
+def select_directory():
+    print_info("Öffne Dateiauswahl zur Auswahl eines Verzeichnisses...")
+
+    # Variable zum Speichern des Ergebnisses
+    result = {'directory': None}
+
+    def open_dialog():
+        try:
+            root = tk.Tk()
+            root.withdraw()  # Hauptfenster ausblenden
+            root.wm_attributes('-topmost', 1)  # Setzt das Fenster in den Vordergrund
+            directory = filedialog.askdirectory()
+            root.destroy()
+            if directory:
+                print_info(f"Verzeichnis ausgewählt: {directory}")
+                result['directory'] = directory
+            else:
+                print_warning("Keine Auswahl getroffen.")
+        except Exception as e:
+            error_message = f"Fehler beim Öffnen der Dateiauswahl: {str(e)}"
+            print_error(error_message)
+
+    thread = threading.Thread(target=open_dialog)
+    thread.start()
+    thread.join()
+
+    if result['directory']:
+        return jsonify({"selected_directory": result['directory']})
+    else:
+        return jsonify({"selected_directory": None})
 
 
 

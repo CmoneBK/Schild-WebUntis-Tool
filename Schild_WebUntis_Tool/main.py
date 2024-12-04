@@ -551,7 +551,11 @@ def read_students(use_abschlussdatum):
         print_success(f"Importverzeichnis '{import_dir}' wurde erstellt.")
 
     # Überprüfen, ob .csv Dateien im aktuellen Verzeichnis vorhanden sind
-    csv_files = [f for f in os.listdir('.') if f.endswith('.csv')]
+    schildexport_dir = get_directory('schildexport_directory', default='.')
+    if schildexport_dir in ('.', '', None):
+        schildexport_dir = os.getcwd()
+    csv_files = [f for f in os.listdir(schildexport_dir) if f.endswith('.csv')]
+
     if not csv_files:
         print_error("Keine CSV-Dateien im aktuellen Verzeichnis gefunden.")
         return [], {}
@@ -844,13 +848,20 @@ def save_files(output_data_students, warnings, create_second_file):
         second_output_data = []
 
         # Suche die neueste Datei im Hauptverzeichnis
-        csv_files = [f for f in os.listdir('.') if f.endswith('.csv')]
+        schildexport_dir = get_directory('schildexport_directory', default='.')
+        if schildexport_dir in ('.', '', None):
+            schildexport_dir = os.getcwd()
+        csv_files = [f for f in os.listdir(schildexport_dir) if f.endswith('.csv')]
+
         if not csv_files:
             print_error("Fehler: Keine CSV-Dateien im Hauptverzeichnis gefunden.")
             return
 
         # Daten für zweite Datei extrahieren
-        newest_file = max(csv_files, key=os.path.getctime)
+        newest_file = max(
+            [os.path.join(schildexport_dir, f) for f in csv_files], 
+            key=os.path.getctime
+        )
         print_info(f"Verwende Datei für zweite Ausgabe:\n {newest_file}")
         with open(newest_file, 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
