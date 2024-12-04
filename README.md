@@ -282,4 +282,5 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 
 ### Update 2.6
 - **Neue Kommandozeilen-Befehle und Funktionen:** Über die Kommandozeile lässt sich jetzt für die Nutzung als Server die Verzeichnisänderung im WebEnd deaktivieren sowie auch ein Dateiupload-Bereich aktivieren.
+- **Server Modus:** Ermöglichung der Änderung von IP und Port über die Kommandozeile.
 - **Bug Fixes:** Die Verzeichnisauswahl gab bei Auswahl im WebEnd nur Verzeichnisse im Programmverzeichnis zurück. 
