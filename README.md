@@ -141,7 +141,7 @@ Optionen:
 
 <details><summary>4. Mit dem `#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool` können Sie... </summary>z.B. Verknüpfungen geneieren die beim Doppelklick gewählte Prozesse direkt hintereinander ausführen (auch ohne dass ich überhaupt die Webseite öffnet). Gleiches gilt für Kommandozeilen-Befehle.</details>
 
-<details><summary>5. Auf der außerdem geöffneten Konsole können Sie... </summary>den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.</details>
+<details><summary>5. Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. </summary> Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.</details>
 
 
 
