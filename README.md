@@ -16,11 +16,12 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
   - für Klassenwechsel, die eine manuelle Nachbearbeitung in WebUntis erfordern.
     </details>
 <details><summary><b>📩E-Mail-Benachrichtigungen:</b> E-Mails für Klassenlehrkräfte</summary>Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen.</details>
-<details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von zu geneirenden Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie Ändern aller Einstellungen und Verzeichnisse direkt über den Browser.</details>
-<details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.</details>
 <details><summary><b>📢Admin Warnungen:</b> Wenn Ihre Daten durch Veralterung inkonsistent werden bekommen Sie Meldungen bevor was schiefgeht.</summary>Der Nutzer erhält per Konsole (optional Mail) Meldungen, wenn in den Schild-Daten (plötzlich) Klassen oder Klassenlehrkräfte vorkommen die in den bereitgestellten Klassen- und Lehrkräftedaten noch fehlen.</details>
 <details><summary><b>🔃📜Änderungs-Log-Dateien:</b> Alle Dateiumwandlugnen werden protokolliert und bei Bedarf an Sie versendet.</summary>Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten. Bei Angabe einer E-Mail Adresse ist auch ein Versand an diese möglich.</details>
-<details><summary><b>#️⃣Kommandozeilen-Modus:</b> Einer Voll-Automatisierung steht nichts im Weg.</summary>Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-mail.</details>
+<details><summary><b>#️⃣Kommandozeilen-Modus:</b> Einer Voll-Automatisierung steht nichts im Weg.</summary>Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-mail.
+<details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von zu geneirenden Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie Ändern aller Einstellungen und Verzeichnisse direkt über den Browser.</details>
+<details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.</details>
+</details>
 
 ## Voraussetzungen
 <details>
