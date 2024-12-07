@@ -168,10 +168,10 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 
 ## Hinweise
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
-- **Screenshots:** 
+
 
 <body>
-  <h1>Screenshot-Galerie</h1>
+  <h2>Screenshot-Galerie</h2>
   <table border="1" cellspacing="10" cellpadding="5" align="center">
     <tr>
       <td>
