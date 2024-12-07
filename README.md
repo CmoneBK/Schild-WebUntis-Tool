@@ -133,7 +133,10 @@ Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Ve
 </details>
 
 Optionen: 
-- Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
+- Durch Auswahloptionen im oberen Bereich haben Sie die Möglichkeit für den aktuellen Durchlauf die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
+- Über `⚙️ Einstellungen` können Sie alle Einstellugen dauerhaft beeinflussen.
+- Über `✉️ Email-Vorlagen Editor` können Sie alle E-Mail Vorlagen dauerhaft ändern.
+- Mit dem `#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool` können Sie z.B. Verknüpfungen generierne die beim Doppelklick gewählte Prozesse direkt hintereinander ausführen (auch ohne dass ich überhaupt die Webseite öffnet). Gleiches gilt für Kommandozeilen-Befehle.
 - Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.
 
 
