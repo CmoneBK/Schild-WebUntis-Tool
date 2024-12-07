@@ -87,7 +87,7 @@ Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leicht
 <details><summary>3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.</summary>
 Dazu zählen die settings.ini und email_settings.ini, sowie Verzeichnisse für Klassendaten, das Lehrerdaten, Logs, ExcelExporte (auch Logs) und die WebUntis-Importe.</details>      
 <details>
-<summary><b>4. (Optional für den Fall, dass Sie die Warnungs- und E-Mail Funktionen nutzen wollen)</b></summary>
+<summary><b>(Optional für den Fall, dass Sie die Warnungs- und E-Mail Funktionen nutzen wollen)</b></summary>
 <br>
   
 Passen Sie im Browser Ihre Standard-Einstellungen im Bereich `⚙️ Einstellungen` an Ihre Umgebung an:
@@ -117,7 +117,6 @@ Platzieren Sie schließlich die Klassen- und Lehrerdaten-Dateien in den Verzeich
 </details>
 </details>
 
-5. Öffnen Sie die im Browser angezeigte Webseite, um das Tool zu nutzen.
 
 ## Verwendung
 Hauptfunktion:
