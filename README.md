@@ -120,24 +120,28 @@ Platzieren Sie schließlich die Klassen- und Lehrerdaten-Dateien in den Verzeich
 
 ## Verwendung
 Hauptfunktion:
-1. Das Programm wandelt bei einem Klick auf `Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterorder `WebUntis Importe` mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
+Das Programm wandelt bei einem Klick auf `Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterorder `WebUntis Importe` mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
 Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Verzeichnis exportierten Datei und stellt kritische Unterschiede als Warnungen dar.
 
 <details>
 <summary>E-Mail-Funktion:</summary>
 
-2. Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
+- Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
 
-3. Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet.
+- Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet.
 
 </details>
 
 Optionen: 
-- Durch Auswahloptionen im oberen Bereich haben Sie die Möglichkeit für den aktuellen Durchlauf die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
-- Über `⚙️ Einstellungen` können Sie alle Einstellugen dauerhaft beeinflussen.
-- Über `✉️ Email-Vorlagen Editor` können Sie alle E-Mail Vorlagen dauerhaft ändern.
-- Mit dem `#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool` können Sie z.B. Verknüpfungen generierne die beim Doppelklick gewählte Prozesse direkt hintereinander ausführen (auch ohne dass ich überhaupt die Webseite öffnet). Gleiches gilt für Kommandozeilen-Befehle.
-- Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.
+<details><summary>1. Durch die Auswahloptionen im oberen Bereich... </summary> haben Sie die Möglichkeit für den aktuellen Durchlauf die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.</details>
+
+2. Über `⚙️ Einstellungen` können Sie alle Einstellugen dauerhaft beeinflussen.
+
+3. Über `✉️ Email-Vorlagen Editor` können Sie alle E-Mail Vorlagen dauerhaft ändern.
+
+<details><summary>4. Mit dem `#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool` können Sie... </summary>z.B. Verknüpfungen geneieren die beim Doppelklick gewählte Prozesse direkt hintereinander ausführen (auch ohne dass ich überhaupt die Webseite öffnet). Gleiches gilt für Kommandozeilen-Befehle.</details>
+
+<details><summary>5. Auf der außerdem geöffneten Konsole können Sie... </summary>den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.</details>
 
 
 
