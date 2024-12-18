@@ -22,6 +22,7 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
 <details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von zu geneirenden Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie Ändern aller Einstellungen und Verzeichnisse direkt über den Browser.</details>
 <details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.</details>
 </details>
+<details><summary><b>🔐Sicherheit und Internetunabhänige Verarbeitung:</b> Internetverbindung nur für Mail-Versand und visuelle Darstellung erforderlich</summary>Das Tool verarbeitet Daten unabhängig vom Internet. Eine Verbindung ist bei Nutzung des Kommandozeilenmodus ausschließlich für den Mail-Versand erforderlich. Im Browser-Frontend wird lediglich lesend auf externe visuelle Online Ressourchen zugegriffen. Es werden keinerlei Daten versendet. </details>
 
 ## Voraussetzungen
 <details>
