@@ -145,6 +145,10 @@
                         <input type="checkbox" class="form-check-input" id="warn_klassenwechsel" name="warn_klassenwechsel" {% if warn_klassenwechsel %}checked{% endif %}>
                         <label class="form-check-label" for="warn_klassenwechsel">Warnungen für Klassenwechsel erstellen</label>
                     </div>
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="warn_new_students" name="warn_new_students" {% if warn_new_students %}checked{% endif %}>
+                        <label class="form-check-label" for="warn_new_students">Warnungen für neue Schüler erstellen</label>
+                    </div>
                     <div class="btn-group mt-4">
                         <button type="submit" class="btn btn-primary">▶️ Verarbeiten</button>
                         <button id="generateEmails" type="button" class="btn btn-info">✍ Emails Generieren</button>
@@ -211,6 +215,9 @@
                         {% if 'neues_aufnahmedatum' in warning %}
                         <strong>Neues Aufnahmedatum:</strong> {{ warning['neues_aufnahmedatum'] }}<br>
                         <strong>Altes Aufnahmedatum:</strong> {{ warning['altes_aufnahmedatum'] }}<br>
+                        {% endif %}
+                        {% if 'new_student' in warning and warning.new_student %}
+                        <strong>Aufnahmedatum:</strong> {{ warning['Aufnahmedatum'] }}<br>
                         {% endif %}
                         {% if 'neue_klasse' in warning %}
                         <strong>Alte Klasse:</strong> {{ warning.get('alte_klasse', 'N/A') }}<br>
@@ -386,6 +393,13 @@
                                 <option value="False">Inaktiv</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="warn_new_students">🆕 Immer Warnungen für neue Schüler generieren:</label>
+                            <select class="form-control" id="warn_new_students" name="warn_new_students">
+                                <option value="True">Aktiv</option>
+                                <option value="False">Inaktiv</option>
+                            </select>
+                        </div>
                     </form>
                 </div>
                 <!-- Konsole -->
@@ -467,6 +481,9 @@
                     <a class="nav-link" id="klassenwechsel-tab" data-toggle="tab" href="#klassenwechsel" role="tab" aria-controls="klassenwechsel" aria-selected="false">🔄 Klassenwechsel</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" id="newstudent-tab" data-toggle="tab" href="#newstudent" role="tab" aria-controls="newstudent" aria-selected="false">🆕 Neue Schüler</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" id="email-info-tab" data-toggle="tab" href="#email-info" role="tab" aria-controls="email-info" aria-selected="false">🗝️ℹ️Schlüssel-Info</a>
                 </li>
             </ul>
@@ -510,6 +527,20 @@
                             <label for="bodyKlassenwechsel">📜 Nachricht:</label>
                             <div id="editorBodyKlassenwechsel" class="quill-editor"></div>
                             <textarea id="bodyKlassenwechsel" name="body_klassenwechsel" class="form-control d-none"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <!-- Neue Schüler -->
+                <div class="tab-pane fade" id="newstudent" role="tabpanel" aria-labelledby="newstudent-tab">
+                    <form id="newStudentForm">
+                        <div class="form-group">
+                            <label for="subjectNewStudent">📧 Betreff:</label>
+                            <input type="text" class="form-control" id="subjectNewStudent" name="subject_new_student">
+                        </div>
+                        <div class="form-group">
+                            <label for="bodyNewStudent">📜 Nachricht:</label>
+                            <div id="editorBodyNewStudent" class="quill-editor"></div>
+                            <textarea id="bodyNewStudent" name="body_new_student" class="form-control d-none"></textarea>
                         </div>
                     </form>
                 </div>
@@ -642,16 +673,118 @@
             <p>Wählen Sie die Dateien aus, die Sie hochladen möchten:</p>
             <form id="uploadForm">
                 <div class="form-group">
-                    <label for="classDataFiles">Klassendaten hochladen:</label>
-                    <input type="file" class="form-control-file" id="classDataFiles" name="class_data_files" multiple>
+                    <label for="classDataFiles">🏫 Klassendaten hochladen:</label>
+                    <div class="input-group">
+                        <input type="file" class="form-control-file" id="classDataFiles" name="class_data_files" multiple>
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#classDataHelp" aria-expanded="false" aria-controls="classDataHelp">
+                                ℹ️ Hilfestellung
+                            </button>
+                        </div>
+                    </div>
+                    <div id="classDataHelp" class="collapse mt-2">
+                        <p class="text-muted">
+                            So erstellen Sie den Stammdaten-Export der Klassen:
+                        </p>
+                        <ol>
+                            <li>
+                                Gehen Sie in WebUntis zu <em>Stammdaten → Klassen</em>.
+                            </li>
+                            <li>
+                                Kopieren Sie die Tabelle in eine Excel-Datei.
+                            </li>
+                            <li>
+                                Die Datei sollte folgende Spalten in genau dieser Reihenfolge enthalten (nichts umbenennen):
+                            </li>
+                        </ol>
+                        <pre><code>Auswahl, [eine Leere Spalte], Klasse, Langname, Alias, Jahrgangsstufe, Text, Klassenlehrkraft, Klassenlehrkraft, Abteilung, Von, Bis</code></pre>
+                        <p>
+                            <b>Hinweis:</b> Die Tabelle aus WebUntis kann einfach kopiert und eingefügt werden, ohne zusätzliche Änderungen vorzunehmen.
+                        </p>
+                        <p>
+                            Exportieren Sie diese Excel-Datei anschließend mit Excel als <code>.csv</code>.
+                        </p>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="teacherDataFiles">Lehrerdaten hochladen:</label>
-                    <input type="file" class="form-control-file" id="teacherDataFiles" name="teacher_data_files" multiple>
+                    <label for="teacherDataFiles">🧑‍🏫 Lehrerdaten hochladen:</label>
+                    <div class="input-group">
+                        <input type="file" class="form-control-file" id="teacherDataFiles" name="teacher_data_files" multiple>
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#teacherDataHelp" aria-expanded="false" aria-controls="teacherDataHelp">
+                                ℹ️ Hilfestellung
+                            </button>
+                        </div>
+                    </div>
+                    <div id="teacherDataHelp" class="collapse mt-2">
+                        <p class="text-muted">
+                            So erstellen Sie den Stammdaten-Export der Lehrkräfte:
+                        </p>
+                        <ol>
+                            <li>
+                                Gehen Sie in WebUntis zu <em>Stammdaten → Lehrkräfte</em>.
+                            </li>
+                            <li>
+                                Scrollen Sie nach unten und klicken Sie auf <em>Berichte</em>.
+                            </li>
+                            <li>
+                                Wählen Sie den <strong>CSV-Bericht</strong> bei "Lehrkräfte".
+                            </li>
+                            <li>
+                                **Wichtiger Hinweis:** Das Feld für die E-Mail-Adressen muss mit den Dienst-E-Mail-Adressen der Kollegen gefüllt sein, damit es nachher funktioniert.
+                            </li>
+                        </ol>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label for="schildExportFiles">Schild-Export Dateien hochladen:</label>
-                    <input type="file" class="form-control-file" id="schildExportFiles" name="schild_export_files" multiple>
+                    <label for="schildExportFiles">🟦 Schild-Export Dateien hochladen:</label>
+                    <div class="input-group">
+                        <input type="file" class="form-control-file" id="schildExportFiles" name="schild_export_files" multiple>
+                        <div class="input-group-append">
+                            <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#schildExportHelp" aria-expanded="false" aria-controls="schildExportHelp">
+                                ℹ️ Hilfestellung
+                            </button>
+                        </div>
+                    </div>
+                    <div id="schildExportHelp" class="collapse mt-2">
+                        <p class="text-muted">
+                            So erstellen Sie den Schild NRW Export:
+                        </p>
+                        <ul>
+                            <li><strong>Auswahlsfilter in SchildNRW und Export:</strong></li>
+                            <li>
+                                Unten bei Laufbahninfo bei Schuljahr das aktuelle Schuljahr auswählen.
+                            </li>
+                            <li>
+                                Oben rechts bei Status: <em>Aktiv</em>, <em>Abschluss</em> und <em>Abgänger</em> anwählen.
+                            </li>
+                            <li>
+                                Speichern Sie diesen Filter, damit Sie ihn später über "Auswahl - Vorhandene Filter laden" wieder verwenden können.
+                            </li>
+                            <li>
+                                Export aus SchildNRW als Text/Excel Export, jedoch unbedingt mit der manuell eingegebenen Dateiendung <code>.csv</code>.
+                            </li>
+                            <li>
+                                Als Separator ist <code>;</code> zu wählen.
+                            </li>
+                        </ul>
+                        <p><b>Erforderliche Daten (in dieser Reihenfolge):</b></p>
+                        <pre><code>Interne ID-Nummer, Nachname, Vorname, Klasse, Klassenlehrer, Geburtsdatum, Geschlecht, vorrauss. Abschluss, Aufnahmedatum, Entlassdatum, Volljährig, Schulpflicht erfüllt, Status</code></pre>
+                        <p><b>Optionale Daten:</b></p>
+                        <pre><code>E-Mail (privat), Telefon-Nr., Fax-Nr., Straße, Postleitzahl, Ortsname</code></pre>
+                        <p><b>Hinweise:</b></p>
+                        <ul>
+                            <li>
+                                Der Export funktioniert nicht, wenn die Datei als Excel-Datei exportiert und anschließend als <code>.csv</code> gespeichert wird.
+                            </li>
+                            <li>
+                                Ergänzen Sie die Endung <code>.csv</code> manuell, nachdem Sie den Exporttyp <em>Textdatei</em> ausgewählt haben.
+                            </li>
+                            <li>
+                                Speichern Sie die Exporteinstellungen als Vorlage ab, um sie später schneller verwenden zu können.
+                            </li>
+                        </ul>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary">Dateien hochladen</button>
             </form>
@@ -733,6 +866,7 @@
             const editorBodyEntlassdatum = new Quill('#editorBodyEntlassdatum', { theme: 'snow' });
             const editorBodyAufnahmedatum = new Quill('#editorBodyAufnahmedatum', { theme: 'snow' });
             const editorBodyKlassenwechsel = new Quill('#editorBodyKlassenwechsel', { theme: 'snow' });
+            const editorBodyNewStudent = new Quill('#editorBodyNewStudent', { theme: 'snow' });
 
             // Load templates dynamically
             fetch("/get_templates")
@@ -742,11 +876,13 @@
                     document.getElementById("subjectEntlassdatum").value = data.subject_entlassdatum || "";
                     document.getElementById("subjectAufnahmedatum").value = data.subject_aufnahmedatum || "";
                     document.getElementById("subjectKlassenwechsel").value = data.subject_klassenwechsel || "";
+                    document.getElementById("subjectNewStudent").value = data.subject_new_student || "";
 
                     // Populate body fields in Quill editors
                     editorBodyEntlassdatum.root.innerHTML = data.body_entlassdatum || "";
                     editorBodyAufnahmedatum.root.innerHTML = data.body_aufnahmedatum || "";
                     editorBodyKlassenwechsel.root.innerHTML = data.body_klassenwechsel || "";
+                    editorBodyNewStudent.root.innerHTML = data.body_new_student || "";
                 })
                 .catch(error => {
                     console.error("Error loading email templates:", error);
@@ -759,6 +895,7 @@
                 document.getElementById('bodyEntlassdatum').value = editorBodyEntlassdatum.root.innerHTML;
                 document.getElementById('bodyAufnahmedatum').value = editorBodyAufnahmedatum.root.innerHTML;
                 document.getElementById('bodyKlassenwechsel').value = editorBodyKlassenwechsel.root.innerHTML;
+                document.getElementById('bodyNewStudent').value = editorBodyNewStudent.root.innerHTML;
 
                 const formData = new FormData();
                 formData.append("subject_entlassdatum", document.getElementById("subjectEntlassdatum").value);
@@ -767,6 +904,8 @@
                 formData.append("body_aufnahmedatum", document.getElementById("bodyAufnahmedatum").value);
                 formData.append("subject_klassenwechsel", document.getElementById("subjectKlassenwechsel").value);
                 formData.append("body_klassenwechsel", document.getElementById("bodyKlassenwechsel").value);
+                formData.append("subject_new_student", document.getElementById("subjectNewStudent").value);
+                formData.append("body_new_student", document.getElementById("bodyNewStudent").value);
 
                 fetch("/update_templates", {
                     method: "POST",
@@ -874,6 +1013,7 @@
                             "warn_entlassdatum": "form-warnings",
                             "warn_aufnahmedatum": "form-warnings",
                             "warn_klassenwechsel": "form-warnings",
+                            "warn_new_students": "form-warnings",
                             // Console
                             "timeframe_hours": "form-console",
                             // Email settings
@@ -931,6 +1071,7 @@
                     "warn_entlassdatum": "ProcessingOptions",
                     "warn_aufnahmedatum": "ProcessingOptions",
                     "warn_klassenwechsel": "ProcessingOptions",
+                    "warn_new_students": "ProcessingOptions",
                     "timeframe_hours": "ProcessingOptions",
                     // Email settings
                     "smtp_server": "Email",
