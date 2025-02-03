@@ -1,13 +1,13 @@
 # Schild-WebUntis-Tool
 **Dieses Tool ist eine Weiterentwicklung des [SchildNRW-WebUntis-Umwandlers](https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master)**
 
-Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei der Dokumentation und Kommunikation zwischen Lehrkräften, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten oder Klassenwechseln.
+Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten oder Klassenwechseln. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
 
 *Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht,...).
 
 ## Funktionen
       
-<details><summary><b>🔄Datenumwandlung:</b> Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.</summary>Daten wie Schulpflicht müssen boolsch (0->1,1->0) umgekehrt werden damit sie passen. Beim Status wird bei Schild eine 2, 7, 8 ausgegeben, was in WebUntis auch boolschen Werten (Aktiv, Inaktiv, Inaktiv) enspricht. Solche Umwandlungen können grade bei größeren Schulen und täglichem Import mühsam sein. Jetzt nicht mehr.</details>
+<details><summary><b>🔄Datenumwandlung:</b> Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.</summary>Daten wie Schulpflicht müssen boolsch (Nein->Ja,Ja->Nein) umgekehrt werden damit sie passen. Beim Status wird bei Schild eine 2, 7, 8 ausgegeben, was in WebUntis auch boolschen Werten (Aktiv, Inaktiv, Inaktiv) enspricht. Solche Umwandlungen können grade bei größeren Schulen und täglichem Import mühsam sein. Jetzt nicht mehr.</details>
 <details><summary><b>⚠️Warnungen für Klassenlehrkräfte:</b> Generiert (auf Wunsch) Warnungen:</summary>
 Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schild zu ungünstigen Eingaben kommen die aber noch ungünstigere Konsequenzen haben. Hier werden Warnungen erstellt:
       
@@ -16,11 +16,13 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
   - für Klassenwechsel, die eine manuelle Nachbearbeitung in WebUntis erfordern.
     </details>
 <details><summary><b>📩E-Mail-Benachrichtigungen:</b> E-Mails für Klassenlehrkräfte</summary>Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen.</details>
-<details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von zu geneirenden Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie Ändern aller Einstellungen und Verzeichnisse direkt über den Browser.</details>
-<details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.</details>
 <details><summary><b>📢Admin Warnungen:</b> Wenn Ihre Daten durch Veralterung inkonsistent werden bekommen Sie Meldungen bevor was schiefgeht.</summary>Der Nutzer erhält per Konsole (optional Mail) Meldungen, wenn in den Schild-Daten (plötzlich) Klassen oder Klassenlehrkräfte vorkommen die in den bereitgestellten Klassen- und Lehrkräftedaten noch fehlen.</details>
 <details><summary><b>🔃📜Änderungs-Log-Dateien:</b> Alle Dateiumwandlugnen werden protokolliert und bei Bedarf an Sie versendet.</summary>Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten. Bei Angabe einer E-Mail Adresse ist auch ein Versand an diese möglich.</details>
 <details><summary><b>#️⃣Kommandozeilen-Modus:</b> Einer Voll-Automatisierung steht nichts im Weg.</summary>Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-mail.</details>
+<details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von zu geneirenden Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie Ändern aller Einstellungen und Verzeichnisse direkt über den Browser.</details>
+<details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.</details>
+</details>
+<details><summary><b>🔐Sicherheit und internetunabhänige Verarbeitung:</b> Internetverbindung nur für Mail-Versand und visuelle Darstellung erforderlich</summary>Das Tool verarbeitet Daten unabhängig vom Internet. Eine Verbindung ist bei Nutzung des Kommandozeilenmodus ausschließlich für den Mail-Versand erforderlich. Im Browser-Frontend wird lediglich lesend auf externe visuelle Online Ressourchen zugegriffen. Es werden keinerlei Daten versendet. </details>
 
 ## Voraussetzungen
 <details>
@@ -79,13 +81,14 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
 
 
 ## Installation
-1. Die .exe Dateien finden Sie unter: </br>[Schild-WebUntis-Tool.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool.exe) (für Test-Umgebung, wird nicht mehr aktualisiert) </br>[Schild-WebUntis-Tool-WServer.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) (für Produktions-Umgebung).</br>
-Dort gibt es oben rechts neben dem 'RAW' einen Download-Button. Laden Sie sie runter und platzieren Sie sie in einem leeren Ordner.   
-2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool.exe`-Datei. 
+1. Die .exe Datei unter [Schild-WebUntis-Tool-WServer](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) in ein leeres (!) Verzeichnis herunterladen.</br>
+   Hinter dem Link gibt es oben rechts neben dem 'RAW' einen Download-Button.
+2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool-WServer.exe`-Datei.</br>
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
-3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.
+<details><summary>3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.</summary>
+Dazu zählen die settings.ini und email_settings.ini, sowie Verzeichnisse für Klassendaten, das Lehrerdaten, Logs, ExcelExporte (auch Logs) und die WebUntis-Importe.</details>      
 <details>
-<summary><b>4. (Optional für den Fall, dass Sie die Warnungs- und E-Mail Funktionen nutzen wollen)</b></summary>
+<summary><b>(Optional für den Fall, dass Sie die Warnungs- und E-Mail Funktionen nutzen wollen)</b></summary>
 <br>
   
 Passen Sie im Browser Ihre Standard-Einstellungen im Bereich `⚙️ Einstellungen` an Ihre Umgebung an:
@@ -115,32 +118,39 @@ Platzieren Sie schließlich die Klassen- und Lehrerdaten-Dateien in den Verzeich
 </details>
 </details>
 
-5. Öffnen Sie die im Browser angezeigte Webseite, um das Tool zu nutzen.
 
 ## Verwendung
 Hauptfunktion:
-1. Das Programm wandelt bei einem Klick auf `Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterorder `WebUntis Importe` mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
+Das Programm wandelt bei einem Klick auf `Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterorder `WebUntis Importe` mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
 Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Verzeichnis exportierten Datei und stellt kritische Unterschiede als Warnungen dar.
 
 <details>
 <summary>E-Mail-Funktion:</summary>
 
-2. Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
+- Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
 
-3. Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet.
+- Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet.
 
 </details>
 
 Optionen: 
-- Durch Auswahloptionen haben Sie die Möglichkeit die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.
-- Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.
+<details><summary>1. Durch die Auswahloptionen im oberen Bereich... </summary> haben Sie die Möglichkeit für den aktuellen Durchlauf die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.</details>
+
+2. Über `⚙️ Einstellungen` können Sie alle Einstellugen dauerhaft beeinflussen.
+
+3. Über `✉️ Email-Vorlagen Editor` können Sie alle E-Mail Vorlagen dauerhaft ändern.
+<details><summary>4. Mit dem `#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool` können Sie... </summary> z.B. Verknüpfungen geneieren die beim Doppelklick gewählte Prozesse direkt hintereinander ausführen (auch ohne dass ich überhaupt die Webseite öffnet). Gleiches gilt für Kommandozeilen-Befehle.</details>
+<details><summary>5. Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. </summary> Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.</details>
 
 
 
 ## Alternative Verwendung über Kommandozeile
 <details>
 <summary><b>Einblenden/Ausblenden</b></summary>
-  
+
+      
+Wichtig: Die hier dargestellten Befehle lassen sich auch mit dem `#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool` generieren. Dieses bietet auch Hinweise und Anleitungen.  
+      
 - Navigieren Sie in das Verzeichnis der `.exe`, klicken Sie auf die Adresszeile im Explorer, geben Sie `cmd` ein und drücken Sie Enter.
    
 - Variante A: Geben Sie `Schild-WebUntis-Tool.exe --no-web --process` ein und drücken Sie Enter. Es wird nur die Hauptfunktion ausgeführt. Warnungen werden nur auf der Konsolde dargestellt.
@@ -161,14 +171,16 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - `--send-log-email` Ermöglicht den Versand eines Änderungs-Logs (HMTL Tabelle + .xlsx-Datei) per Mail auf Grundlage eines Zeitintervalls für das Mindestalter der Vergleichs-Datei
 - `--no-directory-change` Verhindert, dass Verzeichnisse über das WebEnd geändert werden können. Dazu wird der Tab in den Einstellungen entfernt und im BackEnd Funktionen blockiert.
 - `--enable-upload` Ermöglicht einen Upload von Dateien in die Verzeichnisse.⚠️ Aus Sicherheitsgründen sollte --enable-upload niemals ohne --no-directory-change verwendet werden!⚠️
+- `--host` IP-Adresse, auf der der Server laufen soll (Standard: 0.0.0.0)
+- `--port` Port, auf dem der Server laufen soll (Standard: 5000)
 </details>
 
 ## Hinweise
 - **Testumgebung:** Nutzen Sie eine WebUntis-Spielwiese für Tests. Für Produktionsumgebungen sind keine Garantie oder Haftung gegeben.
-- **Screenshots:** 
+
 
 <body>
-  <h1>Screenshot-Galerie</h1>
+  <h2>Screenshot-Galerie</h2>
   <table border="1" cellspacing="10" cellpadding="5" align="center">
     <tr>
       <td>
@@ -280,4 +292,5 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 
 ### Update 2.6
 - **Neue Kommandozeilen-Befehle und Funktionen:** Über die Kommandozeile lässt sich jetzt für die Nutzung als Server die Verzeichnisänderung im WebEnd deaktivieren sowie auch ein Dateiupload-Bereich aktivieren.
+- **Server Modus:** Ermöglichung der Änderung von IP und Port über die Kommandozeile.
 - **Bug Fixes:** Die Verzeichnisauswahl gab bei Auswahl im WebEnd nur Verzeichnisse im Programmverzeichnis zurück. 
