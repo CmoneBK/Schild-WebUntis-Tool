@@ -321,5 +321,11 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Bug Fixes:** Die Verzeichnisauswahl gab bei Auswahl im WebEnd nur Verzeichnisse im Programmverzeichnis zurück. 
 </details>
 
-### Update 2.7
+<summary><b>Update 2.7</b></summary>
+
 - **Warnungen für neue Schüler:** Es wurde eine Warnoption für neue Schüler hinzugefügt. In WebUntis kann dies mit der Notwendigkeit zur Aktualisierung von Schülergruppen einhergehen, sodass nun eine automatische Info erfolgen kann.
+</details>
+
+### Update 2.8
+- **Attestpflicht-Spalte:** Es wurde eine Funktion zur optionalen Integration der Attestpflicht hinzugefügt. Sie basiert auf dem Vermerk der Attestpflicht in Schild.
+- **Klassengrößen Auswertung:** Es wurde die Option zur Generirung eines zusätzlichen Auswertungsdokuments zu den Klassengrößen/stärken hinzugefügt. Diese Datei kann so mit jedem Import generiert und Interessierten (Vertretungsteam, Stundenplaner) zur Verfügung gestellt werden.
