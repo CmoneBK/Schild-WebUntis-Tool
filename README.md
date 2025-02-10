@@ -82,7 +82,7 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
 
 </details>
 <details>
-<summary><b>4. Optional: Die Attestpflicht-Spalte</b></summary>
+<summary><b>4. Optional: Für die Attestpflicht-Spalte</b></summary>
 
 Falls die Attestpflicht-Spalte verwenden möchten, aktivieren Sie die Funktion und stellen einen Datensatz mit Schid wie folgt her:
 
