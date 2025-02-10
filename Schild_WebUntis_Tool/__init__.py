@@ -95,6 +95,8 @@ def process_data(no_log=False, no_xlsx=False):
     # Werte aus der Konfigurationsdatei laden, da in diesem Fall das WebEnd nicht immer geöffnet ist.
     use_abschlussdatum = config.getboolean('ProcessingOptions', 'use_abschlussdatum', fallback=False)
     create_second_file = config.getboolean('ProcessingOptions', 'create_second_file', fallback=False)
+    create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True)
+    enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False)
     warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
     warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
@@ -104,6 +106,8 @@ def process_data(no_log=False, no_xlsx=False):
     print_info("Beginne Verarbeitung mit folgenden Optionen:...")
     print_info(f"use_abschlussdatum: {use_abschlussdatum}")
     print_info(f"create_second_file: {create_second_file}")
+    print_info(f"create_class_size_file: {create_class_size_file}")
+    print_info(f"enable_attestpflicht_column: { enable_attestpflicht_column}")
     print_info(f"warn_entlassdatum: {warn_entlassdatum}")
     print_info(f"warn_aufnahmedatum: {warn_aufnahmedatum}")
     print_info(f"warn_klassenwechsel: {warn_klassenwechsel}")
@@ -118,6 +122,8 @@ def process_data(no_log=False, no_xlsx=False):
     all_warnings = run(                         #Hier wird die def_run aus der main.py mit den erfassten Einstellungen abgerufen und ausgeführt.
         use_abschlussdatum=use_abschlussdatum,
         create_second_file=create_second_file,
+        enable_attestpflicht_column=enable_attestpflicht_column,
+        create_class_size_file= create_class_size_file,
         warn_entlassdatum=warn_entlassdatum,
         warn_aufnahmedatum=warn_aufnahmedatum,
         warn_klassenwechsel=warn_klassenwechsel,
@@ -137,6 +143,8 @@ def ensure_ini_files_exist():
     default_xlsx_dir = "ExcelExports"
     default_import_dir = "WebUntis Importe"
     default_schildexport_dir = "."
+    default_class_size_dir = "ClassSizes"
+    default_attest_file_directory ="AttestpflichtDaten"
 
     # Standard-Inhalt für settings.ini vorbereiten
     settings_ini_content = f"""[Directories]
@@ -146,6 +154,8 @@ log_directory = {default_log_dir}
 xlsx_directory = {default_xlsx_dir}
 import_directory = {default_import_dir}
 schildexport_directory = {default_schildexport_dir}
+class_size_directory = {default_class_size_dir}
+attest_file_directory = {default_attest_file_directory}
 
 [ProcessingOptions]
 use_abschlussdatum = False
@@ -154,7 +164,9 @@ warn_entlassdatum = True
 warn_aufnahmedatum = True
 warn_klassenwechsel = True
 warn_new_students = True
+create_class_size_file = False
 timeframe_hours = 24
+enable_attestpflicht_column = False
 """
 
     # Standard-Inhalt für email_settings.ini vorbereiten
@@ -219,6 +231,7 @@ body_new_student = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die
         "log_directory": default_log_dir,
         "xlsx_directory": default_xlsx_dir,
         "schildexport_directory": default_schildexport_dir,
+        "class_size_directory": default_class_size_dir,
     }
 
     for key, default_path in directories.items():
@@ -364,6 +377,8 @@ def index():
     warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
     warn_new_students = config.getboolean('ProcessingOptions', 'warn_new_students', fallback=True)
+    create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True) 
+    enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False) 
 
     # Werte aus der email_settings.ini laden
     config = configparser.ConfigParser()
@@ -413,6 +428,8 @@ def index():
         warn_aufnahmedatum = request.form.get('warn_aufnahmedatum') == 'on'
         warn_klassenwechsel = request.form.get('warn_klassenwechsel') == 'on'
         warn_new_students = request.form.get('warn_new_students') == 'on'
+        create_class_size_file = request.form.get('create_class_size_file') == 'on'
+        enable_attestpflicht_column = request.form.get('enable_attestpflicht_column') == 'on'
 
         # Übergebe die Auswahl an die Run-Funktion
         try:
@@ -427,7 +444,9 @@ def index():
                 warn_klassenwechsel=warn_klassenwechsel,
                 warn_new_students=warn_new_students,
                 no_log=no_log,
-                no_xlsx=no_xlsx
+                no_xlsx=no_xlsx,
+                create_class_size_file=create_class_size_file, 
+                enable_attestpflicht_column=enable_attestpflicht_column
             )
             warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
 
@@ -452,6 +471,8 @@ def index():
         warn_aufnahmedatum=warn_aufnahmedatum,
         warn_klassenwechsel=warn_klassenwechsel,
         warn_new_students = warn_new_students,
+        create_class_size_file = create_class_size_file,
+        enable_attestpflicht_column = enable_attestpflicht_column,
         subject_entlassdatum=subject_entlassdatum,
         body_entlassdatum=body_entlassdatum,
         subject_aufnahmedatum=subject_aufnahmedatum,
@@ -1024,6 +1045,7 @@ def validate_teacher_data_file(file):
     except Exception as e:
         print_warning(f"Fehler beim Validieren der Lehrerdaten-Datei '{file.filename}': {e}")
         return False
+
 
 
 

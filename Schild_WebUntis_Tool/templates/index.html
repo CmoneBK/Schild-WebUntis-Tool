@@ -125,30 +125,65 @@
             </div>
             <div class="card-body">
                 <form method="post">
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" id="use_abschlussdatum" name="use_abschlussdatum" {% if use_abschlussdatum %}checked{% endif %}>
-                        <label class="form-check-label" for="use_abschlussdatum">Benutze Vorrauss. Abschlussdatum als Entlassdatum, falls dieses früher liegt oder kein Entlassdatum existiert</label>
+                    <div class="row">
+                        <!-- Spalte 1 (linke Seite): Abschlussdatum, 2te Datei, Klassengrößen -->
+                        <div class="col-md-6">
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="use_abschlussdatum" name="use_abschlussdatum" {% if use_abschlussdatum %}checked{% endif %}>
+                                <label class="form-check-label" for="use_abschlussdatum">
+                                    Benutze Vorrauss. Abschlussdatum als Entlassdatum, falls dieses früher liegt oder kein Entlassdatum existiert
+                                </label>
+                            </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="create_second_file" name="create_second_file" {% if create_second_file %}checked{% endif %}>
+                                <label class="form-check-label" for="create_second_file">
+                                    Erstelle Liste mit fehlenden Entlassdatumsangaben
+                                </label>
+                            </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="create_class_size_file" name="create_class_size_file" {% if create_class_size_file %}checked{% endif %}>
+                                <label class="form-check-label" for="create_class_size_file">
+                                    Erstelle Klassengrößen-Auswertung
+                                </label>
+                            </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="enable_attestpflicht_column" name="enable_attestpflicht_column" {% if enable_attestpflicht_column %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_attestpflicht_column">
+                                    Attestpflicht-Spalte hinzufügen
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Spalte 2 (rechte Seite): Warnungen -->
+                        <div class="col-md-6">
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="warn_entlassdatum" name="warn_entlassdatum" {% if warn_entlassdatum %}checked{% endif %}>
+                                <label class="form-check-label" for="warn_entlassdatum">
+                                    Warnungen für Entlassdatum erstellen
+                                </label>
+                            </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="warn_aufnahmedatum" name="warn_aufnahmedatum" {% if warn_aufnahmedatum %}checked{% endif %}>
+                                <label class="form-check-label" for="warn_aufnahmedatum">
+                                    Warnungen für Aufnahmedatum erstellen
+                                </label>
+                            </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="warn_klassenwechsel" name="warn_klassenwechsel" {% if warn_klassenwechsel %}checked{% endif %}>
+                                <label class="form-check-label" for="warn_klassenwechsel">
+                                    Warnungen für Klassenwechsel erstellen
+                                </label>
+                            </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="warn_new_students" name="warn_new_students" {% if warn_new_students %}checked{% endif %}>
+                                <label class="form-check-label" for="warn_new_students">
+                                    Warnungen für neue Schüler erstellen
+                                </label>
+                            </div>
+                        </div>
                     </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" id="create_second_file" name="create_second_file" {% if create_second_file %}checked{% endif %}>
-                        <label class="form-check-label" for="create_second_file">Erstelle Liste mit fehlenden Entlassdatumsangaben</label>
-                    </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" id="warn_entlassdatum" name="warn_entlassdatum" {% if warn_entlassdatum %}checked{% endif %}>
-                        <label class="form-check-label" for="warn_entlassdatum">Warnungen für Entlassdatum erstellen</label>
-                    </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" id="warn_aufnahmedatum" name="warn_aufnahmedatum" {% if warn_aufnahmedatum %}checked{% endif %}>
-                        <label class="form-check-label" for="warn_aufnahmedatum">Warnungen für Aufnahmedatum erstellen</label>
-                    </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" id="warn_klassenwechsel" name="warn_klassenwechsel" {% if warn_klassenwechsel %}checked{% endif %}>
-                        <label class="form-check-label" for="warn_klassenwechsel">Warnungen für Klassenwechsel erstellen</label>
-                    </div>
-                    <div class="form-group form-check">
-                        <input type="checkbox" class="form-check-input" id="warn_new_students" name="warn_new_students" {% if warn_new_students %}checked{% endif %}>
-                        <label class="form-check-label" for="warn_new_students">Warnungen für neue Schüler erstellen</label>
-                    </div>
+
+                    <!-- Buttons am Ende, unter der row -->
                     <div class="btn-group mt-4">
                         <button type="submit" class="btn btn-primary">▶️ Verarbeiten</button>
                         <button id="generateEmails" type="button" class="btn btn-info">✍ Emails Generieren</button>
@@ -347,6 +382,24 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label for="class_size_directory">📊 Klassengrößen-Verzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="class_size_directory" name="class_size_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="class_size_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="attest_file_directory">📑 Attestpflicht-Datei-Verzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="attest_file_directory" name="attest_file_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="attest_file_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
                     </form>
                 </div>
                 {% endif %}
@@ -363,6 +416,20 @@
                         <div class="form-group">
                             <label for="create_second_file">🔎 Immer Datei zur Analyse fehlender Entlassdaten erstellen:</label>
                             <select class="form-control" id="create_second_file" name="create_second_file">
+                                <option value="True">Ja</option>
+                                <option value="False">Nein</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="create_class_size_file">📊 Klassengrößen ermitteln:</label>
+                            <select class="form-control" id="create_class_size_file" name="create_class_size_file">
+                                <option value="True">Ja</option>
+                                <option value="False">Nein</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="enable_attestpflicht_column">📄 Attestpflicht-Spalte hinzufügen:</label>
+                            <select class="form-control" id="enable_attestpflicht_column" name="enable_attestpflicht_column">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
                             </select>
@@ -1006,9 +1073,13 @@
                             "xlsx_directory": "form-directories",
                             "import_directory": "form-directories",
                             "schildexport_directory": "form-directories",
+                            "class_size_directory": "form-directories",
+                            "attest_file_directory": "form-directories",
                             // ProcessingOptions
                             "use_abschlussdatum": "form-processing",
                             "create_second_file": "form-processing",
+                            "create_class_size_file": "form-processing",
+                            "enable_attestpflicht_column": "form-processing",
                             // Warnings
                             "warn_entlassdatum": "form-warnings",
                             "warn_aufnahmedatum": "form-warnings",
@@ -1065,6 +1136,8 @@
                     "xlsx_directory": "Directories",
                     "import_directory": "Directories",
                     "schildexport_directory": "Directories",
+                    "class_size_directory": "Directories",
+                    "attest_file_directory": "Directories",
                     // ProcessingOptions
                     "use_abschlussdatum": "ProcessingOptions",
                     "create_second_file": "ProcessingOptions",
@@ -1072,7 +1145,9 @@
                     "warn_aufnahmedatum": "ProcessingOptions",
                     "warn_klassenwechsel": "ProcessingOptions",
                     "warn_new_students": "ProcessingOptions",
+                    "create_class_size_file": "ProcessingOptions",
                     "timeframe_hours": "ProcessingOptions",
+                    "enable_attestpflicht_column": "ProcessingOptions",
                     // Email settings
                     "smtp_server": "Email",
                     "smtp_port": "Email",
@@ -1132,6 +1207,8 @@
             teachers_directory: "Verzeichnis für die Lehrerdaten. Sie werden für die Namensermittlung und Email-Adressen-Ermittlung für die Warnungs-Funktion benötigt.",
             log_directory: "Verzeichnis für die Log-Dateien. Darunter Änderungs-Logs zwischen der neuesten und vorherigen Import-Datei, aber auch Logs für den Logs-Versand an die Admin-Email Adresse.",
             xlsx_directory: "Verzeichnis für die Excel-Dateien. Dies sind ebenfalls Log-Datein aber als ganze Tabelle mit markierten Änderungen.",
+            class_size_directory: "Verzeichnis für eine separat generierte Klassengrößendatei zur Verwendung durch Stundenplaner und Vertretungsteam",
+            attest_file_directory: "Verzeichnis für eine ImportDatei, die nur die Schüler mit Attestpflicht enthält zur Verwendung Attestpflicht-Spalte",
             smtp_server: "SMTP-Server-Adresse für den E-Mail-Versand.",
             smtp_port: "Port des SMTP-Servers (z. B. 587 für STARTTLS).",
             smtp_user: "Benutzername für den SMTP-Server.",
