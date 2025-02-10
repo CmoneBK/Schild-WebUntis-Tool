@@ -3,8 +3,9 @@
 
 Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten oder Klassenwechseln. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
 
-*Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht,...).
-
+*Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht, Attestpflicht, ... ).
+        <a href="/Screenshots/Start mit Daten.png" target="_blank">
+          <img src="/Screenshots/Start mit Daten.png" alt="Startbildschirm" width="600">
 ## Funktionen
       
 <details><summary><b>🔄Datenumwandlung:</b> Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.</summary>Daten wie Schulpflicht müssen boolsch (Nein->Ja,Ja->Nein) umgekehrt werden damit sie passen. Beim Status wird bei Schild eine 2, 7, 8 ausgegeben, was in WebUntis auch boolschen Werten (Aktiv, Inaktiv, Inaktiv) enspricht. Solche Umwandlungen können grade bei größeren Schulen und täglichem Import mühsam sein. Jetzt nicht mehr.</details>
