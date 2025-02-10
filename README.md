@@ -24,6 +24,8 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
 <details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.</details>
 </details>
 <details><summary><b>🔐Sicherheit und internetunabhänige Verarbeitung:</b> Internetverbindung nur für Mail-Versand und visuelle Darstellung erforderlich</summary>Das Tool verarbeitet Daten unabhängig vom Internet. Eine Verbindung ist bei Nutzung des Kommandozeilenmodus ausschließlich für den Mail-Versand erforderlich. Im Browser-Frontend wird lediglich lesend auf externe visuelle Online Ressourchen zugegriffen. Es werden keinerlei Daten versendet. </details>
+<details><summary><b>➕Zusatzfunktionen:</b> Klassenstärkenauswertung und Atttestpflicht </summary> <p> Das Tool bietet zusätzlich zur Hauptverarbeitung die Funktion, die Klassenstärken auf Grundlage des Import-Datenstandes zu ermitteln und in ein gewünschtes Verzeichnis auszugeben. Bei uns profitieren vor allem das Vertretungsteam und Stundenplaner davon, leicht an diese Daten zu kommen. </p><p> Die Attestpfichtfunktion fügt eine Attestpflichtspalte (Ja/Nein) dem WebUnits-Importdokument hinzu, in der auf Grundlage einer weiteren (per Schild leicht erstellbaren) Importdatei mit nur denjenigen Schülern mit Attestpficht die Daten entsprechend analysiert und angefügt werden.</p></details>
+
 
 ## Voraussetzungen
 <details>
@@ -78,6 +80,27 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
 - **SMTP-Login-Daten Ihres E-Mail Anbieters:**
   Diese sollten Sie haben und bereithalten. Erstellen Sie am besten einen separaten E-Mail Account speziell zum Versand der hier generierten E-Mails. Weiteres unter 'Installation'.
 
+</details>
+<details>
+<summary><b>4. Optional: Für die Attestpflicht-Spalte</b></summary>
+
+Falls die Attestpflicht-Spalte verwenden möchten, aktivieren Sie die Funktion und stellen einen Datensatz mit Schid wie folgt her:
+
+Die Attestpflicht wird als Vermerk in Schild hinterlegt. Daher brauchen wir zunächst einen Filter, der alle Schüler aus dem aktuellen Schuljahr mit der Vermerkart "Attestpflicht" identifiziert.
+1. Laden Sie dazu zunächst den Filter, den Sie für den normalen Schüler-Export für dieses Tool nutzen.
+2. Nutzen Sie anschließend bei "Auswahl" den "Filter II". Dort:
+ - Klicken Sie unten auf "Aktuelle Auswahl übernehmen"
+ - Wählen oben bei Feldname "Vermerk-Art" und beim Fedlwert ihren Attestpflicht Wert.
+ - Klicken Sie auf "In Filterbedingungen übernehmen".
+ - Testen Sie den Filter per Klick auf Testen (Schließen Sie ihn nicht!)
+ - Klicken Sie anschließend auf Speichern und geben Sie ihm einen für Sie eindeutigen und vom normalen Schüler Import Filter gut unterscheidbaren Namen
+   
+Jetzt haben Sie alle Schüler mit Attestpflicht in ihrem aktutellen Schuljahr ausgewählt und können Sie exportieren.
+
+3. Erstellen Sie dazu eine neue Exportvorlage mit nur der Internen-ID-Nummer der Schüler (für Ihre Übersicht können Sie noch mehr hinzunehmen) und
+stellen Sie die Ausgabedatei wie schon für den normalen Export auf .csv und in das Verzeichnis, in dem das Tool die Attestpflicht Daten abgreifen soll.
+
+4. Fertig. Wenn die Datei exportiert und die Funktion aktiviert wurde erkennt das Tool die Schüler, fügt eine Attestpflicht Spalte hinzu und trägt bei allen aus der Datei ein Ja und bei allen anderen ein Nein ein.
 </details>
 
 
@@ -298,5 +321,12 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Bug Fixes:** Die Verzeichnisauswahl gab bei Auswahl im WebEnd nur Verzeichnisse im Programmverzeichnis zurück. 
 </details>
 
-### Update 2.7
+<details>
+<summary><b>Update 2.7</b></summary>
+
 - **Warnungen für neue Schüler:** Es wurde eine Warnoption für neue Schüler hinzugefügt. In WebUntis kann dies mit der Notwendigkeit zur Aktualisierung von Schülergruppen einhergehen, sodass nun eine automatische Info erfolgen kann.
+</details>
+
+### Update 2.8
+- **Attestpflicht-Spalte:** Es wurde eine Funktion zur optionalen Integration der Attestpflicht hinzugefügt. Sie basiert auf dem Vermerk der Attestpflicht in Schild.
+- **Klassengrößen Auswertung:** Es wurde die Option zur Generirung eines zusätzlichen Auswertungsdokuments zu den Klassengrößen/stärken hinzugefügt. Diese Datei kann so mit jedem Import generiert und Interessierten (Vertretungsteam, Stundenplaner) zur Verfügung gestellt werden.
