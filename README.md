@@ -81,6 +81,25 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
   Diese sollten Sie haben und bereithalten. Erstellen Sie am besten einen separaten E-Mail Account speziell zum Versand der hier generierten E-Mails. Weiteres unter 'Installation'.
 
 </details>
+<details>
+<summary><b>4. Optional: Die Attestpflicht-Spalte</b></summary>
+
+Falls die Attestpflicht-Spalte verwenden möchten, aktivieren Sie die Funktion und stellen einen Datensatz mit Schid wie folgt her:
+
+Die Attestpflicht wird als Vermerk in Schild hinterlegt. Daher brauchen wir zunächst einen Filter, der alle Schüler aus dem aktuellen Schuljahr mit der Vermerkart "Attestpflicht" identifiziert.
+Laden Sie dazu zunächst den Filter, den Sie für den normalen Schüler-Export für dieses Tool nutzen. Nutzen Sie anschließend bei "Auswahl" den "Filter II". Dort:
+ - Klicken Sie unten auf "Aktuelle Auswahl übernehmen"
+ - Wählen oben bei Feldname "Vermerk-Art" und beim Fedlwert ihren Attestpflicht Wert.
+ - Klicken Sie auf "In Filterbedingungen übernehmen".
+ - Testen Sie den Filter per Klick auf Testen (Schließen Sie ihn nicht!)
+ - Klicken Sie anschließend auf Speichern und geben Sie ihm einen für Sie eindeutigen und vom normalen Schüler Import Filter gut unterscheidbaren Namen
+
+Jetzt haben Sie alle Schüler mit Attestpflicht in ihrem aktutellen Schuljahr ausgewählt und können Sie exportieren.
+Erstellen Sie dazu eine neue Exportvorlage mit nur der Internen-ID-Nummer der Schüler (für Ihre Übersicht können Sie noch mehr hinzunehmen) und
+Stellen Sie die Ausgabedatei wie schon für den normalen Export auf .csv und in das Verzeichnis, in dem das Tool die Attestpflicht Daten abgreifen soll.
+
+Fertig. Wenn die Datei exportiert und die Funktion aktiviert wurde erkennt das Tool die Schüler, fügt eine Attestpflicht Spalte hinzu und trägt bei allen aus der Datei ein Ja ein.
+</details>
 
 
 ## Installation
