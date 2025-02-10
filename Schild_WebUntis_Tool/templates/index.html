@@ -121,63 +121,66 @@
 
         <div class="card mt-4">
             <div class="card-header bg-primary text-white">
-                Hauptbereich
+                Hauptbereich (und Einstellungen für die aktuelle Ausführung)
             </div>
             <div class="card-body">
                 <form method="post">
                     <div class="row">
                         <!-- Spalte 1 (linke Seite): Abschlussdatum, 2te Datei, Klassengrößen -->
                         <div class="col-md-6">
+                            <h5 class="mb-3">Verarbeitungseinstellungen</h5>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="use_abschlussdatum" name="use_abschlussdatum" {% if use_abschlussdatum %}checked{% endif %}>
                                 <label class="form-check-label" for="use_abschlussdatum">
-                                    Benutze Vorrauss. Abschlussdatum als Entlassdatum, falls dieses früher liegt oder kein Entlassdatum existiert
-                                </label>
-                            </div>
-                            <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="create_second_file" name="create_second_file" {% if create_second_file %}checked{% endif %}>
-                                <label class="form-check-label" for="create_second_file">
-                                    Erstelle Liste mit fehlenden Entlassdatumsangaben
-                                </label>
-                            </div>
-                            <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="create_class_size_file" name="create_class_size_file" {% if create_class_size_file %}checked{% endif %}>
-                                <label class="form-check-label" for="create_class_size_file">
-                                    Erstelle Klassengrößen-Auswertung
+                                    🗓️ Benutze Vorrauss. Abschlussdatum als Entlassdatum
                                 </label>
                             </div>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="enable_attestpflicht_column" name="enable_attestpflicht_column" {% if enable_attestpflicht_column %}checked{% endif %}>
                                 <label class="form-check-label" for="enable_attestpflicht_column">
-                                    Attestpflicht-Spalte hinzufügen
+                                    📄 Attestpflicht-Spalte hinzufügen
+                                </label>
+                            </div>
+                            <h5 class="mb-3">Zusätzliche Exporte</h5>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="create_second_file" name="create_second_file" {% if create_second_file %}checked{% endif %}>
+                                <label class="form-check-label" for="create_second_file">
+                                    🔎 Erstelle Liste mit fehlenden Entlassdatumsangaben
+                                </label>
+                            </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="create_class_size_file" name="create_class_size_file" {% if create_class_size_file %}checked{% endif %}>
+                                <label class="form-check-label" for="create_class_size_file">
+                                    📊 Erstelle Klassengrößen-Auswertung
                                 </label>
                             </div>
                         </div>
 
                         <!-- Spalte 2 (rechte Seite): Warnungen -->
                         <div class="col-md-6">
+                            <h5 class="mb-3">Zu generierende Warnungen/Hinweise</h5>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="warn_entlassdatum" name="warn_entlassdatum" {% if warn_entlassdatum %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_entlassdatum">
-                                    Warnungen für Entlassdatum erstellen
+                                    ➡️ Ungünstig verschobene Entlassdaten
                                 </label>
                             </div>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="warn_aufnahmedatum" name="warn_aufnahmedatum" {% if warn_aufnahmedatum %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_aufnahmedatum">
-                                    Warnungen für Aufnahmedatum erstellen
+                                    ⬅️ Ungünstig verschobene Aufnahmedaten
                                 </label>
                             </div>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="warn_klassenwechsel" name="warn_klassenwechsel" {% if warn_klassenwechsel %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_klassenwechsel">
-                                    Warnungen für Klassenwechsel erstellen
+                                    🔄 Klassenwechsel
                                 </label>
                             </div>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="warn_new_students" name="warn_new_students" {% if warn_new_students %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_new_students">
-                                    Warnungen für neue Schüler erstellen
+                                    🆕 neue Schüler
                                 </label>
                             </div>
                         </div>
@@ -467,14 +470,14 @@
                 <div class="tab-pane fade" id="warnings" role="tabpanel" aria-labelledby="warnings-tab">
                     <form id="form-warnings">
                         <div class="form-group">
-                            <label for="warn_entlassdatum">⬅️ Immer Warnungen für Entlassdatum generieren:</label>
+                            <label for="warn_entlassdatum">➡️ Immer Warnungen für Entlassdatum generieren:</label>
                             <select class="form-control" id="warn_entlassdatum" name="warn_entlassdatum">
                                 <option value="True">Aktiv</option>
                                 <option value="False">Inaktiv</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="warn_aufnahmedatum">➡️ Immer Warnungen für Aufnahmedatum generieren:</label>
+                            <label for="warn_aufnahmedatum">⬅️ Immer Warnungen für Aufnahmedatum generieren:</label>
                             <select class="form-control" id="warn_aufnahmedatum" name="warn_aufnahmedatum">
                                 <option value="True">Aktiv</option>
                                 <option value="False">Inaktiv</option>
@@ -1227,6 +1230,14 @@
 
 
         const labels = {
+            use_abschlussdatum: "...falls dieses früher liegt oder kein Entlassdatum existiert",
+            enable_attestpflicht_column: "Analysiert Daten aus dem Attestpflicht-Datei-Verzeichnis für eine zusätzliche Ja/Nein Spalte",
+            create_second_file: "Abgänger und Abschlüsse ohne...",
+            create_class_size_file: "Nützlich für Stundenplaner und das Vertretungsteam",
+            warn_entlassdatum: "Von der (Stand jetzt) Vergangneheit auf dem Zeitstrahl nach rechts (generiert Dokumentationslücke)",
+            warn_aufnahmedatum: "z.B. von einer weniger weiten Vergangenheit in eine weite(re) Vergangenheit (generiert Dokumentationslücke)",
+            warn_klassenwechsel: "z.B. zur Information wegen Schülergruppenzuweisung oder auch Nachdokumentation/Korrektur des Wechseldatums",
+            warn_new_students: "z.B.: zur Information wegen Schülergruppenzuweisung",
             timeframe_hours: "Zeitfenster in Stunden für die Vergleiche.",
             import_directory: "Verzeichnis, in dem die Import-Dateien für WebUntis gespeichert werden.",
             schildexport_directory: "Verzeichnis, aus dem die Schild-Exporte abgerufen werden.",
