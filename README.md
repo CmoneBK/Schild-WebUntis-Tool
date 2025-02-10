@@ -208,16 +208,16 @@ In der Konsole sehen Sie den Prozess durchlaufen.
   <table border="1" cellspacing="10" cellpadding="5" align="center">
     <tr>
       <td>
-        <a href="/Screenshots/Start Ohne Daten.png" target="_blank">
-          <img src="/Screenshots/Start Ohne Daten.png" alt="Start Ohne Daten" width="300">
-        </a>
-        <p>Start Ohne Daten</p>
-      </td>
-      <td>
         <a href="/Screenshots/Start mit Daten.png" target="_blank">
           <img src="/Screenshots/Start mit Daten.png" alt="Start mit Daten" width="300">
         </a>
-        <p>Start mit Daten</p>
+        <p>Startbildschirm</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Befehl-und Verknüpfungsersteller.png" target="_blank">
+          <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl und Verknüpfungsersteller" width="300">
+        </a>
+        <p>Befehl und Verknüpfungsersteller</p>
       </td>
     </tr>
     <tr>
@@ -246,14 +246,6 @@ In der Konsole sehen Sie den Prozess durchlaufen.
           <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="300">
         </a>
         <p>Einstellungs-Editor</p>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2" align="center">
-        <a href="/Screenshots/Befehl-und Verknüpfungsersteller.png" target="_blank">
-          <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl und Verknüpfungsersteller" width="300">
-        </a>
-        <p>Befehl und Verknüpfungsersteller</p>
       </td>
     </tr>
   </table>
