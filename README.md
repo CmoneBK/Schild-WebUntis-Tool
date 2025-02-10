@@ -321,6 +321,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Bug Fixes:** Die Verzeichnisauswahl gab bei Auswahl im WebEnd nur Verzeichnisse im Programmverzeichnis zurück. 
 </details>
 
+<details>
 <summary><b>Update 2.7</b></summary>
 
 - **Warnungen für neue Schüler:** Es wurde eine Warnoption für neue Schüler hinzugefügt. In WebUntis kann dies mit der Notwendigkeit zur Aktualisierung von Schülergruppen einhergehen, sodass nun eine automatische Info erfolgen kann.
