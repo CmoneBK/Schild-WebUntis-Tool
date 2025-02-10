@@ -1,7 +1,7 @@
 # Schild-WebUntis-Tool
 **Dieses Tool ist eine Weiterentwicklung des [SchildNRW-WebUntis-Umwandlers](https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master)**
 
-Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten oder Klassenwechseln. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
+Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten, Klassenwechseln oder neu hinzustoßenden Schüler/innen. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
 
 *Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht, Attestpflicht, ... ).
         <a href="/Screenshots/Start mit Daten.png" target="_blank">
