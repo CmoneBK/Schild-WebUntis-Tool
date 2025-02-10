@@ -39,17 +39,20 @@ def print_creation(message):
 
 def run(use_abschlussdatum=True, create_second_file=True,
         warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True,
-        no_log=False, no_xlsx=False):
+        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False):
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
     print_info("Starte Hauptverarbeitung mit den folgenden Optionen:")
     print_info(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
     print_info(f"  Erstelle zweite Datei: {create_second_file}")
+    print_info(f"  Erstelle Klassengrößen-Auswertung: {create_class_size_file}")
+    print_info(f"  Attestpflicht-Spalte hinzufügen: {enable_attestpflicht_column}")
     print_info(f"  Warnung für Entlassdatum: {warn_entlassdatum}")
     print_info(f"  Warnung für Aufnahmedatum: {warn_aufnahmedatum}")
     print_info(f"  Warnung für Klassenwechsel: {warn_klassenwechsel}")
     print_info(f"  Warnung für neue Schüler: {warn_new_students}")
     print_info(f"  Log-Dateien erstellen: {'Nein' if no_log else 'Ja'}")
     print_info(f"  Excel-Dateien erstellen: {'Nein' if no_xlsx else 'Ja'}")
+
     warnings = []  # Liste für Entlassdatum-Warnungen
     class_change_warnings = []  # Liste für Klassenwechsel-Warnungen
     admission_date_warnings = []  # Liste für Aufnahmedatum-Warnungen
@@ -93,7 +96,10 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_warnings(new_student_warnings)
 
     # Dateien speichern
-    save_files(output_data_students, all_warnings, create_second_file)
+    save_files(output_data_students, all_warnings, create_second_file, enable_attestpflicht_column)
+
+    if create_class_size_file:
+     create_class_sizes_file(students_by_id)
 
     # Vergleiche die letzten beiden Dateien
     print_info("Initialisiere Log-Erstellung")
@@ -888,11 +894,31 @@ def print_warnings(warnings):
         print_warning(f"Klassenlehrkraft 2 E-Mail: {warning['Klassenlehrkraft_2_Email']}")
         print_warning("====================================================")
 
-def save_files(output_data_students, warnings, create_second_file):
+def save_files(output_data_students, warnings, create_second_file, enable_attestpflicht_column=False):
     # Funktion zum Speichern der Ausgabedateien
     print_info("Speichere Ausgabedateien...")
+    config = configparser.ConfigParser()
+    config.read('settings.ini')
     import_dir = get_directory('import_directory', './WebUntis Importe')
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        # Falls Attestpflicht-Spalte gewünscht
+    if enable_attestpflicht_column:
+        print_info("Füge Attestpflicht-Spalte hinzu...")
+        attest_ids = read_attest_ids_from_latest_file()
+
+        # Beispiel: Wir fügen eine neue Spalte 'Attestpflicht' an.
+        headers = output_data_students[0]
+        if "Attestpflicht" not in headers:
+            headers.append("Attestpflicht")
+
+        id_index = headers.index("Interne ID-Nummer")
+
+        for row_i in range(1, len(output_data_students)):
+            row = output_data_students[row_i]
+            student_id = row[id_index]
+            row.append("Ja" if student_id in attest_ids else "Nein")
+
     output_file = os.path.join(import_dir, f'WebUntis Import {now}.csv')
     second_output_file = os.path.join(import_dir, f'WebUntis Import {now}_Fehlende Entlassdatumsangaben.csv')
 
@@ -944,3 +970,100 @@ def save_files(output_data_students, warnings, create_second_file):
             print_warning("Keine Daten für die zweite Ausgabedatei gefunden.")
     else:
         print_info("Keine zweite Ausgabedatei da die Erstellung der zweiten Ausgabedatei deaktiviert wurde.")
+
+    
+def read_attest_ids_from_latest_file():
+    """
+    Sucht im 'attest_file_directory' (aus settings.ini) nach der neuesten .csv-Datei,
+    liest daraus alle 'Interne ID-Nummer' Einträge in ein Set und gibt dieses zurück.
+    """
+    config = configparser.ConfigParser()
+    config.read('settings.ini')
+    attest_dir = config.get('Directories', 'attest_file_directory', fallback='./AttestpflichtDaten')
+
+    if not os.path.exists(attest_dir):
+        print(Fore.YELLOW + f"⚠️ Attest-Verzeichnis '{attest_dir}' existiert nicht. Keine Attestdaten vorhanden." + Style.RESET_ALL)
+        return set()
+
+    # Alle CSV-Dateien ermitteln
+    csv_files = [f for f in os.listdir(attest_dir) if f.endswith('.csv')]
+    if not csv_files:
+        print(Fore.YELLOW + "⚠️ Keine CSV-Dateien im Attest-Verzeichnis gefunden. Keine Attestdaten vorhanden." + Style.RESET_ALL)
+        return set()
+
+    # Neueste CSV-Datei bestimmen
+    csv_files.sort(key=lambda x: os.path.getctime(os.path.join(attest_dir, x)), reverse=True)
+    latest_file = csv_files[0]
+    full_path = os.path.join(attest_dir, latest_file)
+
+    # IDs einlesen
+    return read_attest_ids(full_path)
+def read_attest_ids(attest_file_path):
+    """
+    Liest alle Interne ID-Nummern aus der gegebenen Attest-CSV-Datei und gibt sie als Set zurück.
+    Beispielhafte Spalte: 'Interne ID-Nummer'
+    """
+    ids = set()
+    print(Fore.CYAN + f"ℹ️ Lese Attestpflicht-Datei: {attest_file_path}" + Style.RESET_ALL)
+    try:
+        with open(attest_file_path, 'r', encoding='utf-8-sig', newline='') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter=';')
+            for row in reader:
+                sid = row.get("Interne ID-Nummer", "").strip()
+                if sid:
+                    ids.add(sid)
+    except Exception as e:
+        print(Fore.RED + f"❌ Fehler beim Lesen der Attestpflicht-Datei {attest_file_path}: {e}" + Style.RESET_ALL)
+    print(Fore.CYAN + f"ℹ️ Attestpflicht-Datei eingelesen. Anzahl IDs: {len(ids)}" + Style.RESET_ALL)
+    return ids
+
+from collections import defaultdict
+def create_class_sizes_file(students_by_id):
+    """
+    Erzeugt eine CSV mit den Spalten:
+      Klasse, Schüler (männlich), Schüler (weiblich), Schüler (divers), Schüler (gesamt)
+    und berücksichtigt nur Schüler mit Status == '2' (also Aktiv == 'Ja').
+    Die Datei wird in das class_size_directory aus den settings.ini abgelegt.
+    """
+    print_info("Erstelle Klassengrößen-Auswertung...")
+
+    # 1) Lese aus settings.ini das Verzeichnis
+    config = configparser.ConfigParser()
+    config.read('settings.ini')
+    class_size_dir = config.get('Directories', 'class_size_directory', fallback="./ClassSizes")
+
+    # Stelle sicher, dass der Ordner existiert
+    os.makedirs(class_size_dir, exist_ok=True)
+
+    # 2) Aggregation: { klasse_name: {"m": 0, "w": 0, "d": 0} }
+    class_counts = defaultdict(lambda: {"m": 0, "w": 0, "d": 0})
+
+    for student_id, student_data in students_by_id.items():
+        # Nur Schüler mit Status=2 => 'Aktiv' == 'Ja'
+        if student_data.get("Aktiv") == "Ja":
+            klasse = (student_data.get("Klasse") or "").strip()
+            geschlecht = (student_data.get("Geschlecht") or "").lower()  # 'm', 'w', 'd'
+            if geschlecht in ("m", "w", "d"):
+                class_counts[klasse][geschlecht] += 1
+
+    # 3) CSV-Datei schreiben
+    now_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    output_file_path = os.path.join(class_size_dir, f"Klassengroessen_{now_str}.csv")
+    headers = ["Klasse", "Schüler (männlich)", "Schüler (weiblich)", "Schüler (divers)", "Schüler (gesamt)"]
+
+    try:
+        with open(output_file_path, "w", newline="", encoding="utf-8-sig") as csvfile:
+            writer = csv.writer(csvfile, delimiter=';')
+            writer.writerow(headers)
+
+            # Sortiere Klassen wahlweise alphabetisch
+            for klasse in sorted(class_counts.keys()):
+                counts = class_counts[klasse]
+                male = counts["m"]
+                female = counts["w"]
+                diverse = counts["d"]
+                total = male + female + diverse
+                writer.writerow([klasse, male, female, diverse, total])
+        print_success(f"Klassengrößen-Datei erstellt: {output_file_path}")
+    except Exception as e:
+        print_error(f"Fehler beim Erstellen der Klassengrößen-Datei: {e}")
