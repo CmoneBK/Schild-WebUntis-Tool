@@ -14,6 +14,7 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
   - für Entlassdaten, die in die Zukunft verschoben werden und zu einem nicht dokumentierten Zeitraum führen.
   - für Aufnahmedaten, die in die Vergangenheit verschoben werden und Dokumentationslücken verursachen.
   - für Klassenwechsel, die eine manuelle Nachbearbeitung in WebUntis erfordern.
+  - für neue Schüler, die ggf. ein aktualisieren von Schülergruppen erforderlich  machen.
     </details>
 <details><summary><b>📩E-Mail-Benachrichtigungen:</b> E-Mails für Klassenlehrkräfte</summary>Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen.</details>
 <details><summary><b>📢Admin Warnungen:</b> Wenn Ihre Daten durch Veralterung inkonsistent werden bekommen Sie Meldungen bevor was schiefgeht.</summary>Der Nutzer erhält per Konsole (optional Mail) Meldungen, wenn in den Schild-Daten (plötzlich) Klassen oder Klassenlehrkräfte vorkommen die in den bereitgestellten Klassen- und Lehrkräftedaten noch fehlen.</details>
@@ -289,8 +290,13 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Release der Version für die Produktionsumgebung:** Die Entwicklung des Tools ist größtenteils abgeschlossen. Es wurde daher nun auch eine Version für die Produktionsumgebung veröffentlicht. Die Entwicklungsversion wird nicht mehr aktualisiert.
 - **Verbesserung der Konsolen-Lesbarkeit:** Die Ausgabe auf der Konsole wurden überarbeitet (erweitert und vervollständigt) und farbcodiert, sodass man Sie besser lesen kann.
 </details>
+<details>
+<summary><b>Update 2.6</b></summary>
 
-### Update 2.6
 - **Neue Kommandozeilen-Befehle und Funktionen:** Über die Kommandozeile lässt sich jetzt für die Nutzung als Server die Verzeichnisänderung im WebEnd deaktivieren sowie auch ein Dateiupload-Bereich aktivieren.
 - **Server Modus:** Ermöglichung der Änderung von IP und Port über die Kommandozeile.
 - **Bug Fixes:** Die Verzeichnisauswahl gab bei Auswahl im WebEnd nur Verzeichnisse im Programmverzeichnis zurück. 
+</details>
+
+### Update 2.7
+- **Warnungen für neue Schüler:** Es wurde eine Warnoption für neue Schüler hinzugefügt. In WebUntis kann dies mit der Notwendigkeit zur Aktualisierung von Schülergruppen einhergehen, sodass nun eine automatische Info erfolgen kann.
