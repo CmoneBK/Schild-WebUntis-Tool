@@ -328,6 +328,11 @@
                 {% if not no_directory_change %}
                 <div class="tab-pane fade show active" id="directories" role="tabpanel" aria-labelledby="directories-tab">
                     <form id="form-directories">
+
+                        <!-- Überschrift für Import-Verzeichnisse -->
+                        <h5 class="mb-3">Import-Verzeichnisse</h5>
+
+                        <!-- Klassendatenverzeichnis -->
                         <div class="form-group">
                             <label for="classes_directory">🏫 Klassendatenverzeichnis:</label>
                             <div class="input-group">
@@ -337,6 +342,8 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Lehrerdatenverzeichnis -->
                         <div class="form-group">
                             <label for="teachers_directory">🧑‍🏫 Lehrerdatenverzeichnis:</label>
                             <div class="input-group">
@@ -346,26 +353,10 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Schild Exporte -->
                         <div class="form-group">
-                            <label for="log_directory">📋 Logverzeichnis:</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="log_directory" name="log_directory" readonly>
-                                <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="log_directory">Durchsuchen</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="xlsx_directory">𝄜 Excel-Verzeichnis:</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="xlsx_directory" name="xlsx_directory" readonly>
-                                <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="xlsx_directory">Durchsuchen</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="schildexport_directory">🟦📥 Schild Exporte :</label>
+                            <label for="schildexport_directory">🟦📥 Schild Exporte:</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="schildexport_directory" name="schildexport_directory" readonly>
                                 <div class="input-group-append">
@@ -373,24 +364,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label for="import_directory">🟧📤 WebUntis Importe:</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="import_directory" name="import_directory" readonly>
-                                <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="import_directory">Durchsuchen</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="class_size_directory">📊 Klassengrößen-Verzeichnis:</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="class_size_directory" name="class_size_directory" readonly>
-                                <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="class_size_directory">Durchsuchen</button>
-                                </div>
-                            </div>
-                        </div>
+
+                        <!-- Attestpflicht-Datei-Verzeichnis -->
                         <div class="form-group">
                             <label for="attest_file_directory">📑 Attestpflicht-Datei-Verzeichnis:</label>
                             <div class="input-group">
@@ -400,9 +375,61 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Trennlinie zwischen den beiden Bereichen -->
+                        <hr class="my-4">
+
+                        <!-- Überschrift für Export-Verzeichnisse -->
+                        <h5 class="mb-3">Export-Verzeichnisse</h5>
+
+                        <!-- Logverzeichnis -->
+                        <div class="form-group">
+                            <label for="log_directory">📋 Logverzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="log_directory" name="log_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="log_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Excel-Verzeichnis -->
+                        <div class="form-group">
+                            <label for="xlsx_directory">𝄜 Excel-Verzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="xlsx_directory" name="xlsx_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="xlsx_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- WebUntis Importe -->
+                        <div class="form-group">
+                            <label for="import_directory">🟧📤 WebUntis Importe:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="import_directory" name="import_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="import_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Klassengrößen-Verzeichnis -->
+                        <div class="form-group">
+                            <label for="class_size_directory">📊 Klassengrößen-Verzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="class_size_directory" name="class_size_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="class_size_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+
                     </form>
                 </div>
                 {% endif %}
+
                 <!-- Verarbeitung -->
                 <div class="tab-pane fade" id="processing" role="tabpanel" aria-labelledby="processing-tab">
                     <form id="form-processing">
