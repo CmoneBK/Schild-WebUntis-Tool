@@ -1,9 +1,11 @@
 # Schild-WebUntis-Tool
 **Dieses Tool ist eine Weiterentwicklung des [SchildNRW-WebUntis-Umwandlers](https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master)**
 
-Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten oder Klassenwechseln. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
-
-*Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht,...).
+Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten, Klassenwechseln oder neu hinzustoßenden Schüler/innen. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
+        <a href="/Screenshots/Start mit Daten.png" target="_blank">
+          <img src="/Screenshots/Start mit Daten.png" alt="Startbildschirm" width="600">
+          
+*Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht, Attestpflicht, ... ).
 
 ## Funktionen
       
@@ -208,16 +210,16 @@ In der Konsole sehen Sie den Prozess durchlaufen.
   <table border="1" cellspacing="10" cellpadding="5" align="center">
     <tr>
       <td>
-        <a href="/Screenshots/Start Ohne Daten.png" target="_blank">
-          <img src="/Screenshots/Start Ohne Daten.png" alt="Start Ohne Daten" width="300">
-        </a>
-        <p>Start Ohne Daten</p>
-      </td>
-      <td>
         <a href="/Screenshots/Start mit Daten.png" target="_blank">
           <img src="/Screenshots/Start mit Daten.png" alt="Start mit Daten" width="300">
         </a>
-        <p>Start mit Daten</p>
+        <p>Startbildschirm</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Befehl-und Verknüpfungsersteller.png" target="_blank">
+          <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl und Verknüpfungsersteller" width="300">
+        </a>
+        <p>Befehl und Verknüpfungsersteller</p>
       </td>
     </tr>
     <tr>
@@ -246,14 +248,6 @@ In der Konsole sehen Sie den Prozess durchlaufen.
           <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="300">
         </a>
         <p>Einstellungs-Editor</p>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="2" align="center">
-        <a href="/Screenshots/Befehl-und Verknüpfungsersteller.png" target="_blank">
-          <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl und Verknüpfungsersteller" width="300">
-        </a>
-        <p>Befehl und Verknüpfungsersteller</p>
       </td>
     </tr>
   </table>
