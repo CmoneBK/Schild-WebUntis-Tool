@@ -97,6 +97,7 @@ def process_data(no_log=False, no_xlsx=False):
     create_second_file = config.getboolean('ProcessingOptions', 'create_second_file', fallback=False)
     create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True)
     enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False)
+    enable_nachteilsausgleich_column = config.getboolean('ProcessingOptions', ' enable_nachteilsausgleich_column', fallback=False)
     warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
     warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
@@ -145,6 +146,7 @@ def ensure_ini_files_exist():
     default_schildexport_dir = "."
     default_class_size_dir = "ClassSizes"
     default_attest_file_directory ="AttestpflichtDaten"
+    default_nachteilsausgleich_file_directory ="NachteilsausgleichDaten"
 
     # Standard-Inhalt für settings.ini vorbereiten
     settings_ini_content = f"""[Directories]
@@ -156,6 +158,7 @@ import_directory = {default_import_dir}
 schildexport_directory = {default_schildexport_dir}
 class_size_directory = {default_class_size_dir}
 attest_file_directory = {default_attest_file_directory}
+nachteilsausgleich_file_directory = {default_nachteilsausgleich_file_directory}
 
 [ProcessingOptions]
 use_abschlussdatum = False
@@ -167,6 +170,7 @@ warn_new_students = True
 create_class_size_file = False
 timeframe_hours = 24
 enable_attestpflicht_column = False
+enable_nachteilsausgleich_column = False
 """
 
     # Standard-Inhalt für email_settings.ini vorbereiten
@@ -379,6 +383,7 @@ def index():
     warn_new_students = config.getboolean('ProcessingOptions', 'warn_new_students', fallback=True)
     create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True) 
     enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False) 
+    enable_nachteilsausgleich_column= config.getboolean('ProcessingOptions', 'enable_nachteilsausgleich_column', fallback=False) 
 
     # Werte aus der email_settings.ini laden
     config = configparser.ConfigParser()
@@ -430,6 +435,7 @@ def index():
         warn_new_students = request.form.get('warn_new_students') == 'on'
         create_class_size_file = request.form.get('create_class_size_file') == 'on'
         enable_attestpflicht_column = request.form.get('enable_attestpflicht_column') == 'on'
+        enable_nachteilsausgleich_column = request.form.get('enable_nachteilsausgleich_column') == 'on'
 
         # Übergebe die Auswahl an die Run-Funktion
         try:
@@ -446,7 +452,8 @@ def index():
                 no_log=no_log,
                 no_xlsx=no_xlsx,
                 create_class_size_file=create_class_size_file, 
-                enable_attestpflicht_column=enable_attestpflicht_column
+                enable_attestpflicht_column=enable_attestpflicht_column,
+                enable_nachteilsausgleich_column=enable_nachteilsausgleich_column
             )
             warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
 
@@ -473,6 +480,7 @@ def index():
         warn_new_students = warn_new_students,
         create_class_size_file = create_class_size_file,
         enable_attestpflicht_column = enable_attestpflicht_column,
+        enable_nachteilsausgleich_column = enable_nachteilsausgleich_column,
         subject_entlassdatum=subject_entlassdatum,
         body_entlassdatum=body_entlassdatum,
         subject_aufnahmedatum=subject_aufnahmedatum,

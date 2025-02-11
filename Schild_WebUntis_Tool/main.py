@@ -39,13 +39,14 @@ def print_creation(message):
 
 def run(use_abschlussdatum=True, create_second_file=True,
         warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True,
-        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False):
+        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False):
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
     print_info("Starte Hauptverarbeitung mit den folgenden Optionen:")
     print_info(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
     print_info(f"  Erstelle zweite Datei: {create_second_file}")
     print_info(f"  Erstelle Klassengrößen-Auswertung: {create_class_size_file}")
     print_info(f"  Attestpflicht-Spalte hinzufügen: {enable_attestpflicht_column}")
+    print_info(f"  Nachteilsausgleich-Spalte hinzufügen: {enable_nachteilsausgleich_column}")
     print_info(f"  Warnung für Entlassdatum: {warn_entlassdatum}")
     print_info(f"  Warnung für Aufnahmedatum: {warn_aufnahmedatum}")
     print_info(f"  Warnung für Klassenwechsel: {warn_klassenwechsel}")
@@ -96,7 +97,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_warnings(new_student_warnings)
 
     # Dateien speichern
-    save_files(output_data_students, all_warnings, create_second_file, enable_attestpflicht_column)
+    save_files(output_data_students, all_warnings, create_second_file, enable_attestpflicht_column, enable_nachteilsausgleich_column)
 
     if create_class_size_file:
      create_class_sizes_file(students_by_id)
@@ -894,7 +895,7 @@ def print_warnings(warnings):
         print_warning(f"Klassenlehrkraft 2 E-Mail: {warning['Klassenlehrkraft_2_Email']}")
         print_warning("====================================================")
 
-def save_files(output_data_students, warnings, create_second_file, enable_attestpflicht_column=False):
+def save_files(output_data_students, warnings, create_second_file, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False):
     # Funktion zum Speichern der Ausgabedateien
     print_info("Speichere Ausgabedateien...")
     config = configparser.ConfigParser()
@@ -902,22 +903,34 @@ def save_files(output_data_students, warnings, create_second_file, enable_attest
     import_dir = get_directory('import_directory', './WebUntis Importe')
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-        # Falls Attestpflicht-Spalte gewünscht
+    # 1) Attestpflicht-Spalte
     if enable_attestpflicht_column:
         print_info("Füge Attestpflicht-Spalte hinzu...")
         attest_ids = read_attest_ids_from_latest_file()
-
-        # Beispiel: Wir fügen eine neue Spalte 'Attestpflicht' an.
         headers = output_data_students[0]
         if "Attestpflicht" not in headers:
             headers.append("Attestpflicht")
-
         id_index = headers.index("Interne ID-Nummer")
 
         for row_i in range(1, len(output_data_students)):
             row = output_data_students[row_i]
             student_id = row[id_index]
             row.append("Ja" if student_id in attest_ids else "Nein")
+
+    # 2) Nachteilsausgleich-Spalte
+    if enable_nachteilsausgleich_column:
+        print_info("Füge Nachteilsausgleich-Spalte hinzu...")
+        nachteil_ids = read_nachteilsausgleich_ids_from_latest_file()
+        headers = output_data_students[0]
+        if "Nachteilsausgleich" not in headers:
+            headers.append("Nachteilsausgleich")
+
+        id_index = headers.index("Interne ID-Nummer")
+
+        for row_i in range(1, len(output_data_students)):
+            row = output_data_students[row_i]
+            student_id = row[id_index]
+            row.append("Ja" if student_id in nachteil_ids else "Nein")
 
     output_file = os.path.join(import_dir, f'WebUntis Import {now}.csv')
     second_output_file = os.path.join(import_dir, f'WebUntis Import {now}_Fehlende Entlassdatumsangaben.csv')
@@ -1018,6 +1031,52 @@ def read_attest_ids(attest_file_path):
     return ids
 
 from collections import defaultdict
+
+
+def read_nachteilsausgleich_ids_from_latest_file():
+    """
+    Sucht im 'nachteilsausgleich_file_directory' aus settings.ini
+    nach der neuesten .csv-Datei und liefert die IDs als Set zurück.
+    """
+    config = configparser.ConfigParser()
+    config.read("settings.ini")
+    nad_dir = config.get('Directories', 'nachteilsausgleich_file_directory', fallback='./NachteilsausgleichDaten')
+
+    if not os.path.exists(nad_dir):
+        print_warning(f"Nachteilsausgleich-Verzeichnis '{nad_dir}' existiert nicht. Alle = 'Nein'.")
+        return set()
+
+    csv_files = [f for f in os.listdir(nad_dir) if f.endswith('.csv')]
+    if not csv_files:
+        print_warning("Keine CSV-Dateien im Nachteilsausgleich-Verzeichnis gefunden. Alle = 'Nein'.")
+        return set()
+
+    # Neueste Datei
+    csv_files.sort(key=lambda x: os.path.getctime(os.path.join(nad_dir, x)), reverse=True)
+    latest_file = csv_files[0]
+    full_path = os.path.join(nad_dir, latest_file)
+
+    return read_nachteilsausgleich_ids(full_path)
+def read_nachteilsausgleich_ids(file_path):
+    """
+    Liest 'Interne ID-Nummer' aus der CSV und gibt sie als Set zurück.
+    """
+    ids = set()
+    print_info(f"Lese Nachteilsausgleich-Datei: {file_path}")
+    try:
+        with open(file_path, 'r', encoding='utf-8-sig', newline='') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter=';')
+            for row in reader:
+                sid = (row.get("Interne ID-Nummer") or "").strip()
+                if sid:
+                    ids.add(sid)
+    except Exception as e:
+        print_error(f"Fehler beim Lesen Nachteilsausgleich-Datei: {e}")
+    print_info(f"Nachteilsausgleich-Datei eingelesen. Anzahl IDs: {len(ids)}")
+    return ids
+
+
+
 def create_class_sizes_file(students_by_id):
     """
     Erzeugt eine CSV mit den Spalten:
