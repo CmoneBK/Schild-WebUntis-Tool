@@ -141,6 +141,12 @@
                                     📄 Attestpflicht-Spalte hinzufügen
                                 </label>
                             </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="enable_nachteilsausgleich_column" name="enable_nachteilsausgleich_column" {% if enable_nachteilsausgleich_column %}checked{% endif %}>
+                                <label class="form-check-label" for="enable_nachteilsausgleich_column">
+                                    ♿ Nachteilsausgleich-Spalte hinzufügen
+                                </label>
+                            </div>
                             <h5 class="mb-3">Zusätzliche Exporte</h5>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="create_second_file" name="create_second_file" {% if create_second_file %}checked{% endif %}>
@@ -378,6 +384,17 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Nachteilsausgleich-Verzeichnis -->
+                        <div class="form-group">
+                            <label for="nachteilsausgleich_file_directory">♿ Nachteilsausgleich-Datei-Verzeichnis: </label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="nachteilsausgleich_file_directory" name="nachteilsausgleich_file_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary" data-directory-input="nachteilsausgleich_file_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                        </div>
+
 
                         <!-- Trennlinie zwischen den beiden Bereichen -->
                         <hr class="my-4">
@@ -436,13 +453,29 @@
                 <!-- Verarbeitung -->
                 <div class="tab-pane fade" id="processing" role="tabpanel" aria-labelledby="processing-tab">
                     <form id="form-processing">
+                        <h5 class="mb-3">Verarbeitungseinstellungen</h5>
                         <div class="form-group">
-                            <label for="use_abschlussdatum">🗓️ Immer Vorraussichtliches Abschlussdatum verwenden, sofern dieses früher liegt oder kein Entlassdatum existiert:</label>
+                            <label for="use_abschlussdatum">🗓️ Immer Vorraussichtliches Abschlussdatum verwenden:</label>
                             <select class="form-control" id="use_abschlussdatum" name="use_abschlussdatum">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="enable_attestpflicht_column">📄 Immer Attestpflicht-Spalte hinzufügen:</label>
+                            <select class="form-control" id="enable_attestpflicht_column" name="enable_attestpflicht_column">
+                                <option value="True">Ja</option>
+                                <option value="False">Nein</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="enable_nachteilsausgleich_column">♿ Immer Nachteilsausgleich-Spalte hinzufügen:</label>
+                            <select class="form-control" id="enable_nachteilsausgleich_column" name="enable_nachteilsausgleich_column">
+                                <option value="True">Ja</option>
+                                <option value="False">Nein</option>
+                            </select>
+                        </div>
+                        <h5 class="mb-3">Zusätzliche Exporte</h5>
                         <div class="form-group">
                             <label for="create_second_file">🔎 Immer Datei zur Analyse fehlender Entlassdaten erstellen:</label>
                             <select class="form-control" id="create_second_file" name="create_second_file">
@@ -451,15 +484,8 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="create_class_size_file">📊 Klassengrößen ermitteln:</label>
+                            <label for="create_class_size_file">📊 Immer Klassengrößen ermitteln:</label>
                             <select class="form-control" id="create_class_size_file" name="create_class_size_file">
-                                <option value="True">Ja</option>
-                                <option value="False">Nein</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="enable_attestpflicht_column">📄 Attestpflicht-Spalte hinzufügen:</label>
-                            <select class="form-control" id="enable_attestpflicht_column" name="enable_attestpflicht_column">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
                             </select>
@@ -1105,11 +1131,13 @@
                             "schildexport_directory": "form-directories",
                             "class_size_directory": "form-directories",
                             "attest_file_directory": "form-directories",
+                            "nachteilsausgleich_file_directory": "form-directories",
                             // ProcessingOptions
                             "use_abschlussdatum": "form-processing",
                             "create_second_file": "form-processing",
                             "create_class_size_file": "form-processing",
                             "enable_attestpflicht_column": "form-processing",
+                            "enable_nachteilsausgleich_column": "form-processing",
                             // Warnings
                             "warn_entlassdatum": "form-warnings",
                             "warn_aufnahmedatum": "form-warnings",
@@ -1168,6 +1196,7 @@
                     "schildexport_directory": "Directories",
                     "class_size_directory": "Directories",
                     "attest_file_directory": "Directories",
+                    "nachteilsausgleich_file_directory": "Directories",
                     // ProcessingOptions
                     "use_abschlussdatum": "ProcessingOptions",
                     "create_second_file": "ProcessingOptions",
@@ -1178,6 +1207,7 @@
                     "create_class_size_file": "ProcessingOptions",
                     "timeframe_hours": "ProcessingOptions",
                     "enable_attestpflicht_column": "ProcessingOptions",
+                    "enable_nachteilsausgleich_column": "ProcessingOptions",
                     // Email settings
                     "smtp_server": "Email",
                     "smtp_port": "Email",
@@ -1232,6 +1262,7 @@
         const labels = {
             use_abschlussdatum: "...falls dieses früher liegt oder kein Entlassdatum existiert",
             enable_attestpflicht_column: "Analysiert Daten aus dem Attestpflicht-Datei-Verzeichnis für eine zusätzliche Ja/Nein Spalte",
+            enable_nachteilsausgleich_column: "Analysiert Daten aus dem Nachteilsausgleich-Datei-Verzeichnis für eine zusätzliche Ja/Nein Spalte",
             create_second_file: "Abgänger und Abschlüsse ohne...",
             create_class_size_file: "Nützlich für Stundenplaner und das Vertretungsteam",
             warn_entlassdatum: "Von der (Stand jetzt) Vergangneheit auf dem Zeitstrahl nach rechts (generiert Dokumentationslücke)",
@@ -1247,6 +1278,7 @@
             xlsx_directory: "Verzeichnis für die Excel-Dateien. Dies sind ebenfalls Log-Datein aber als ganze Tabelle mit markierten Änderungen.",
             class_size_directory: "Verzeichnis für eine separat generierte Klassengrößendatei zur Verwendung durch Stundenplaner und Vertretungsteam",
             attest_file_directory: "Verzeichnis für eine ImportDatei, die nur die Schüler mit Attestpflicht enthält zur Verwendung Attestpflicht-Spalte",
+            nachteilsausgleich_file_directory: "Verzeichnis für eine ImportDatei, die nur die Schüler mit Nachteilsausgleich enthält zur Verwendung Nachteilsausgleich-Spalte",
             smtp_server: "SMTP-Server-Adresse für den E-Mail-Versand.",
             smtp_port: "Port des SMTP-Servers (z. B. 587 für STARTTLS).",
             smtp_user: "Benutzername für den SMTP-Server.",
