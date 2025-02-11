@@ -5,7 +5,7 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
         <a href="/Screenshots/Start mit Daten.png" target="_blank">
           <img src="/Screenshots/Start mit Daten.png" alt="Startbildschirm" width="600">
           
-*Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht, Attestpflicht, ... ).
+*Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht, Attestpflicht, Nachteilsausgleich, ... ).
 
 ## Funktionen
       
@@ -105,6 +105,12 @@ stellen Sie die Ausgabedatei wie schon für den normalen Export auf .csv und in 
 4. Fertig. Wenn die Datei exportiert und die Funktion aktiviert wurde erkennt das Tool die Schüler, fügt eine Attestpflicht Spalte hinzu und trägt bei allen aus der Datei ein Ja und bei allen anderen ein Nein ein.
 </details>
 
+<details>
+<summary><b>5. Optional: Für die Nachteilsausgleich-Spalte</b></summary>
+        
+Falls die Nachteilsausgleich verwenden möchten muss dieser auch in Schild als Vermerk hinterlegt sein. Ansonsten ist das Vorgehen zu 100% äquivalent zur Attestpflicht-Spalte.
+
+</details>
 
 ## Installation
 1. Die .exe Datei unter [Schild-WebUntis-Tool-WServer](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) in ein leeres (!) Verzeichnis herunterladen.</br>
@@ -323,4 +329,5 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 
 ### Update 2.8
 - **Attestpflicht-Spalte:** Es wurde eine Funktion zur optionalen Integration der Attestpflicht hinzugefügt. Sie basiert auf dem Vermerk der Attestpflicht in Schild.
+- **Nachteilsausgleich-Spalte:** Es wurde eine Funktion zur optionalen Integration der Nachteilsausgleichen hinzugefügt. Sie basiert auf dem Vermerk der Nachteilsausgleichs in Schild.
 - **Klassengrößen Auswertung:** Es wurde die Option zur Generirung eines zusätzlichen Auswertungsdokuments zu den Klassengrößen/stärken hinzugefügt. Diese Datei kann so mit jedem Import generiert und Interessierten (Vertretungsteam, Stundenplaner) zur Verfügung gestellt werden.
