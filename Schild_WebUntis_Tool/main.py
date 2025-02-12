@@ -930,7 +930,7 @@ def save_files(output_data_students, warnings, create_second_file, enable_attest
         for row_i in range(1, len(output_data_students)):
             row = output_data_students[row_i]
             student_id = row[id_index]
-            row.append("Ja" if student_id in nachteil_ids else "Nein")
+            row.append("true" if student_id in nachteil_ids else "false")
 
     output_file = os.path.join(import_dir, f'WebUntis Import {now}.csv')
     second_output_file = os.path.join(import_dir, f'WebUntis Import {now}_Fehlende Entlassdatumsangaben.csv')
@@ -1043,12 +1043,12 @@ def read_nachteilsausgleich_ids_from_latest_file():
     nad_dir = config.get('Directories', 'nachteilsausgleich_file_directory', fallback='./NachteilsausgleichDaten')
 
     if not os.path.exists(nad_dir):
-        print_warning(f"Nachteilsausgleich-Verzeichnis '{nad_dir}' existiert nicht. Alle = 'Nein'.")
+        print_warning(f"Nachteilsausgleich-Verzeichnis '{nad_dir}' existiert nicht. Alle = 'false'.")
         return set()
 
     csv_files = [f for f in os.listdir(nad_dir) if f.endswith('.csv')]
     if not csv_files:
-        print_warning("Keine CSV-Dateien im Nachteilsausgleich-Verzeichnis gefunden. Alle = 'Nein'.")
+        print_warning("Keine CSV-Dateien im Nachteilsausgleich-Verzeichnis gefunden. Alle = 'false'.")
         return set()
 
     # Neueste Datei
