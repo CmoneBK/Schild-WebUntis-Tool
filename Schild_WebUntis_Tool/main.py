@@ -25,6 +25,9 @@ def print_error(message):
 def print_warning(message):
     thread_safe_print(Fore.YELLOW, f"⚠️ {message}")
 
+def print_admin_warning(message):
+    thread_safe_print(Fore.LIGHTRED_EX, f"❗ {message}")
+
 def print_warningtext(message):
     thread_safe_print(Fore.MAGENTA, f"👾 {message}")
 
@@ -39,7 +42,7 @@ def print_creation(message):
 
 def run(use_abschlussdatum=True, create_second_file=True,
         warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True,
-        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False):
+        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning = False):
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
     print_info("Starte Hauptverarbeitung mit den folgenden Optionen:")
     print_info(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
@@ -47,6 +50,8 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_info(f"  Erstelle Klassengrößen-Auswertung: {create_class_size_file}")
     print_info(f"  Attestpflicht-Spalte hinzufügen: {enable_attestpflicht_column}")
     print_info(f"  Nachteilsausgleich-Spalte hinzufügen: {enable_nachteilsausgleich_column}")
+    print_info(f"  Ausgabedatei-Erstellung verhindern: {disable_import_file_creation}")
+    print_info(f"  Ausgabedatei-Erstellung bei Admin-Warnungen verhindern: {disable_import_file_if_admin_warning}")
     print_info(f"  Warnung für Entlassdatum: {warn_entlassdatum}")
     print_info(f"  Warnung für Aufnahmedatum: {warn_aufnahmedatum}")
     print_info(f"  Warnung für Klassenwechsel: {warn_klassenwechsel}")
@@ -58,7 +63,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
     class_change_warnings = []  # Liste für Klassenwechsel-Warnungen
     admission_date_warnings = []  # Liste für Aufnahmedatum-Warnungen
     new_student_warnings = []
-
+    
     # Konfigurationsdatei einlesen
     print_info("Lese 'settings.ini' Konfigurationsdatei ein...")
     config = configparser.ConfigParser()
@@ -97,7 +102,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_warnings(new_student_warnings)
 
     # Dateien speichern
-    save_files(output_data_students, all_warnings, create_second_file, enable_attestpflicht_column, enable_nachteilsausgleich_column)
+    save_files(output_data_students, all_warnings, create_second_file, enable_attestpflicht_column, enable_nachteilsausgleich_column, disable_import_file_creation, disable_import_file_if_admin_warning)
 
     if create_class_size_file:
      create_class_sizes_file(students_by_id)
@@ -895,7 +900,7 @@ def print_warnings(warnings):
         print_warning(f"Klassenlehrkraft 2 E-Mail: {warning['Klassenlehrkraft_2_Email']}")
         print_warning("====================================================")
 
-def save_files(output_data_students, warnings, create_second_file, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False):
+def save_files(output_data_students, warnings, create_second_file, admin_warnings_cache, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning=False):
     # Funktion zum Speichern der Ausgabedateien
     print_info("Speichere Ausgabedateien...")
     config = configparser.ConfigParser()
@@ -939,11 +944,20 @@ def save_files(output_data_students, warnings, create_second_file, enable_attest
     os.makedirs(import_dir, exist_ok=True)
     print_info(f"Importverzeichnis '{import_dir}' ist vorhanden oder wurde erstellt.")
 
-    # Hauptausgabedatei speichern
-    with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
-        writer = csv.writer(csvfile, delimiter=';')
-        writer.writerows(output_data_students)
-    print_creation(f"Hauptausgabedatei (Neue WebUntis-Import_Datei) gespeichert:\n {output_file}")
+    # Hauptausgabedatei speichern    
+    
+    if disable_import_file_creation or (disable_import_file_if_admin_warning and admin_warnings_cache):
+        if disable_import_file_creation:
+            print_warning("Erstellung der Importdatei wurde durch die Einstellung sie zu deaktivieren deaktiviert.")
+        if disable_import_file_if_admin_warning and admin_warnings_cache:
+            print_admin_warning("Erstellung der Importdatei wurde wegen vorhandener Admin-Warnungen deaktiviert.")
+        return
+    else:
+        # Hauptausgabedatei speichern
+        with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.writer(csvfile, delimiter=';')
+            writer.writerows(output_data_students)
+        print_creation(f"Hauptausgabedatei (Neue WebUntis-Import_Datei) gespeichert:\n {output_file}")
 
     # Zweite Ausgabedatei speichern, falls gewünscht
     if create_second_file:

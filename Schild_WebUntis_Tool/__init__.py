@@ -43,6 +43,9 @@ def print_error(message):
 def print_warning(message):
     thread_safe_print(Fore.YELLOW, f"⚠️ {message}")
 
+def print_admin_warning(message):
+    thread_safe_print(Fore.LIGHTRED_EX, f"❗ {message}")
+
 def print_warningtext(message):
     thread_safe_print(Fore.MAGENTA, f"👾 {message}")
 
@@ -85,7 +88,6 @@ global warnings_cache, generated_emails_cache
 warnings_cache = []  # Cache für Warnungen
 generated_emails_cache = []  # Cache für generierte E-Mails
 
-
 # Start der Datenverarbeitung über das Kommandozeilen-Argument --process (nicht WebEnd-Button) heraus.
 def process_data(no_log=False, no_xlsx=False):
     # Konfigurationsdatei einlesen
@@ -98,6 +100,8 @@ def process_data(no_log=False, no_xlsx=False):
     create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True)
     enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False)
     enable_nachteilsausgleich_column = config.getboolean('ProcessingOptions', ' enable_nachteilsausgleich_column', fallback=False)
+    disable_import_file_creation= config.getboolean('ProcessingOptions', ' disable_import_file_creation', fallback=False)
+    disable_import_file_if_admin_warning= config.getboolean('ProcessingOptions', ' disable_import_file_if_admin_warning', fallback=False)
     warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
     warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
@@ -171,6 +175,8 @@ create_class_size_file = False
 timeframe_hours = 24
 enable_attestpflicht_column = False
 enable_nachteilsausgleich_column = False
+disable_import_file_creation = False
+disable_import_file_if_admin_warning = False
 """
 
     # Standard-Inhalt für email_settings.ini vorbereiten
@@ -306,7 +312,7 @@ def admin_warnings(send_email_flag=False):
     # Überprüfen, ob CSV-Dateien im Klassenverzeichnis vorhanden sind
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
     if not class_csv_files:
-        print_warning(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' für die Erstellung von Admin-Warnungen gefunden.")
+        print_admin_warning(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' für die Erstellung von Admin-Warnungen gefunden.")
         return admin_warnings_cache  # Gibt leere Warnungsliste zurück oder handle dies mit Dummy-Daten
 
     # Neueste Klassen-CSV-Datei bestimmen
@@ -327,9 +333,9 @@ def admin_warnings(send_email_flag=False):
 
     # Admin-Warnungen in der Konsole ausgeben
     if admin_warnings_cache:
-        print_warning("Admin-Warnungen:")
+        print_admin_warning("Admin-Warnungen:")
         for warning in admin_warnings_cache:
-            print_warning(f"Typ: {warning['Typ']}, Details: {warning['Details']}")
+            print_admin_warning(f"Typ: {warning['Typ']}, Details: {warning['Details']}")
         print_warningtext("Für die korrekte Funktion Warn-Funktionalität sollten Sie Ihre Klassen- und Lehrerdaten aktualisieren.")
     else:
         print_success("Keine Admin-Warnungen gefunden.")
@@ -383,7 +389,9 @@ def index():
     warn_new_students = config.getboolean('ProcessingOptions', 'warn_new_students', fallback=True)
     create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True) 
     enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False) 
-    enable_nachteilsausgleich_column= config.getboolean('ProcessingOptions', 'enable_nachteilsausgleich_column', fallback=False) 
+    enable_nachteilsausgleich_column= config.getboolean('ProcessingOptions', 'enable_nachteilsausgleich_column', fallback=False)
+    disable_import_file_creation = config.getboolean('ProcessingOptions', 'disable_import_file_creation', fallback=False)
+    disable_import_file_if_admin_warning = config.getboolean('ProcessingOptions', 'disable_import_file_if_admin_warning', fallback=False)
 
     # Werte aus der email_settings.ini laden
     config = configparser.ConfigParser()
@@ -436,6 +444,8 @@ def index():
         create_class_size_file = request.form.get('create_class_size_file') == 'on'
         enable_attestpflicht_column = request.form.get('enable_attestpflicht_column') == 'on'
         enable_nachteilsausgleich_column = request.form.get('enable_nachteilsausgleich_column') == 'on'
+        disable_import_file_creation = request.form.get('disable_import_file_creation') == 'on'
+        disable_import_file_if_admin_warning = request.form.get('disable_import_file_if_admin_warning') == 'on'
 
         # Übergebe die Auswahl an die Run-Funktion
         try:
@@ -453,7 +463,9 @@ def index():
                 no_xlsx=no_xlsx,
                 create_class_size_file=create_class_size_file, 
                 enable_attestpflicht_column=enable_attestpflicht_column,
-                enable_nachteilsausgleich_column=enable_nachteilsausgleich_column
+                enable_nachteilsausgleich_column=enable_nachteilsausgleich_column,
+                disable_import_file_creation=disable_import_file_creation,
+                disable_import_file_if_admin_warning=disable_import_file_if_admin_warning
             )
             warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
 
@@ -481,6 +493,8 @@ def index():
         create_class_size_file = create_class_size_file,
         enable_attestpflicht_column = enable_attestpflicht_column,
         enable_nachteilsausgleich_column = enable_nachteilsausgleich_column,
+        disable_import_file_creation=disable_import_file_creation,
+        disable_import_file_if_admin_warning=disable_import_file_if_admin_warning,
         subject_entlassdatum=subject_entlassdatum,
         body_entlassdatum=body_entlassdatum,
         subject_aufnahmedatum=subject_aufnahmedatum,
