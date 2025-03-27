@@ -189,6 +189,19 @@
                                     🆕 neue Schüler
                                 </label>
                             </div>
+                            <h5 class="mb-3">Exporte Verhindern</h5>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="disable_import_file_creation" name="disable_import_file_creation" {% if disable_import_file_creation %}checked{% endif %}>
+                                <label class="form-check-label" for="disable_import_file_creation">
+                                    ❌ Nur hier verarbeiten und Importdatei nicht erstellen
+                                </label>
+                            </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="disable_import_file_if_admin_warning" name="disable_import_file_if_admin_warning" {% if disable_import_file_if_admin_warning %}checked{% endif %}>
+                                <label class="form-check-label" for="disable_import_file_if_admin_warning">
+                                    ❗→❌ Importdatei bei Admin-Warnungen nicht erstellen
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -488,6 +501,21 @@
                             <select class="form-control" id="create_class_size_file" name="create_class_size_file">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
+                            </select>
+                        </div>
+                        <h5 class="mb-3">Exporte Verhindern</h5>
+                        <div class="form-group">
+                            <label for="disable_import_file_creation">❌ Nur hier verarbeiten und Importdatei nicht erstellen:</label>
+                            <select class="form-control" id="disable_import_file_creation" name="disable_import_file_creation">
+                                <option value="False">Nein</option>
+                                <option value="True">Ja</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="disable_import_file_if_admin_warning">❗→❌ Importdatei bei Admin-Warnungen nicht erstellen:</label>
+                            <select class="form-control" id="disable_import_file_if_admin_warning" name="disable_import_file_if_admin_warning">
+                                <option value="False">Nein</option>
+                                <option value="True">Ja</option>
                             </select>
                         </div>
                     </form>
@@ -1138,6 +1166,8 @@
                             "create_class_size_file": "form-processing",
                             "enable_attestpflicht_column": "form-processing",
                             "enable_nachteilsausgleich_column": "form-processing",
+                            "disable_import_file_creation": "form-processing",
+                            "disable_import_file_if_admin_warning": "form-processing",
                             // Warnings
                             "warn_entlassdatum": "form-warnings",
                             "warn_aufnahmedatum": "form-warnings",
@@ -1208,6 +1238,8 @@
                     "timeframe_hours": "ProcessingOptions",
                     "enable_attestpflicht_column": "ProcessingOptions",
                     "enable_nachteilsausgleich_column": "ProcessingOptions",
+                    "disable_import_file_creation": "ProcessingOptions",
+                    "disable_import_file_if_admin_warning": "ProcessingOptions",
                     // Email settings
                     "smtp_server": "Email",
                     "smtp_port": "Email",
