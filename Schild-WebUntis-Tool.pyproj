@@ -28,6 +28,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Schild_WebUntis_Tool\adminwarnings.py" />
     <Compile Include="Schild_WebUntis_Tool\main - Unkommentiert.py" />
     <Compile Include="Schild_WebUntis_Tool\main.py" />
     <Compile Include="Schild_WebUntis_Tool\smtp.py" />
