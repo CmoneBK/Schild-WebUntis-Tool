@@ -1,9 +1,17 @@
-﻿import os  # Betriebssystemfunktionen wie Pfadoperationen
+import os  # Betriebssystemfunktionen wie Pfadoperationen
 import sys  # Systemfunktionen und -parameter
 
 # Basisverzeichnis explizit zum Suchpfad hinzufügen, um relative Importe zu ermöglichen
 base_dir = os.path.abspath(os.path.dirname(__file__))
 sys.path.append(base_dir)
+
+# Zwingend UTF-8 für die Standardausgabe konfigurieren, um Abstürze durch Emojis (wie ❌, ✅, ℹ️) auf veralteten Windows Konsolen in der .exe zu verhindern.
+try:
+    if sys.stdout and hasattr(sys.stdout, 'encoding') and sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
 
 import csv  # Lesen und Schreiben von CSV-Dateien
 import configparser  # Verarbeiten von Konfigurationsdateien im INI-Format
@@ -61,7 +69,7 @@ def print_creation(message):
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read('settings.ini', encoding='utf-8-sig')
     return config.get('Directories', key, fallback=default)
 
 
@@ -82,26 +90,27 @@ app = Flask(__name__,
 app.secret_key = secrets.token_hex(24) # Generierung eines zufälligen Secret Keys für die Session
 
 # Globale Variablen für Warnungen und generierte E-Mails
-global warnings_cache, generated_emails_cache
+global warnings_cache, generated_emails_cache, admin_warnings_cache
 
 # Globale Caches für Warnungen und generierte E-Mails
 warnings_cache = []  # Cache für Warnungen
 generated_emails_cache = []  # Cache für generierte E-Mails
+admin_warnings_cache = []
 
 # Start der Datenverarbeitung über das Kommandozeilen-Argument --process (nicht WebEnd-Button) heraus.
 def process_data(no_log=False, no_xlsx=False):
     # Konfigurationsdatei einlesen
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read('settings.ini', encoding='utf-8-sig')
     
     # Werte aus der Konfigurationsdatei laden, da in diesem Fall das WebEnd nicht immer geöffnet ist.
     use_abschlussdatum = config.getboolean('ProcessingOptions', 'use_abschlussdatum', fallback=False)
     create_second_file = config.getboolean('ProcessingOptions', 'create_second_file', fallback=False)
     create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True)
     enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False)
-    enable_nachteilsausgleich_column = config.getboolean('ProcessingOptions', ' enable_nachteilsausgleich_column', fallback=False)
-    disable_import_file_creation= config.getboolean('ProcessingOptions', ' disable_import_file_creation', fallback=False)
-    disable_import_file_if_admin_warning= config.getboolean('ProcessingOptions', ' disable_import_file_if_admin_warning', fallback=False)
+    enable_nachteilsausgleich_column = config.getboolean('ProcessingOptions', 'enable_nachteilsausgleich_column', fallback=False)
+    disable_import_file_creation= config.getboolean('ProcessingOptions', 'disable_import_file_creation', fallback=False)
+    disable_import_file_if_admin_warning= config.getboolean('ProcessingOptions', 'disable_import_file_if_admin_warning', fallback=False)
     warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
     warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
@@ -118,23 +127,21 @@ def process_data(no_log=False, no_xlsx=False):
     print_info(f"warn_klassenwechsel: {warn_klassenwechsel}")
     print_info(f"warn_new_students: {warn_new_students}")
 
-    # Argumente aus der Kommandozeile (falls vorhanden)
-    args = argparse.Namespace()
-    no_log = args.no_log if hasattr(args, 'no_log') else False
-    no_xlsx = args.no_xlsx if hasattr(args, 'no_xlsx') else False
-
     # Datenverarbeitung starten
     all_warnings = run(                         #Hier wird die def_run aus der main.py mit den erfassten Einstellungen abgerufen und ausgeführt.
         use_abschlussdatum=use_abschlussdatum,
         create_second_file=create_second_file,
         enable_attestpflicht_column=enable_attestpflicht_column,
         create_class_size_file= create_class_size_file,
+        disable_import_file_creation=disable_import_file_creation,
+        disable_import_file_if_admin_warning=disable_import_file_if_admin_warning,
         warn_entlassdatum=warn_entlassdatum,
         warn_aufnahmedatum=warn_aufnahmedatum,
         warn_klassenwechsel=warn_klassenwechsel,
         warn_new_students=warn_new_students,
         no_log=no_log,
-        no_xlsx=no_xlsx
+        no_xlsx=no_xlsx,
+        admin_warnings_cache=admin_warnings_cache
     )
     print_success("Verarbeitung über die Konsole abgeschlossen.")
     return all_warnings
@@ -177,6 +184,11 @@ enable_attestpflicht_column = False
 enable_nachteilsausgleich_column = False
 disable_import_file_creation = False
 disable_import_file_if_admin_warning = False
+
+[mail]
+# Empfänger nur bei Klassenwechsel-Warnungen
+# gültig: old | new | both
+class_change_recipients = both
 """
 
     # Standard-Inhalt für email_settings.ini vorbereiten
@@ -220,20 +232,20 @@ body_new_student = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die
     # Prüfen, ob settings.ini existiert, und ggf. erstellen
     settings_ini_exists = os.path.exists("settings.ini")
     if not settings_ini_exists:
-        with open("settings.ini", "w") as file:
+        with open("settings.ini", "w", encoding="utf-8") as file:
             file.write(settings_ini_content)
         print_creation("settings.ini wurde erstellt.")
 
     # Prüfen, ob email_settings.ini existiert, und ggf. erstellen
     if not os.path.exists("email_settings.ini"):
-        with open("email_settings.ini", "w") as file:
+        with open("email_settings.ini", "w", encoding="utf-8") as file:
             file.write(email_settings_ini_content)
         print_creation("email_settings.ini wurde erstellt.")
 
     # Sicherstellen, dass die in settings.ini definierten Ordner existieren
     config = configparser.ConfigParser()
     if settings_ini_exists:
-        config.read("settings.ini")
+        config.read("settings.ini", encoding='utf-8-sig')
 
     directories = {
         "classes_directory": default_classes_dir,
@@ -264,11 +276,11 @@ body_new_student = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die
         os.makedirs(import_dir)
         print_creation(f"Ordner '{import_dir}' wurde erstellt.")
 
+    global admin_warnings_cache
+    admin_warnings_cache = []
 
 # Generieren der Admin-Warnungen bei für den Fall inkonsistenter Daten. Wird ebenfalls direkt beim Start des Servers unter "if __name__ == "__main__":" abegerufen, sofern kein --skip-admin-warnings verwendet wurde.
 def admin_warnings(send_email_flag=False):
-    global admin_warnings_cache
-    admin_warnings_cache = []
 
     # Admin-Warnungen werden erstellt
     print_info("Erstelle Admin-Warnungen...")
@@ -278,7 +290,7 @@ def admin_warnings(send_email_flag=False):
 
     # Einstellungen aus settings.ini einlesen
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read('settings.ini', encoding='utf-8-sig')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
 
@@ -342,7 +354,7 @@ def admin_warnings(send_email_flag=False):
 
     # E-Mail senden, falls das Kommandozeilenargument verwendet wurde
     if send_email_flag and admin_warnings_cache:
-        config.read('email_settings.ini')
+        config.read('email_settings.ini', encoding='utf-8-sig')
         admin_email = config.get('Email', 'admin_email', fallback=None)
         if not admin_email:
             print_error("Admin-E-Mail-Adresse fehlt in email_settings.ini.")
@@ -380,7 +392,7 @@ def index():
 
     # Werte aus der settings.ini laden
     config = configparser.ConfigParser()
-    config.read("settings.ini")
+    config.read("settings.ini", encoding='utf-8-sig')
     use_abschlussdatum = config.getboolean('ProcessingOptions', 'use_abschlussdatum', fallback=False)
     create_second_file = config.getboolean('ProcessingOptions', 'create_second_file', fallback=False)
     warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
@@ -395,7 +407,7 @@ def index():
 
     # Werte aus der email_settings.ini laden
     config = configparser.ConfigParser()
-    config.read("email_settings.ini")
+    config.read("email_settings.ini", encoding='utf-8-sig')
 
     # Vorlagenwerte laden
     subject_entlassdatum = config.get("Templates", "subject_entlassdatum", fallback="")
@@ -407,7 +419,7 @@ def index():
 
     # Lese die Konfigurationspfade aus der settings.ini
     config = configparser.ConfigParser()
-    config.read("settings.ini")
+    config.read("settings.ini", encoding='utf-8-sig')
     classes_dir = config.get("Directories", "classes_directory", fallback="./Klassendaten")
     teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
 
@@ -465,7 +477,8 @@ def index():
                 enable_attestpflicht_column=enable_attestpflicht_column,
                 enable_nachteilsausgleich_column=enable_nachteilsausgleich_column,
                 disable_import_file_creation=disable_import_file_creation,
-                disable_import_file_if_admin_warning=disable_import_file_if_admin_warning
+                disable_import_file_if_admin_warning=disable_import_file_if_admin_warning,
+                admin_warnings_cache=admin_warnings_cache
             )
             warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
 
@@ -517,7 +530,7 @@ def generate_emails():
         print_info("Generiere E-Mails basierend auf den vorhandenen Warnungen...")
         # Lade die Vorlagen aus der email_settings.ini
         config = configparser.ConfigParser()
-        config.read("email_settings.ini")
+        config.read("email_settings.ini", encoding='utf-8-sig')
 
         for warning in warnings_cache:
             # Bestimme den Typ der Warnung
@@ -594,7 +607,7 @@ def get_templates():
     config = configparser.ConfigParser()
     try:
         # E-Mail-Vorlagen laden
-        config.read('email_settings.ini')
+        config.read('email_settings.ini', encoding='utf-8-sig')
 
         # Rückgabeobjekt vorbereiten
         templates = {
@@ -626,7 +639,7 @@ def update_templates():
     try:
         # E-Mail-Einstellungen laden
         email_config = configparser.ConfigParser()
-        email_config.read('email_settings.ini')
+        email_config.read('email_settings.ini', encoding='utf-8-sig')
 
         # Vorlagen mit den bereitgestellten Daten aktualisieren
         email_config['Templates']['subject_entlassdatum'] = request.form.get('subject_entlassdatum', '')
@@ -679,7 +692,7 @@ def load_settings():
     settings = {}
     # settings.ini laden
     config = configparser.ConfigParser()
-    config.read("settings.ini")
+    config.read("settings.ini", encoding='utf-8-sig')
     for section in config.sections():
         if section not in settings:
             settings[section] = {}
@@ -687,7 +700,7 @@ def load_settings():
 
     # email_settings.ini laden
     email_config = configparser.ConfigParser()
-    email_config.read("email_settings.ini")
+    email_config.read("email_settings.ini", encoding='utf-8-sig')
     for section in email_config.sections():
         if section not in settings:
             settings[section] = {}
@@ -738,7 +751,7 @@ def save_settings():
 def save_to_settings_ini(settings):
     print_info("Speichere Einstellungen in 'settings.ini'...")
     config = configparser.ConfigParser()
-    config.read("settings.ini")
+    config.read("settings.ini", encoding='utf-8-sig')
     for section, values in settings.items():
         if not config.has_section(section):
             config.add_section(section)
@@ -750,7 +763,7 @@ def save_to_settings_ini(settings):
                 print_info(f"Pfad normalisiert für '{key}': {value}")
             config.set(section, key, str(value))
             print_info(f"Einstellung gesetzt: [{section}] {key} = {value}")
-    with open("settings.ini", "w") as configfile:
+    with open("settings.ini", "w", encoding="utf-8") as configfile:
         config.write(configfile)
     print_success("Einstellungen wurden erfolgreich in 'settings.ini' gespeichert.")
 
@@ -758,7 +771,7 @@ def save_to_settings_ini(settings):
 def save_to_email_settings_ini(settings):
     print_info("Speichere E-Mail-Einstellungen in 'email_settings.ini'...")
     config = configparser.ConfigParser()
-    config.read("email_settings.ini")
+    config.read("email_settings.ini", encoding='utf-8-sig')
     # Bestehende Abschnitte beibehalten
     existing_sections = config.sections()
     # Aktualisiere nur die bereitgestellten Abschnitte
@@ -774,7 +787,7 @@ def save_to_email_settings_ini(settings):
             for key, value in values.items():
                 print_info(f"Einstellung hinzugefügt: [{section}] {key} = {value}")
     # Einstellungen in die Datei schreiben
-    with open("email_settings.ini", "w") as configfile:
+    with open("email_settings.ini", "w", encoding="utf-8") as configfile:
         config.write(configfile)
     print_success("E-Mail-Einstellungen wurden erfolgreich in 'email_settings.ini' gespeichert.")
 
@@ -924,7 +937,7 @@ def upload_files():
     print_info("Empfange Dateien zum Hochladen...")
     # Get directories from settings.ini
     config = configparser.ConfigParser()
-    config.read("settings.ini")
+    config.read("settings.ini", encoding='utf-8-sig')
     classes_dir = config.get("Directories", "classes_directory", fallback="./Klassendaten")
     teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
     schildexport_dir = config.get("Directories", "schildexport_directory", fallback=".")
@@ -1180,6 +1193,11 @@ if __name__ == "__main__":
             print_success("E-Mails erfolgreich gesendet.")
 
 
+    # Prüfen, ob eine rein aufgabenspezifische CLI-Zugehörigkeit vorliegt und der Server übergangen werden soll.
+    if any([args.process, args.generate_emails, args.send_emails, args.send_admin_warnings, args.send_log_email]):
+        print_success("CLI-Verarbeitung abgeschlossen. Beende das Skript.")
+        sys.exit(0)
+
     # Starten des WSGI-Servers mit Waitress
     if not args.no_web:
         browser_thread = threading.Thread(target=open_browser)
@@ -1192,7 +1210,7 @@ if __name__ == "__main__":
 
 
 
-
+__all__ = ['admin_warnings_cache','admin_warnings']
 
 
 

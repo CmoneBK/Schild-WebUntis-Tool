@@ -44,7 +44,7 @@ def print_creation(message):
 def send_email(subject, body, to_addresses, attachment_path=None):
     # Konfigurationsdatei einlesen
     config = configparser.ConfigParser()
-    config.read('email_settings.ini')
+    config.read('email_settings.ini', encoding='utf-8-sig')
     smtp_server = config.get('Email', 'smtp_server')
     smtp_port = config.getint('Email', 'smtp_port')
     smtp_user = config.get('Email', 'smtp_user')

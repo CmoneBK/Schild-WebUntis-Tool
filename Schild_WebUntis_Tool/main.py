@@ -42,7 +42,9 @@ def print_creation(message):
 
 def run(use_abschlussdatum=True, create_second_file=True,
         warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True,
-        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning = False):
+        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning = False, admin_warnings_cache=None):
+    if admin_warnings_cache is None:
+        admin_warnings_cache = []
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
     print_info("Starte Hauptverarbeitung mit den folgenden Optionen:")
     print_info(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
@@ -64,10 +66,10 @@ def run(use_abschlussdatum=True, create_second_file=True,
     admission_date_warnings = []  # Liste für Aufnahmedatum-Warnungen
     new_student_warnings = []
     
-    # Konfigurationsdatei einlesen
+   # Konfigurationsdatei einlesen
     print_info("Lese 'settings.ini' Konfigurationsdatei ein...")
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read('settings.ini', encoding='utf-8-sig')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
     print_info(f"Klassendatenverzeichnis: {classes_dir}")
@@ -102,7 +104,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_warnings(new_student_warnings)
 
     # Dateien speichern
-    save_files(output_data_students, all_warnings, create_second_file, enable_attestpflicht_column, enable_nachteilsausgleich_column, disable_import_file_creation, disable_import_file_if_admin_warning)
+    save_files(output_data_students, all_warnings, create_second_file, admin_warnings_cache, disable_import_file_creation, disable_import_file_if_admin_warning, enable_attestpflicht_column, enable_nachteilsausgleich_column)
 
     if create_class_size_file:
      create_class_sizes_file(students_by_id)
@@ -117,7 +119,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read('settings.ini', encoding='utf-8-sig')
     return config.get('Directories', key, fallback=default)
 
 
@@ -156,7 +158,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     # Verzeichnisse definieren
     import_dir = get_directory('import_directory', './WebUntis Importe')
     config = configparser.ConfigParser()
-    config.read("settings.ini")
+    config.read("settings.ini", encoding='utf-8-sig')
 
     # Verzeichnisse für Log- und Excel-Dateien aus der settings.ini lesen
     log_dir = config.get("Directories", "log_directory", fallback="./Logs")
@@ -169,7 +171,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
 
     # Neueste zwei Dateien im Importverzeichnis finden
     print_info("Suchen der zwei neuesten Dateien im Importverzeichnis...")
-    csv_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
+    csv_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
     if len(csv_files) < 2:
         print_warning(f"Nicht genügend Dateien im Verzeichnis {import_dir} vorhanden, um einen Vergleich durchzuführen. Abbruch der Log-Erstellung.")
         return
@@ -277,9 +279,9 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
 
     # Verzeichnisse und Einstellungen
     config = configparser.ConfigParser()
-    config.read("settings.ini")
+    config.read("settings.ini", encoding='utf-8-sig')
     email_config = configparser.ConfigParser()
-    email_config.read("email_settings.ini")
+    email_config.read("email_settings.ini", encoding='utf-8-sig')
 
     timeframe_hours = config.getint("ProcessingOptions", "timeframe_hours", fallback=24)
     import_dir = config.get("Directories", "import_directory", fallback="./WebUntis Importe")
@@ -310,7 +312,7 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
 
     cutoff_time = datetime.now() - timedelta(hours=timeframe_hours)
     # Dateien im Zeitrahmen finden
-    csv_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
+    csv_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
 
     # Dateien sortieren
     csv_files.sort(key=lambda f: os.path.getctime(os.path.join(import_dir, f)), reverse=True)
@@ -545,15 +547,22 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
         class_teacher_columns = [7, 8]  # 0-basierter Index: 8. und 9. Spalte
 
         for row in class_reader:
-            emails = [teachers.get(row[idx], 'Keine E-Mail gefunden') for idx in class_teacher_columns]
+            emails = [teachers.get(row[idx] if len(row) > idx else '', 'Keine E-Mail gefunden') for idx in class_teacher_columns]
             row.extend(emails)
 
+            kl1 = row[7] if len(row) > 7 else ''
+            kl2 = row[8] if len(row) > 8 else ''
+            kl_name = row[2].strip().lower() if len(row) > 2 else ''
+
+            if not kl_name:
+                continue
+
             # Klasseninformationen speichern
-            classes_by_name[row[2].strip().lower()] = {
-                'Klassenlehrkraft_1': f"{teachers.get(row[7], {}).get('forename', '')} {teachers.get(row[7], {}).get('longname', '')}",
-                'Klassenlehrkraft_1_Email': teachers.get(row[7], {}).get('email', 'Keine E-Mail gefunden'),
-                'Klassenlehrkraft_2': f"{teachers.get(row[8], {}).get('forename', '')} {teachers.get(row[8], {}).get('longname', '')}",
-                'Klassenlehrkraft_2_Email': teachers.get(row[8], {}).get('email', 'Keine E-Mail gefunden')
+            classes_by_name[kl_name] = {
+                'Klassenlehrkraft_1': f"{teachers.get(kl1, {}).get('forename', '')} {teachers.get(kl1, {}).get('longname', '')}",
+                'Klassenlehrkraft_1_Email': teachers.get(kl1, {}).get('email', 'Keine E-Mail gefunden'),
+                'Klassenlehrkraft_2': f"{teachers.get(kl2, {}).get('forename', '')} {teachers.get(kl2, {}).get('longname', '')}",
+                'Klassenlehrkraft_2_Email': teachers.get(kl2, {}).get('email', 'Keine E-Mail gefunden')
             }
     print_success("Klassen- und Lehrerdaten erfolgreich eingelesen.")
     return (classes_by_name, teachers) if return_teachers else classes_by_name
@@ -579,7 +588,7 @@ def read_students(use_abschlussdatum):
         return [], {}
 
     # Neueste CSV-Datei bestimmen
-    newest_file = max(csv_files, key=os.path.getctime)
+    newest_file = max(csv_files, key=lambda f: os.path.getctime(os.path.join(schildexport_dir, f)))
 
     # Definierte Spalten, die gefiltert werden sollen
     columns_to_filter = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Geburtsdatum', 'Klasse', 'Klassenlehrer', 'Geschlecht', 'Entlassdatum', 'Aufnahmedatum', 'vorauss. Abschlussdatum', 'Schulpflicht erfüllt', 'Volljährig', 'E-Mail (privat)', 'Telefon-Nr.', 'Fax-Nr.', 'Straße', 'Postleitzahl', 'Ortsname']
@@ -651,7 +660,7 @@ def create_warnings(classes_by_name, students_by_id):
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
     # Vorherige Importdatei finden
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
+    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
         print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
@@ -715,7 +724,7 @@ def create_new_student_warnings(classes_by_name, current_students_by_id):
     import_dir = get_directory('import_directory', './WebUntis Importe')
     
     # Alle CSV-Dateien aus dem Importverzeichnis ermitteln
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
+    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
     
     # Wähle als Vergleichsdatei:
     if len(output_files) >= 1:
@@ -774,7 +783,7 @@ def create_class_change_warnings(classes_by_name, students_by_id):
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
     # Vorherige Importdatei finden
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
+    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
         print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
@@ -819,7 +828,7 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
     # Vorherige Importdatei finden
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv')]
+    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
         print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
@@ -900,11 +909,12 @@ def print_warnings(warnings):
         print_warning(f"Klassenlehrkraft 2 E-Mail: {warning['Klassenlehrkraft_2_Email']}")
         print_warning("====================================================")
 
-def save_files(output_data_students, warnings, create_second_file, admin_warnings_cache, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning=False):
+
+def save_files(output_data_students, warnings, create_second_file, admin_warnings_cache, disable_import_file_creation=False, disable_import_file_if_admin_warning=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False):
     # Funktion zum Speichern der Ausgabedateien
     print_info("Speichere Ausgabedateien...")
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read('settings.ini', encoding='utf-8-sig')
     import_dir = get_directory('import_directory', './WebUntis Importe')
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -944,20 +954,25 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
     os.makedirs(import_dir, exist_ok=True)
     print_info(f"Importverzeichnis '{import_dir}' ist vorhanden oder wurde erstellt.")
 
+    print_info(f"DEBUG: disable_import_file_creation = {disable_import_file_creation} (Typ: {type(disable_import_file_creation)})")
+    print_info(f"DEBUG: disable_import_file_if_admin_warning = {disable_import_file_if_admin_warning} (Typ: {type(disable_import_file_if_admin_warning)})")
+    print_info(f"DEBUG: admin_warnings_cache => {admin_warnings_cache} (Typ: {type(admin_warnings_cache)})")
+
+
     # Hauptausgabedatei speichern    
-    
-    if disable_import_file_creation or (disable_import_file_if_admin_warning and admin_warnings_cache):
-        if disable_import_file_creation:
-            print_warning("Erstellung der Importdatei wurde durch die Einstellung sie zu deaktivieren deaktiviert.")
-        if disable_import_file_if_admin_warning and admin_warnings_cache:
-            print_admin_warning("Erstellung der Importdatei wurde wegen vorhandener Admin-Warnungen deaktiviert.")
+    # 1) Prüfen, ob der Nutzer generell keine Datei möchte („Nur hier verarbeiten“)
+    if disable_import_file_creation:
+        print_warning("Keine Importdatei – Nur hier verarbeiten ('disable_import_file_creation' = True).")
         return
-    else:
-        # Hauptausgabedatei speichern
-        with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
-            writer = csv.writer(csvfile, delimiter=';')
-            writer.writerows(output_data_students)
-        print_creation(f"Hauptausgabedatei (Neue WebUntis-Import_Datei) gespeichert:\n {output_file}")
+    # 2) Prüfen, ob bei Admin-Warnungen nichts erstellt werden soll
+    if disable_import_file_if_admin_warning and admin_warnings_cache:
+        print_warning("Keine Importdatei – 'disable_import_file_if_admin_warning' ist aktiv und Admin-Warnungen liegen vor.")
+        return
+    # Hauptausgabedatei speichern
+    with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
+        writer = csv.writer(csvfile, delimiter=';')
+        writer.writerows(output_data_students)
+    print_creation(f"Hauptausgabedatei (Neue WebUntis-Import_Datei) gespeichert:\n {output_file}")
 
     # Zweite Ausgabedatei speichern, falls gewünscht
     if create_second_file:
@@ -1005,7 +1020,7 @@ def read_attest_ids_from_latest_file():
     liest daraus alle 'Interne ID-Nummer' Einträge in ein Set und gibt dieses zurück.
     """
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read('settings.ini', encoding='utf-8-sig')
     attest_dir = config.get('Directories', 'attest_file_directory', fallback='./AttestpflichtDaten')
 
     if not os.path.exists(attest_dir):
@@ -1053,7 +1068,7 @@ def read_nachteilsausgleich_ids_from_latest_file():
     nach der neuesten .csv-Datei und liefert die IDs als Set zurück.
     """
     config = configparser.ConfigParser()
-    config.read("settings.ini")
+    config.read("settings.ini", encoding='utf-8-sig')
     nad_dir = config.get('Directories', 'nachteilsausgleich_file_directory', fallback='./NachteilsausgleichDaten')
 
     if not os.path.exists(nad_dir):
@@ -1102,7 +1117,7 @@ def create_class_sizes_file(students_by_id):
 
     # 1) Lese aus settings.ini das Verzeichnis
     config = configparser.ConfigParser()
-    config.read('settings.ini')
+    config.read('settings.ini', encoding='utf-8-sig')
     class_size_dir = config.get('Directories', 'class_size_directory', fallback="./ClassSizes")
 
     # Stelle sicher, dass der Ordner existiert
@@ -1140,3 +1155,10 @@ def create_class_sizes_file(students_by_id):
         print_success(f"Klassengrößen-Datei erstellt: {output_file_path}")
     except Exception as e:
         print_error(f"Fehler beim Erstellen der Klassengrößen-Datei: {e}")
+
+
+
+
+
+
+
