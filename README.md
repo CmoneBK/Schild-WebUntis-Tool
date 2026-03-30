@@ -338,4 +338,5 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Optionale Warnungen für aus dem Schild-Export verschwundene Schüler:** Das dürfte bei dem Filter: "Aktuelles Schuljahr - Aktive, Abgänger und Abschlüsse" im Grund nie auftreten (außer vielleicht ganz zum Schluss beim Hochschulen)
 - **Klassenwechsel Email-Versand an alle Klassenlehrer (statt nur die der alten Klasse):** Email Versand der Warnemails über Klassenwechsel wahlweise an die Klassenlehrkräfte der alten Klasse, der neuen Klasse, oder Beide.
 - **Importdatei Erstellung unterbinden:** Option zum Verhindern der Erstellung der WebUntis-Importdatei wenn zum Beispiel Admin Warnungen existieren. Das ist sehr wichtig für vollautomatisierte Nutzung dieses Tools
+  
 Außerdem wurden einige seltenere Bugs gefixt und die Robustheit des Programms erhöht.
