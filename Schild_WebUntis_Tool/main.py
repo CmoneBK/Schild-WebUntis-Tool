@@ -42,7 +42,9 @@ def print_creation(message):
 
 def run(use_abschlussdatum=True, create_second_file=True,
         warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True,
-        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning = False, admin_warnings_cache=None):
+        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False,
+        enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning=False,
+        admin_warnings_cache=None, class_change_recipients="old"):
     if admin_warnings_cache is None:
         admin_warnings_cache = []
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
@@ -57,6 +59,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_info(f"  Warnung für Entlassdatum: {warn_entlassdatum}")
     print_info(f"  Warnung für Aufnahmedatum: {warn_aufnahmedatum}")
     print_info(f"  Warnung für Klassenwechsel: {warn_klassenwechsel}")
+    print_info(f"  Empfänger Klassenwechsel E-Mail: {class_change_recipients}")
     print_info(f"  Warnung für neue Schüler: {warn_new_students}")
     print_info(f"  Log-Dateien erstellen: {'Nein' if no_log else 'Ja'}")
     print_info(f"  Excel-Dateien erstellen: {'Nein' if no_xlsx else 'Ja'}")
@@ -84,7 +87,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
     if warn_entlassdatum:
         warnings = create_warnings(classes_by_name, students_by_id)
     if warn_klassenwechsel:
-        class_change_warnings = create_class_change_warnings(classes_by_name, students_by_id)
+        class_change_warnings = create_class_change_warnings(classes_by_name, students_by_id, class_change_recipients)
     if warn_aufnahmedatum:
         admission_date_warnings = create_admission_date_warnings(classes_by_name, students_by_id)
     if warn_new_students:
@@ -776,7 +779,7 @@ def create_new_student_warnings(classes_by_name, current_students_by_id):
 
 
 
-def create_class_change_warnings(classes_by_name, students_by_id):
+def create_class_change_warnings(classes_by_name, students_by_id, class_change_recipients="old"):
     # Funktion zum Erstellen von Warnungen bei Klassenwechseln
     print_info("Erstelle Klassenwechsel-Warnungen...")
     warnings = []
@@ -796,26 +799,36 @@ def create_class_change_warnings(classes_by_name, students_by_id):
                     previous_class = row.get('Klasse')
                     new_class = students_by_id[interne_id].get('Klasse')
                     if previous_class and new_class and previous_class != new_class:
-                        klasse = previous_class.strip().lower()
-                        klassen_info = classes_by_name.get(klasse, {})
-                        if not klassen_info:
-                            print_warning(f"Klasse '{klasse}' nicht in Klasseninformationen gefunden.")
+                        alte_klasse_str = previous_class.strip().lower()
+                        neue_klasse_str = new_class.strip().lower()
 
-                        # Warnung hinzufügen
-                        warnings.append({
-                            'Nachname': row['Nachname'],
-                            'Vorname': row['Vorname'],
-                            'alte_klasse': previous_class,
-                            'neue_klasse': new_class,
-                            'Klassenlehrkraft_1': klassen_info.get('Klassenlehrkraft_1', 'N/A'),
-                            'Klassenlehrkraft_1_Email': klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
-                            'Klassenlehrkraft_2': klassen_info.get('Klassenlehrkraft_2', 'N/A'),
-                            'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
-                            'Volljaehrig': students_by_id[interne_id].get('Volljährig', 'Unbekannt'),  # Volljaehrig hinzufügen
-                            'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),  # Status Schlüssel hinzufügen
-                            'warning_message': "Klassenwechsel muss im Digitalen Klassenbuch manuell korrigiert werden, da die Änderung im System ab dem aktuellen Tag gilt."
-                        })
-                        print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class}.")
+                        def add_warning_for_class(klasse_lookup_str):
+                            klassen_info = classes_by_name.get(klasse_lookup_str, {})
+                            if not klassen_info:
+                                print_warning(f"Klasse '{klasse_lookup_str}' nicht in Klasseninformationen gefunden.")
+
+                            # Warnung hinzufügen
+                            warnings.append({
+                                'Nachname': row['Nachname'],
+                                'Vorname': row['Vorname'],
+                                'alte_klasse': previous_class,
+                                'neue_klasse': new_class,
+                                'Klassenlehrkraft_1': klassen_info.get('Klassenlehrkraft_1', 'N/A'),
+                                'Klassenlehrkraft_1_Email': klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
+                                'Klassenlehrkraft_2': klassen_info.get('Klassenlehrkraft_2', 'N/A'),
+                                'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+                                'Volljaehrig': students_by_id[interne_id].get('Volljährig', 'Unbekannt'),  # Volljaehrig hinzufügen
+                                'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),  # Status Schlüssel hinzufügen
+                                'warning_message': "Klassenwechsel muss im Digitalen Klassenbuch manuell korrigiert werden, da die Änderung im System ab dem aktuellen Tag gilt."
+                            })
+
+                        if class_change_recipients in ["old", "both"]:
+                            add_warning_for_class(alte_klasse_str)
+                            print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class} (Empfänger: ALTE Klasse).")
+
+                        if class_change_recipients in ["new", "both"]:
+                            add_warning_for_class(neue_klasse_str)
+                            print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class} (Empfänger: NEUE Klasse).")
     else:
         print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
     print_info(f"Anzahl der erstellten Klassenwechsel-Warnungen: {len(warnings)}")
