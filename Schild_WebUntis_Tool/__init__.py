@@ -610,7 +610,85 @@ def view_generated_emails():
     # Rendert die Seite zum Anzeigen der generierten E-Mails
     return render_template('view_emails.html', emails=generated_emails_cache)
 
+# Route zum Abrufen der Dateihistorie (Logs & Excels)
+@app.route('/api/history', methods=['GET'])
+def get_history():
+    print_info("Lade Historie-Daten...")
+    config = configparser.ConfigParser()
+    config.read("settings.ini", encoding='utf-8-sig')
+    log_dir = config.get("Directories", "log_directory", fallback="Logs")
+    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelExports")
 
+    history_dict = {}
+    
+    import re
+    date_pattern = re.compile(r'_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.')
+
+    def scan_dir(directory, extension, key_name):
+        if not os.path.exists(directory): return
+        for f in os.listdir(directory):
+            if f.endswith(extension):
+                match = date_pattern.search(f)
+                if match:
+                    timestamp = match.group(1)
+                    if timestamp not in history_dict:
+                        # Format timestamp for display nicely
+                        display_time = timestamp.replace('_', ' ').replace('-', ':', 2)
+                        # Quick fix: original format is YYYY-MM-DD_HH-MM-SS
+                        # We want YYYY-MM-DD HH:MM:SS
+                        parts = timestamp.split('_')
+                        if len(parts) == 2:
+                            display_time = f"{parts[0]} {parts[1][:2]}:{parts[1][3:5]}:{parts[1][6:]}"
+
+                        history_dict[timestamp] = {
+                            "timestamp": timestamp,
+                            "display_time": display_time,
+                            "log_file": None,
+                            "xlsx_file": None
+                        }
+                    history_dict[timestamp][key_name] = f
+
+    scan_dir(log_dir, '.log', 'log_file')
+    scan_dir(xlsx_dir, '.xlsx', 'xlsx_file')
+
+    # Convert to list and sort descending by timestamp
+    history_list = list(history_dict.values())
+    history_list.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    # Apply limit
+    limit = request.args.get('limit', default=30, type=int)
+    if limit > 0:
+        history_list = history_list[:limit]
+
+    return jsonify(history_list)
+
+
+# Route zum Anzeigen des Datei-Inhalts einer .log-Datei im WeUI Modal
+@app.route('/api/log_content/<path:filename>', methods=['GET'])
+def get_log_content(filename):
+    config = configparser.ConfigParser()
+    config.read("settings.ini", encoding='utf-8-sig')
+    log_dir = config.get("Directories", "log_directory", fallback="Logs")
+    
+    # Path-Traversal Protection
+    safe_filename = os.path.basename(filename)
+    file_path = os.path.join(log_dir, safe_filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "Datei nicht gefunden"}), 404
+        
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    except Exception as e:
+        # Fallback falls es anderes Encoding hat
+        try:
+            with open(file_path, 'r', encoding='utf-16') as f:
+                content = f.read()
+                return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        except Exception as e2:
+            return jsonify({"error": f"Dateiformat kann nicht gelesen werden: {str(e2)}"}), 500
 # Route und Funktion zum Abruf der E-Mail Inhalte des Vorlagen-Email-Editors im WebEnd. 
 @app.route('/get_templates', methods=['GET'])
 def get_templates():

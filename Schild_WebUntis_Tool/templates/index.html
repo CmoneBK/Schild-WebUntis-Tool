@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schild-WebUntis-Tool</title>
+    <!-- Dark Mode Initializer -->
+    <script>
+        if (localStorage.getItem("darkMode") === "enabled") {
+            document.documentElement.classList.add("dark-mode");
+        }
+    </script>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
@@ -107,16 +113,95 @@
             line-height: 1.2; /* Ensures text and icons are balanced vertically */
         }
 
+        /* --- Dark Mode Styles --- */
+        body.dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        body.dark-mode .card, 
+        body.dark-mode .modal-content, 
+        body.dark-mode .list-group-item {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border-color: #333333;
+        }
+
+        body.dark-mode .card-header {
+            border-bottom-color: #333;
+        }
+
+        body.dark-mode input.form-control, 
+        body.dark-mode select.form-control, 
+        body.dark-mode textarea.form-control {
+            background-color: #2c2c2c;
+            color: #fff;
+            border-color: #444;
+        }
+
+        body.dark-mode input.form-control[readonly] {
+            background-color: #3b3b3b;
+        }
+
+        body.dark-mode .table {
+            color: #fff;
+        }
+
+        body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        body.dark-mode .table thead.thead-dark th {
+            background-color: #343a40;
+            border-color: #454d55;
+        }
+
+        body.dark-mode .nav-tabs .nav-link {
+            color: #bbb;
+        }
+
+        body.dark-mode .nav-tabs .nav-link.active {
+            color: #fff;
+            background-color: #1e1e1e;
+            border-color: #333 #333 #1e1e1e;
+        }
+        
+        body.dark-mode hr {
+            border-top-color: #444;
+        }
+
+        body.dark-mode .alert-warning {
+            background-color: #5c440b;
+            color: #f8d775;
+            border-color: #725510;
+        }
+
+        body.dark-mode .alert-danger {
+            background-color: #5c1b1b;
+            color: #f8aec0;
+            border-color: #722020;
+        }
+
+        body.dark-mode .alert-success {
+            background-color: #144d29;
+            color: #a8f0c3;
+            border-color: #1b6636;
+        }
     </style>
 </head>
 <body>
     <div class="container mt-5">
-        <div class="d-flex align-items-center">
-            <!-- Logo -->
-            <img src="{{ url_for('static', filename='favicon.jpg') }}" alt="Logo" class="logo-img">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <!-- Logo -->
+                <img src="{{ url_for('static', filename='favicon.jpg') }}" alt="Logo" class="logo-img">
 
-            <!-- Title -->
-            <h1 class="ml-3 mb-0">Schild-WebUntis-Tool</h1>
+                <!-- Title -->
+                <h1 class="ml-3 mb-0">Schild-WebUntis-Tool</h1>
+            </div>
+            
+            <!-- Dark Mode Toggle -->
+            <button id="darkModeToggle" class="btn btn-outline-secondary">🌙 Dark Mode</button>
         </div>
 
         <div class="card mt-4">
@@ -312,10 +397,31 @@
 
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-3" style="height: 60px;">
-            <button id="toggleEditor" class="btn btn-secondary w-100 mr-2">✉️ Email-Vorlagen Editor</button>
+            <button id="toggleHistory" class="btn btn-dark w-100 mr-2">📜 Historie</button>
+            <button id="toggleEditor" class="btn btn-secondary w-100 mx-2">✉️ Email-Vorlagen Editor</button>
             {% if enable_upload %}<button id="toggleUploadArea" class="btn btn-warning w-100 mx-2">⬆️ Dateien Hochladen</button>{% endif %}
             <button id="toggleShortcutCreator" class="btn btn-info w-100 mx-2">#️⃣🔗Befehl- und Verknüpfungs-Erstelltool</button>
             <button id="toggle-settings" class="btn btn-primary w-100 ml-2">⚙️ Einstellungen</button>
+        </div>
+
+        <div id="historyPanel" class="mt-4" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>📜 Historie</h4>
+                <button id="loadAllHistory" class="btn btn-sm btn-outline-info">Alle anzeigen</button>
+            </div>
+            
+            <table class="table table-striped" id="historyTable">
+                <thead class="thead-dark">
+                    <tr>
+                        <th style="width: 25%">Verarbeitungszeitpunkt</th>
+                        <th style="width: 50%">Dateien</th>
+                        <th style="width: 25%">Aktion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- History entries will be generated here by JS -->
+                </tbody>
+            </table>
         </div>
 
         <div id="settingsPanel" class="mt-4" style="display: none;">
@@ -1558,11 +1664,149 @@
 
     </script>
 
+    <!-- Historie Log Viewer Modal -->
+    <div class="modal fade" id="logViewerModal" tabindex="-1" role="dialog" aria-labelledby="logViewerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logViewerModalLabel">Log Ansicht</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Schließen">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <pre id="logContentPre" style="white-space: pre-wrap; word-wrap: break-word; background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 60vh; overflow-y: auto;"></pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Dark Mode & Historie Scripts -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // --- Dark Mode Logic ---
+            const darkModeToggle = document.getElementById("darkModeToggle");
+            
+            // Sync initial state if it was added to documentElement
+            if (document.documentElement.classList.contains("dark-mode")) {
+                document.body.classList.add("dark-mode");
+                darkModeToggle.textContent = "☀️ Light Mode";
+            }
 
+            darkModeToggle.addEventListener("click", function () {
+                document.body.classList.toggle("dark-mode");
+                document.documentElement.classList.toggle("dark-mode");
+                
+                if (document.body.classList.contains("dark-mode")) {
+                    localStorage.setItem("darkMode", "enabled");
+                    darkModeToggle.textContent = "☀️ Light Mode";
+                } else {
+                    localStorage.setItem("darkMode", "disabled");
+                    darkModeToggle.textContent = "🌙 Dark Mode";
+                }
+            });
 
+            // Adjust Modal background style for dark mode
+            $('#logViewerModal').on('show.bs.modal', function () {
+                const pre = document.getElementById("logContentPre");
+                if (document.body.classList.contains("dark-mode")) {
+                    pre.style.background = "#2a2a2a";
+                    pre.style.color = "#ddd";
+                } else {
+                    pre.style.background = "#f8f9fa";
+                    pre.style.color = "#212529";
+                }
+            });
 
+            // --- History Logic ---
+            const toggleHistoryBtn = document.getElementById("toggleHistory");
+            const historyPanel = document.getElementById("historyPanel");
+            const loadAllHistoryBtn = document.getElementById("loadAllHistory");
+            
+            toggleHistoryBtn.addEventListener("click", function() {
+                if (historyPanel.style.display === "none") {
+                    historyPanel.style.display = "block";
+                    loadHistory(30); // Default load limit 30
+                } else {
+                    historyPanel.style.display = "none";
+                }
+            });
 
+            loadAllHistoryBtn.addEventListener("click", function() {
+                loadHistory(0); // 0 means all
+            });
 
+            function loadHistory(limit) {
+                const tbody = document.querySelector("#historyTable tbody");
+                tbody.innerHTML = "<tr><td colspan='3' class='text-center'>Lade Historie...</td></tr>";
+
+                fetch(`/api/history?limit=${limit}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        tbody.innerHTML = "";
+                        if (data.length === 0) {
+                            tbody.innerHTML = "<tr><td colspan='3' class='text-center'>Keine Einträge gefunden.</td></tr>";
+                            return;
+                        }
+
+                        data.forEach(entry => {
+                            const tr = document.createElement("tr");
+                            
+                            // Zeit
+                            const tdTime = document.createElement("td");
+                            tdTime.innerHTML = `<strong>${entry.display_time}</strong>`;
+                            tr.appendChild(tdTime);
+
+                            // Dateien
+                            const tdFiles = document.createElement("td");
+                            let fileHTML = "";
+                            if (entry.log_file) fileHTML += `<div><span class="badge badge-info">LOG</span> ${entry.log_file}</div>`;
+                            if (entry.xlsx_file) fileHTML += `<div><span class="badge badge-success">XLSX</span> ${entry.xlsx_file}</div>`;
+                            tdFiles.innerHTML = fileHTML || "<em>Keine Dateien</em>";
+                            tr.appendChild(tdFiles);
+
+                            // Aktionen
+                            const tdActions = document.createElement("td");
+                            if (entry.log_file) {
+                                const btn = document.createElement("button");
+                                btn.className = "btn btn-sm btn-outline-primary";
+                                btn.textContent = "📄 Log Anzeigen";
+                                btn.onclick = () => viewLog(entry.log_file);
+                                tdActions.appendChild(btn);
+                            }
+                            tr.appendChild(tdActions);
+
+                            tbody.appendChild(tr);
+                        });
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        tbody.innerHTML = `<tr><td colspan='3' class='text-danger'>Fehler beim Laden der Historie.</td></tr>`;
+                    });
+            }
+        });
+
+        // Global function for onclick
+        function viewLog(filename) {
+            const pre = document.getElementById("logContentPre");
+            pre.textContent = "Lade Log-Datei...";
+            $('#logViewerModal').modal('show');
+
+            fetch(`/api/log_content/${encodeURIComponent(filename)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error("Netzwerkfehler oder Datei nicht gefunden");
+                    return response.text();
+                })
+                .then(text => {
+                    pre.textContent = text;
+                })
+                .catch(err => {
+                    pre.textContent = "Fehler beim Laden: " + err.message;
+                });
+        }
+    </script>
 </body>
 </html>
