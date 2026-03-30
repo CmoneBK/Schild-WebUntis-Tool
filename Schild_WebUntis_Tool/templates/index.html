@@ -274,6 +274,12 @@
                                     🆕 neue Schüler
                                 </label>
                             </div>
+                            <div class="form-group form-check">
+                                <input type="checkbox" class="form-check-input" id="warn_karteileichen" name="warn_karteileichen" {% if warn_karteileichen %}checked{% endif %}>
+                                <label class="form-check-label" for="warn_karteileichen">
+                                    🧟 Fehlende Schüler (Karteileichen)
+                                </label>
+                            </div>
                             <h5 class="mb-3">Exporte Verhindern</h5>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="disable_import_file_creation" name="disable_import_file_creation" {% if disable_import_file_creation %}checked{% endif %}>
@@ -360,6 +366,9 @@
                         {% endif %}
                         {% if 'new_student' in warning and warning.new_student %}
                         <strong>Aufnahmedatum:</strong> {{ warning['Aufnahmedatum'] }}<br>
+                        {% endif %}
+                        {% if 'karteileiche' in warning and warning.karteileiche %}
+                        <strong>Hinweis:</strong> Schüler fehlt in den Importdaten komplett.<br>
                         {% endif %}
                         {% if 'neue_klasse' in warning %}
                         <strong>Alte Klasse:</strong> {{ warning.get('alte_klasse', 'N/A') }}<br>
@@ -665,6 +674,13 @@
                                 <option value="False">Inaktiv</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="setting_warn_karteileichen">🧟 Immer Warnungen für Karteileichen generieren:</label>
+                            <select class="form-control" id="setting_warn_karteileichen" name="warn_karteileichen">
+                                <option value="True">Aktiv</option>
+                                <option value="False">Inaktiv</option>
+                            </select>
+                        </div>
                     </form>
                 </div>
                 <!-- Konsole -->
@@ -749,6 +765,9 @@
                     <a class="nav-link" id="newstudent-tab" data-toggle="tab" href="#newstudent" role="tab" aria-controls="newstudent" aria-selected="false">🆕 Neue Schüler</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" id="karteileiche-tab" data-toggle="tab" href="#karteileiche" role="tab" aria-controls="karteileiche" aria-selected="false">🧟 Karteileichen</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" id="email-info-tab" data-toggle="tab" href="#email-info" role="tab" aria-controls="email-info" aria-selected="false">🗝️ℹ️Schlüssel-Info</a>
                 </li>
             </ul>
@@ -806,6 +825,20 @@
                             <label for="bodyNewStudent">📜 Nachricht:</label>
                             <div id="editorBodyNewStudent" class="quill-editor"></div>
                             <textarea id="bodyNewStudent" name="body_new_student" class="form-control d-none"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <!-- Karteileichen -->
+                <div class="tab-pane fade" id="karteileiche" role="tabpanel" aria-labelledby="karteileiche-tab">
+                    <form id="karteileicheForm">
+                        <div class="form-group">
+                            <label for="subjectKarteileiche">📧 Betreff:</label>
+                            <input type="text" class="form-control" id="subjectKarteileiche" name="subject_karteileiche">
+                        </div>
+                        <div class="form-group">
+                            <label for="bodyKarteileiche">📜 Nachricht:</label>
+                            <div id="editorBodyKarteileiche" class="quill-editor"></div>
+                            <textarea id="bodyKarteileiche" name="body_karteileiche" class="form-control d-none"></textarea>
                         </div>
                     </form>
                 </div>
@@ -1132,6 +1165,7 @@
             const editorBodyAufnahmedatum = new Quill('#editorBodyAufnahmedatum', { theme: 'snow' });
             const editorBodyKlassenwechsel = new Quill('#editorBodyKlassenwechsel', { theme: 'snow' });
             const editorBodyNewStudent = new Quill('#editorBodyNewStudent', { theme: 'snow' });
+            const editorBodyKarteileiche = new Quill('#editorBodyKarteileiche', { theme: 'snow' });
 
             // Load templates dynamically
             fetch("/get_templates")
@@ -1142,12 +1176,14 @@
                     document.getElementById("subjectAufnahmedatum").value = data.subject_aufnahmedatum || "";
                     document.getElementById("subjectKlassenwechsel").value = data.subject_klassenwechsel || "";
                     document.getElementById("subjectNewStudent").value = data.subject_new_student || "";
+                    document.getElementById("subjectKarteileiche").value = data.subject_karteileiche || "";
 
                     // Populate body fields in Quill editors
                     editorBodyEntlassdatum.root.innerHTML = data.body_entlassdatum || "";
                     editorBodyAufnahmedatum.root.innerHTML = data.body_aufnahmedatum || "";
                     editorBodyKlassenwechsel.root.innerHTML = data.body_klassenwechsel || "";
                     editorBodyNewStudent.root.innerHTML = data.body_new_student || "";
+                    editorBodyKarteileiche.root.innerHTML = data.body_karteileiche || "";
                 })
                 .catch(error => {
                     console.error("Error loading email templates:", error);
@@ -1161,6 +1197,7 @@
                 document.getElementById('bodyAufnahmedatum').value = editorBodyAufnahmedatum.root.innerHTML;
                 document.getElementById('bodyKlassenwechsel').value = editorBodyKlassenwechsel.root.innerHTML;
                 document.getElementById('bodyNewStudent').value = editorBodyNewStudent.root.innerHTML;
+                document.getElementById('bodyKarteileiche').value = editorBodyKarteileiche.root.innerHTML;
 
                 const formData = new FormData();
                 formData.append("subject_entlassdatum", document.getElementById("subjectEntlassdatum").value);
@@ -1171,6 +1208,8 @@
                 formData.append("body_klassenwechsel", document.getElementById("bodyKlassenwechsel").value);
                 formData.append("subject_new_student", document.getElementById("subjectNewStudent").value);
                 formData.append("body_new_student", document.getElementById("bodyNewStudent").value);
+                formData.append("subject_karteileiche", document.getElementById("subjectKarteileiche").value);
+                formData.append("body_karteileiche", document.getElementById("bodyKarteileiche").value);
 
                 fetch("/update_templates", {
                     method: "POST",
@@ -1288,6 +1327,7 @@
                             "warn_klassenwechsel": "form-warnings",
                             "class_change_recipients": "form-warnings",
                             "warn_new_students": "form-warnings",
+                            "warn_karteileichen": "form-warnings",
                             // Console
                             "timeframe_hours": "form-console",
                             // Email settings
@@ -1350,6 +1390,7 @@
                     "warn_klassenwechsel": "ProcessingOptions",
                     "class_change_recipients": "ProcessingOptions",
                     "warn_new_students": "ProcessingOptions",
+                    "warn_karteileichen": "ProcessingOptions",
                     "create_class_size_file": "ProcessingOptions",
                     "timeframe_hours": "ProcessingOptions",
                     "enable_attestpflicht_column": "ProcessingOptions",

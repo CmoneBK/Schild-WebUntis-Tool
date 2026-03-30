@@ -13,7 +13,7 @@ a = Analysis(
         'main',      # Manuell hinzuzufügende Module
         'smtp',
         'oauth2client',  # Füge oauth2client explizit hinzu
-		'openpyxl'
+		'openpyxl',
 		'winshell'
     ],
     hookspath=[],

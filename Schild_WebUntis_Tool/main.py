@@ -41,7 +41,7 @@ def print_creation(message):
     thread_safe_print(Fore.WHITE, f"✨ {message}")
 
 def run(use_abschlussdatum=True, create_second_file=True,
-        warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True,
+        warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True, warn_karteileichen=False,
         no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False,
         enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning=False,
         admin_warnings_cache=None, class_change_recipients="old"):
@@ -59,8 +59,9 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_info(f"  Warnung für Entlassdatum: {warn_entlassdatum}")
     print_info(f"  Warnung für Aufnahmedatum: {warn_aufnahmedatum}")
     print_info(f"  Warnung für Klassenwechsel: {warn_klassenwechsel}")
-    print_info(f"  Empfänger Klassenwechsel E-Mail: {class_change_recipients}")
     print_info(f"  Warnung für neue Schüler: {warn_new_students}")
+    print_info(f"  Warnung für Karteileichen: {warn_karteileichen}")
+    print_info(f"  Empfänger Klassenwechsel E-Mail: {class_change_recipients}")
     print_info(f"  Log-Dateien erstellen: {'Nein' if no_log else 'Ja'}")
     print_info(f"  Excel-Dateien erstellen: {'Nein' if no_xlsx else 'Ja'}")
 
@@ -68,7 +69,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
     class_change_warnings = []  # Liste für Klassenwechsel-Warnungen
     admission_date_warnings = []  # Liste für Aufnahmedatum-Warnungen
     new_student_warnings = []
-    
+    karteileichen_warnings = []
    # Konfigurationsdatei einlesen
     print_info("Lese 'settings.ini' Konfigurationsdatei ein...")
     config = configparser.ConfigParser()
@@ -92,9 +93,11 @@ def run(use_abschlussdatum=True, create_second_file=True,
         admission_date_warnings = create_admission_date_warnings(classes_by_name, students_by_id)
     if warn_new_students:
         new_student_warnings = create_new_student_warnings(classes_by_name, students_by_id)
+    if warn_karteileichen:
+        karteileichen_warnings = create_karteileichen_warnings(classes_by_name, students_by_id, admin_warnings_cache)
 
     # Alle Warnungen zusammenführen
-    all_warnings = warnings + class_change_warnings + admission_date_warnings+ new_student_warnings
+    all_warnings = warnings + class_change_warnings + admission_date_warnings + new_student_warnings + karteileichen_warnings
 
     # Separate Konsolenausgabe der verschiedenen Warnungen
     print_warning("==================== ENTLASSDATUM WARNUNGEN ====================")
@@ -105,6 +108,8 @@ def run(use_abschlussdatum=True, create_second_file=True,
     print_warnings(admission_date_warnings)
     print_warning("==================== Neue SCHÜLER WARNUNGEN ===================")
     print_warnings(new_student_warnings)
+    print_warning("==================== KARTEILEICHEN WARNUNGEN ===================")
+    print_warnings(karteileichen_warnings)
 
     # Dateien speichern
     save_files(output_data_students, all_warnings, create_second_file, admin_warnings_cache, disable_import_file_creation, disable_import_file_if_admin_warning, enable_attestpflicht_column, enable_nachteilsausgleich_column)
@@ -774,6 +779,65 @@ def create_new_student_warnings(classes_by_name, current_students_by_id):
             print_info(f"Warnung erstellt für neuen Schüler {student.get('Nachname', '')}, {student.get('Vorname', '')}.")
     
     print_info(f"Anzahl der erstellten Warnungen für neue Schüler: {len(warnings)}")
+    return warnings
+
+def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin_cache=None):
+    print_info("Erstelle Warnungen für Karteileichen (gelöschte Schüler)...")
+    warnings = []
+    import_dir = get_directory('import_directory', './WebUntis Importe')
+    
+    # Alle CSV-Dateien aus dem Importverzeichnis ermitteln
+    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+    
+    # Wähle als Vergleichsdatei:
+    if len(output_files) >= 1:
+        # Sortiere absteigend nach Erstellungszeit und wähle die neueste Datei
+        output_files.sort(key=lambda f: os.path.getctime(os.path.join(import_dir, f)), reverse=True)
+        previous_file = output_files[0]
+    else:
+        print_warning("Keine vorherige Importdatei gefunden zum Vergleich für Karteileichen.")
+        return warnings
+
+    print_info(f"Vergleiche mit vorheriger Importdatei für gelöschte Schüler:\n {previous_file}")
+    
+    previous_students_names = []
+    try:
+        with open(os.path.join(import_dir, previous_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
+            reader = csv.DictReader(csvfile, delimiter=';')
+            for row in reader:
+                student_id = row.get('Interne ID-Nummer', '').strip()
+                if student_id and student_id not in current_students_by_id:
+                    # Schüler ist in der alten Datei, aber nicht mehr in den aktuellen Imports
+                    klasse = row.get('Klasse', 'N/A').strip().lower()
+                    klassen_info = classes_by_name.get(klasse, {})
+                    vorname = row.get('Vorname', '')
+                    nachname = row.get('Nachname', '')
+                    
+                    warnings.append({
+                        'Nachname': nachname,
+                        'Vorname': vorname,
+                        'Klasse': row.get('Klasse', 'N/A'),
+                        'warning_message': "Schüler fehlt in aktueller Import-Datei gänzlich (Karteileiche).",
+                        'Klassenlehrkraft_1': klassen_info.get('Klassenlehrkraft_1', 'N/A'),
+                        'Klassenlehrkraft_1_Email': klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
+                        'Klassenlehrkraft_2': klassen_info.get('Klassenlehrkraft_2', 'N/A'),
+                        'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+                        'karteileiche': True
+                    })
+                    previous_students_names.append(f"{vorname} {nachname} ({row.get('Klasse', 'N/A')})")
+                    print_info(f"Warnung erstellt für fehlenden Schüler {nachname}, {vorname}.")
+    except Exception as e:
+        print_error(f"Fehler beim Einlesen der Vergleichsdatei für Karteileichen: {e}")
+        return warnings
+
+    if warnings and admin_cache is not None:
+        names_str = ", ".join(previous_students_names)
+        admin_cache.append({
+            'Typ': 'Gelöschte Schüler (Karteileiche)',
+            'Details': f"Folgende {len(warnings)} Schüler wurden in den neuen importierten Daten deklassiert / gelöscht: {names_str}. Verbleib prüfen."
+        })
+
+    print_info(f"Anzahl der erstellten Karteileichen-Warnungen: {len(warnings)}")
     return warnings
 
 
