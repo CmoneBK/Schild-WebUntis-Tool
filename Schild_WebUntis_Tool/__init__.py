@@ -116,6 +116,13 @@ def process_data(no_log=False, no_xlsx=False):
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
     warn_new_students = config.getboolean('ProcessingOptions', 'warn_new_students', fallback=True)
     
+    # CLI Parameter für class_change_recipients hat Vorrang vor settings.ini, falls gesetzt
+    global cli_args
+    if cli_args and cli_args.get("class_change_recipients"):
+        class_change_recipients = cli_args.get("class_change_recipients")
+    else:
+        class_change_recipients = config.get('ProcessingOptions', 'class_change_recipients', fallback='old')
+    
     # Aktuelle Einstellungen in der Konsole ausgeben
     print_info("Beginne Verarbeitung mit folgenden Optionen:...")
     print_info(f"use_abschlussdatum: {use_abschlussdatum}")
@@ -125,6 +132,7 @@ def process_data(no_log=False, no_xlsx=False):
     print_info(f"warn_entlassdatum: {warn_entlassdatum}")
     print_info(f"warn_aufnahmedatum: {warn_aufnahmedatum}")
     print_info(f"warn_klassenwechsel: {warn_klassenwechsel}")
+    print_info(f"class_change_recipients: {class_change_recipients}")
     print_info(f"warn_new_students: {warn_new_students}")
 
     # Datenverarbeitung starten
@@ -139,6 +147,7 @@ def process_data(no_log=False, no_xlsx=False):
         warn_aufnahmedatum=warn_aufnahmedatum,
         warn_klassenwechsel=warn_klassenwechsel,
         warn_new_students=warn_new_students,
+        class_change_recipients=class_change_recipients,
         no_log=no_log,
         no_xlsx=no_xlsx,
         admin_warnings_cache=admin_warnings_cache
@@ -398,6 +407,7 @@ def index():
     warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
     warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
+    class_change_recipients = config.get('ProcessingOptions', 'class_change_recipients', fallback='old')
     warn_new_students = config.getboolean('ProcessingOptions', 'warn_new_students', fallback=True)
     create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True) 
     enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False) 
@@ -452,6 +462,7 @@ def index():
         warn_entlassdatum = request.form.get('warn_entlassdatum') == 'on'
         warn_aufnahmedatum = request.form.get('warn_aufnahmedatum') == 'on'
         warn_klassenwechsel = request.form.get('warn_klassenwechsel') == 'on'
+        class_change_recipients = request.form.get('class_change_recipients', class_change_recipients)
         warn_new_students = request.form.get('warn_new_students') == 'on'
         create_class_size_file = request.form.get('create_class_size_file') == 'on'
         enable_attestpflicht_column = request.form.get('enable_attestpflicht_column') == 'on'
@@ -471,6 +482,7 @@ def index():
                 warn_aufnahmedatum=warn_aufnahmedatum,
                 warn_klassenwechsel=warn_klassenwechsel,
                 warn_new_students=warn_new_students,
+                class_change_recipients=class_change_recipients,
                 no_log=no_log,
                 no_xlsx=no_xlsx,
                 create_class_size_file=create_class_size_file, 
@@ -502,6 +514,7 @@ def index():
         warn_entlassdatum=warn_entlassdatum,
         warn_aufnahmedatum=warn_aufnahmedatum,
         warn_klassenwechsel=warn_klassenwechsel,
+        class_change_recipients=class_change_recipients,
         warn_new_students = warn_new_students,
         create_class_size_file = create_class_size_file,
         enable_attestpflicht_column = enable_attestpflicht_column,
@@ -1112,6 +1125,7 @@ if __name__ == "__main__":
     parser.add_argument('--send-admin-warnings', action='store_true', help="Sendet Admin-Warnungen per E-Mail an die hinterlegte Admin E-Mail-Adresse, wenn im SchildExport Klassen oder Klassenlehrkräfte vorkommen, die in den Klassen- oder Lehrkraftdaten fehlen.")
     parser.add_argument('--no-web', action='store_true', help="Verhindert das Öffnen des Web-Interfaces.")
     parser.add_argument('--skip-admin-warnings', action='store_true', help="Überspringt die Erstellung von Admin-Warnungen. (Darf nicht mit --send admin-warnings kombiniert werden.)")
+    parser.add_argument('--class-change-recipients', type=str, choices=['old', 'new', 'both'], help="Legt den Empfänger der Klassenwechsel-Warnung fest (old, new oder both). Überschreibt die ini-Konfiguration.")
     parser.add_argument('--no-log', action='store_true', help="Verhindert die Erstellung der .log Logdateien.")
     parser.add_argument('--no-xlsx', action='store_true', help="Verhindert die Erstellung der Excel Logdateien. (Darf nicht mit --send-log-email kombiniert werden.)")
     parser.add_argument('--send-log-email', action='store_true', help="Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin E-Mail-Adresse.")
@@ -1130,6 +1144,7 @@ if __name__ == "__main__":
         "send_admin_warnings": args.send_admin_warnings,
         "no_web": args.no_web,
         "skip_admin_warnings": args.skip_admin_warnings,
+        "class_change_recipients": args.class_change_recipients,
         "no_log": args.no_log,
         "no_xlsx": args.no_xlsx,
         "send_log_email": args.send_log_email,

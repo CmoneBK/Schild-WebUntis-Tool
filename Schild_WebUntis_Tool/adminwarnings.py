@@ -64,26 +64,35 @@ def admin_warnings(send_email_flag=False):
     # Lehrer-Daten aus der Lehrerdatei extrahieren (Spalte "name")
     teacher_names = set(teachers.keys())
 
+    # Sets für Deduplizierung der Warnungen
+    warned_classes = set()
+    warned_teachers_students = set()
+    warned_teachers_classes = set()
+
     # Überprüfung auf fehlende Klassen in der Klassen-Datei
     for student in students_by_id.values():
         klasse = student.get('Klasse', '').strip().lower()
-        if klasse not in classes_by_name:
-            admin_warnings_cache.append({
-                'Typ': 'Fehlende Klasse in der Klassen-Datei',
-                'Details': f"Die Klasse '{klasse}' aus der Haupt-Import-Datei existiert nicht in der Klassen-Datei.",
-                'Schüler': f"{student.get('Vorname', '')} {student.get('Nachname', '')}"
-            })
+        if klasse and klasse not in classes_by_name:
+            if klasse not in warned_classes:
+                warned_classes.add(klasse)
+                admin_warnings_cache.append({
+                    'Typ': 'Fehlende Klasse in der Klassen-Datei',
+                    'Details': f"Die Klasse '{klasse}' aus der Haupt-Import-Datei existiert nicht in der Klassen-Datei.",
+                    'Schüler': f"{student.get('Vorname', '')} {student.get('Nachname', '')} (und ggf. weitere)"
+                })
 
     # Überprüfung auf fehlende Klassenlehrkräfte in der Lehrkräfte-Datei
     for student in students_by_id.values():
         klassenlehrer = student.get('Klassenlehrer', '').strip()  # Klassenlehrer aus Haupt-Import        
         if klassenlehrer:  # Nur prüfen, wenn der Wert vorhanden ist
             if klassenlehrer not in teacher_names:  # Vergleich mit Lehrkräfte-Datei
-                admin_warnings_cache.append({
-                    'Typ': 'Fehlender Klassenlehrer in Lehrerdatei',
-                    'Details': f"Der Klassenlehrer '{klassenlehrer}' aus der Haupt-Import-Datei existiert nicht in der Lehrkräfte-Datei.",
-                    'Schüler': f"{student.get('Vorname', '')} {student.get('Nachname', '')}"
-                })
+                if klassenlehrer not in warned_teachers_students:
+                    warned_teachers_students.add(klassenlehrer)
+                    admin_warnings_cache.append({
+                        'Typ': 'Fehlender Klassenlehrer in Lehrerdatei',
+                        'Details': f"Der Klassenlehrer '{klassenlehrer}' aus der Haupt-Import-Datei existiert nicht in der Lehrkräfte-Datei.",
+                        'Schüler': f"{student.get('Vorname', '')} {student.get('Nachname', '')} (und ggf. weitere)"
+                    })
 
     # Überprüfen, ob CSV-Dateien im Klassenverzeichnis vorhanden sind
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
@@ -102,10 +111,12 @@ def admin_warnings(send_email_flag=False):
             for idx in [7, 8]:  # Indizes für Klassenlehrkräfte
                 teacher_name = row[idx].strip() if len(row) > idx else ''
                 if teacher_name and teacher_name not in teacher_names:
-                    admin_warnings_cache.append({
-                        'Typ': 'Fehlender Klassenlehrer in Lehrerdatei',
-                        'Details': f"Der Klassenlehrer '{teacher_name}' aus der Klassen-Datei existiert nicht in der Lehrkräfte-Datei."
-                    })
+                    if teacher_name not in warned_teachers_classes:
+                        warned_teachers_classes.add(teacher_name)
+                        admin_warnings_cache.append({
+                            'Typ': 'Fehlender Klassenlehrer in Lehrerdatei',
+                            'Details': f"Der Klassenlehrer '{teacher_name}' aus der Klassen-Datei existiert nicht in der Lehrkräfte-Datei."
+                        })
 
     # Admin-Warnungen in der Konsole ausgeben
     if admin_warnings_cache:

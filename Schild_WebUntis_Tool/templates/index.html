@@ -545,6 +545,14 @@
                             </select>
                         </div>
                         <div class="form-group">
+                            <label for="class_change_recipients">🔄 Empfänger der Klassenwechsel-Warnung:</label>
+                            <select class="form-control" id="class_change_recipients" name="class_change_recipients">
+                                <option value="old" {% if class_change_recipients == 'old' %}selected{% endif %}>Nur Vorherige (Alte) Klasse</option>
+                                <option value="new" {% if class_change_recipients == 'new' %}selected{% endif %}>Nur Aktuelle (Neue) Klasse</option>
+                                <option value="both" {% if class_change_recipients == 'both' %}selected{% endif %}>Beide Klassen</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label for="warn_new_students">🆕 Immer Warnungen für neue Schüler generieren:</label>
                             <select class="form-control" id="warn_new_students" name="warn_new_students">
                                 <option value="True">Aktiv</option>
@@ -1172,6 +1180,7 @@
                             "warn_entlassdatum": "form-warnings",
                             "warn_aufnahmedatum": "form-warnings",
                             "warn_klassenwechsel": "form-warnings",
+                            "class_change_recipients": "form-warnings",
                             "warn_new_students": "form-warnings",
                             // Console
                             "timeframe_hours": "form-console",
@@ -1233,6 +1242,7 @@
                     "warn_entlassdatum": "ProcessingOptions",
                     "warn_aufnahmedatum": "ProcessingOptions",
                     "warn_klassenwechsel": "ProcessingOptions",
+                    "class_change_recipients": "ProcessingOptions",
                     "warn_new_students": "ProcessingOptions",
                     "create_class_size_file": "ProcessingOptions",
                     "timeframe_hours": "ProcessingOptions",
@@ -1300,6 +1310,7 @@
             warn_entlassdatum: "Von der (Stand jetzt) Vergangneheit auf dem Zeitstrahl nach rechts (generiert Dokumentationslücke)",
             warn_aufnahmedatum: "z.B. von einer weniger weiten Vergangenheit in eine weite(re) Vergangenheit (generiert Dokumentationslücke)",
             warn_klassenwechsel: "z.B. zur Information wegen Schülergruppenzuweisung oder auch Nachdokumentation/Korrektur des Wechseldatums",
+            class_change_recipients: "Bestimmen Sie, wer im Fall eines Klassenwechsels die Benachrichtigung erhält.",
             warn_new_students: "z.B.: zur Information wegen Schülergruppenzuweisung",
             timeframe_hours: "Zeitfenster in Stunden für die Vergleiche.",
             import_directory: "Verzeichnis, in dem die Import-Dateien für WebUntis gespeichert werden.",
@@ -1407,6 +1418,18 @@
                             alert("Fehler beim Hochladen der Dateien.");
                         });
                 });
+            }
+        });
+
+        // Ensure class_change_recipients is submitted with the main form
+        document.querySelector("form[method='post']").addEventListener("submit", function (e) {
+            let hiddenInput = document.createElement("input");
+            hiddenInput.type = "hidden";
+            hiddenInput.name = "class_change_recipients";
+            let selectElem = document.getElementById("class_change_recipients");
+            if(selectElem) {
+                hiddenInput.value = selectElem.value;
+                this.appendChild(hiddenInput);
             }
         });
     </script>
