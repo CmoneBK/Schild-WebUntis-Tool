@@ -8,6 +8,7 @@ import colorama
 from colorama import Fore, Style, init
 import threading
 from main import read_students, read_classes, send_email
+from utils import safe_read_config
 
 # Thread-sicherer Zugriff
 console_lock = threading.Lock()
@@ -54,7 +55,7 @@ def admin_warnings(send_email_flag=False):
 
     # Einstellungen aus settings.ini einlesen
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
 

@@ -1,4 +1,4 @@
-﻿import smtplib
+import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -41,10 +41,12 @@ def print_creation(message):
 
 
 
+from utils import safe_read_config
+
 def send_email(subject, body, to_addresses, attachment_path=None):
     # Konfigurationsdatei einlesen
     config = configparser.ConfigParser()
-    config.read('email_settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'email_settings.ini')
     smtp_server = config.get('Email', 'smtp_server')
     smtp_port = config.getint('Email', 'smtp_port')
     smtp_user = config.get('Email', 'smtp_user')

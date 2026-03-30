@@ -26,30 +26,11 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def safe_read_config(config_obj, filename):
-    """
-    Versucht eine Konfigurationsdatei mit utf-8-sig zu laden, 
-    fällt bei Fehlern auf latin-1 zurück.
-    """
-    if not os.path.exists(filename):
-        return False
-    try:
-        config_obj.read(filename, encoding='utf-8-sig')
-        return True
-    except UnicodeDecodeError:
-        try:
-            config_obj.read(filename, encoding='latin-1')
-            return True
-        except Exception as e:
-            print(f"Fehler beim Lesen der Datei {filename}: {e}")
-            return False
-    except Exception as e:
-        print(f"Allgemeiner Fehler beim Lesen der Datei {filename}: {e}")
-        return False
+from utils import safe_read_config
 
 import winshell  # Interaktion mit der Windows-Shell (z.B. Erstellen von Verknüpfungen)
 import pythoncom  # Python COM-Schnittstelle für Windows
-import threading  # Multithreading-Funktionen (Hinweis: Doppelte Importanweisung)
+import threading  # Multithreading-Funktionen
 import werkzeug  # Werkzeug-Bibliothek für WSGI-Anwendungen (von Flask verwendet)
 import tkinter as tk  # GUI-Toolkit für die Dateiauswahl-Dialoge
 import colorama  # Ausgabe von farbigem Text in der Konsole
@@ -320,7 +301,7 @@ body_karteileiche = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/di
     # Sicherstellen, dass die in settings.ini definierten Ordner existieren
     config = configparser.ConfigParser()
     if settings_ini_exists:
-        config.read("settings.ini", encoding='utf-8-sig')
+        safe_read_config(config, "settings.ini")
 
     directories = {
         "classes_directory": default_classes_dir,
@@ -363,9 +344,9 @@ def admin_warnings(send_email_flag=False):
     # Haupt-Import-Datei einlesen
     students_output, students_by_id = read_students(use_abschlussdatum=False)
 
-    # Einstellungen aus settings.ini einlesen
+    # Konfigurationsdatei einlesen
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
 
@@ -499,9 +480,9 @@ def index():
     subject_karteileiche = config.get("Templates", "subject_karteileiche", fallback="")
     body_karteileiche = config.get("Templates", "body_karteileiche", fallback="")
 
-    # Lese die Konfigurationspfade aus der settings.ini
+    # Einstellungen laden
     config = configparser.ConfigParser()
-    config.read("settings.ini", encoding='utf-8-sig')
+    safe_read_config(config, "settings.ini")
     classes_dir = config.get("Directories", "classes_directory", fallback="./Klassendaten")
     teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
 
@@ -619,9 +600,9 @@ def generate_emails():
 
     if warnings_cache:
         print_info("Generiere E-Mails basierend auf den vorhandenen Warnungen...")
-        # Lade die Vorlagen aus der email_settings.ini
+        # E-Mail-Einstellungen laden
         config = configparser.ConfigParser()
-        config.read("email_settings.ini", encoding='utf-8-sig')
+        safe_read_config(config, 'email_settings.ini')
 
         for warning in warnings_cache:
             # Bestimme den Typ der Warnung
@@ -962,7 +943,7 @@ def save_to_email_settings_ini(settings):
             for key, value in values.items():
                 print_info(f"Einstellung hinzugefügt: [{section}] {key} = {value}")
     # Einstellungen in die Datei schreiben
-    with open("email_settings.ini", "w", encoding="utf-8") as configfile:
+    with open("email_settings.ini", "w", encoding="utf-8-sig") as configfile:
         config.write(configfile)
     print_success("E-Mail-Einstellungen wurden erfolgreich in 'email_settings.ini' gespeichert.")
 
@@ -992,7 +973,7 @@ def select_directory():
 
     # Variable zum Speichern des Ergebnisses
     result = {'directory': None}
-
+    
     def open_dialog():
         try:
             root = tk.Tk()

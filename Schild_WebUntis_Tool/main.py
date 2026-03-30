@@ -7,6 +7,7 @@ from openpyxl.styles import Font, PatternFill
 import colorama
 from colorama import Fore, Style, init
 import threading
+from utils import safe_read_config
 
 # Colorama initialisieren
 init(autoreset=True)
@@ -40,15 +41,11 @@ def print_info(message):
 def print_creation(message):
     thread_safe_print(Fore.WHITE, f"✨ {message}")
 
-def run(use_abschlussdatum=True, create_second_file=True,
-        warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True, warn_karteileichen=False,
-        no_log=False, no_xlsx=False, create_class_size_file=False, enable_attestpflicht_column=False,
-        enable_nachteilsausgleich_column=False, disable_import_file_creation=False, disable_import_file_if_admin_warning=False,
-        admin_warnings_cache=None, class_change_recipients="old"):
+def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht_column=False, create_class_size_file=False, disable_import_file_creation=False, disable_import_file_if_admin_warning=False, warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True, warn_karteileichen=False, class_change_recipients="both", no_log=False, no_xlsx=False, admin_warnings_cache=None, enable_nachteilsausgleich_column=False):
     if admin_warnings_cache is None:
         admin_warnings_cache = []
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
-    print_info("Starte Hauptverarbeitung mit den folgenden Optionen:")
+    print_info("Starte Hauptverarbeitung...")
     print_info(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
     print_info(f"  Erstelle zweite Datei: {create_second_file}")
     print_info(f"  Erstelle Klassengrößen-Auswertung: {create_class_size_file}")
@@ -73,7 +70,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
    # Konfigurationsdatei einlesen
     print_info("Lese 'settings.ini' Konfigurationsdatei ein...")
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
     print_info(f"Klassendatenverzeichnis: {classes_dir}")
@@ -127,7 +124,7 @@ def run(use_abschlussdatum=True, create_second_file=True,
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     return config.get('Directories', key, fallback=default)
 
 
@@ -166,7 +163,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     # Verzeichnisse definieren
     import_dir = get_directory('import_directory', './WebUntis Importe')
     config = configparser.ConfigParser()
-    config.read("settings.ini", encoding='utf-8-sig')
+    safe_read_config(config, "settings.ini")
 
     # Verzeichnisse für Log- und Excel-Dateien aus der settings.ini lesen
     log_dir = config.get("Directories", "log_directory", fallback="./Logs")
@@ -281,13 +278,13 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     print_success("Vergleich der neuesten Importdateien abgeschlossen.")
 
 from smtp import send_email
-def compare_timeframe_imports(no_log=False, no_xlsx=False):
+def compare_timeframe_imports(timeframe_hours=24):
     # Funktion zum Vergleichen von Importdateien innerhalb eines bestimmten Zeitrahmens und Senden von E-Mails bei Änderungen
     print_info("Starte Vergleich der Importdateien im definierten Zeitrahmen...")
 
     # Verzeichnisse und Einstellungen
     config = configparser.ConfigParser()
-    config.read("settings.ini", encoding='utf-8-sig')
+    safe_read_config(config, "settings.ini")
     email_config = configparser.ConfigParser()
     email_config.read("email_settings.ini", encoding='utf-8-sig')
 
@@ -379,49 +376,47 @@ def compare_timeframe_imports(no_log=False, no_xlsx=False):
     excel_file_path = os.path.join(xlsx_dir, f'ÄnderungsLog_{timestamp}.xlsx')
 
     # Log-Datei erstellen
-    if not no_log:
-        print_creation(f"Erstelle Log-Datei: {log_file_path}")
-        with open(log_file_path, 'w', encoding='utf-8') as log_file:
-            for change in changes:
-                log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']})\n")
-                for field, values in change['changes'].items():
-                    log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
-                log_file.write("\n")
-        print_success(".log Log-Datei erfolgreich erstellt.")
+    print_creation(f"Erstelle Log-Datei: {log_file_path}")
+    with open(log_file_path, 'w', encoding='utf-8') as log_file:
+        for change in changes:
+            log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']})\n")
+            for field, values in change['changes'].items():
+                log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
+            log_file.write("\n")
+    print_success(".log Log-Datei erfolgreich erstellt.")
 
     # Excel-Datei erstellen
-    if not no_xlsx:
-        print_creation(f"Erstelle Excel-Datei: {excel_file_path}")
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Änderungen"
+    print_creation(f"Erstelle Excel-Datei: {excel_file_path}")
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Änderungen"
 
-        headers = list(changes[0]["row"].keys())
-        ws.append(headers)
+    headers = list(changes[0]["row"].keys())
+    ws.append(headers)
 
-        for change in changes:
-            row = []
-            for header in headers:
-                value = change["row"].get(header, "")
-                row.append(value)
-            ws.append(row)
+    for change in changes:
+        row = []
+        for header in headers:
+            value = change["row"].get(header, "")
+            row.append(value)
+        ws.append(row)
 
-        for col in ws.columns:
-            max_length = 0
-            column = col[0].column_letter
-            for cell in col:
-                if cell.value:
-                    max_length = max(max_length, len(str(cell.value)))
-            ws.column_dimensions[column].width = max_length + 2
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[column].width = max_length + 2
 
-        red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
-        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
-            for cell in row:
-                if "->" in str(cell.value):
-                    cell.fill = red_fill
+    red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+        for cell in row:
+            if "->" in str(cell.value):
+                cell.fill = red_fill
 
-        wb.save(excel_file_path)
-        print_success("Excel-Log-Datei erfolgreich erstellt.")
+    wb.save(excel_file_path)
+    print_success("Excel-Log-Datei erfolgreich erstellt.")
 
     # E-Mail mit den Änderungen senden
     print_info(f"Erstelle und sende E-Mails mit HTML-Tabelle und Excel-Datei im Anhang...")
@@ -576,7 +571,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
     return (classes_by_name, teachers) if return_teachers else classes_by_name
 
 
-def read_students(use_abschlussdatum):
+def read_students(use_abschlussdatum=False):
     # Funktion zum Einlesen der Schülerdaten aus der neuesten CSV-Datei im aktuellen Verzeichnis
     print_info("Lese Schülerdaten ein...")
     import_dir = get_directory('import_directory', './WebUntis Importe')
@@ -991,7 +986,7 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
     # Funktion zum Speichern der Ausgabedateien
     print_info("Speichere Ausgabedateien...")
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     import_dir = get_directory('import_directory', './WebUntis Importe')
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
@@ -1030,11 +1025,6 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
     # Sicherstellen, dass das Importverzeichnis existiert
     os.makedirs(import_dir, exist_ok=True)
     print_info(f"Importverzeichnis '{import_dir}' ist vorhanden oder wurde erstellt.")
-
-    print_info(f"DEBUG: disable_import_file_creation = {disable_import_file_creation} (Typ: {type(disable_import_file_creation)})")
-    print_info(f"DEBUG: disable_import_file_if_admin_warning = {disable_import_file_if_admin_warning} (Typ: {type(disable_import_file_if_admin_warning)})")
-    print_info(f"DEBUG: admin_warnings_cache => {admin_warnings_cache} (Typ: {type(admin_warnings_cache)})")
-
 
     # Hauptausgabedatei speichern    
     # 1) Prüfen, ob der Nutzer generell keine Datei möchte („Nur hier verarbeiten“)
@@ -1097,7 +1087,7 @@ def read_attest_ids_from_latest_file():
     liest daraus alle 'Interne ID-Nummer' Einträge in ein Set und gibt dieses zurück.
     """
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     attest_dir = config.get('Directories', 'attest_file_directory', fallback='./AttestpflichtDaten')
 
     if not os.path.exists(attest_dir):
@@ -1136,16 +1126,13 @@ def read_attest_ids(attest_file_path):
     print(Fore.CYAN + f"ℹ️ Attestpflicht-Datei eingelesen. Anzahl IDs: {len(ids)}" + Style.RESET_ALL)
     return ids
 
-from collections import defaultdict
-
-
 def read_nachteilsausgleich_ids_from_latest_file():
     """
     Sucht im 'nachteilsausgleich_file_directory' aus settings.ini
     nach der neuesten .csv-Datei und liefert die IDs als Set zurück.
     """
     config = configparser.ConfigParser()
-    config.read("settings.ini", encoding='utf-8-sig')
+    safe_read_config(config, "settings.ini")
     nad_dir = config.get('Directories', 'nachteilsausgleich_file_directory', fallback='./NachteilsausgleichDaten')
 
     if not os.path.exists(nad_dir):
@@ -1163,6 +1150,7 @@ def read_nachteilsausgleich_ids_from_latest_file():
     full_path = os.path.join(nad_dir, latest_file)
 
     return read_nachteilsausgleich_ids(full_path)
+
 def read_nachteilsausgleich_ids(file_path):
     """
     Liest 'Interne ID-Nummer' aus der CSV und gibt sie als Set zurück.
@@ -1181,7 +1169,7 @@ def read_nachteilsausgleich_ids(file_path):
     print_info(f"Nachteilsausgleich-Datei eingelesen. Anzahl IDs: {len(ids)}")
     return ids
 
-
+from collections import defaultdict
 
 def create_class_sizes_file(students_by_id):
     """
@@ -1194,7 +1182,7 @@ def create_class_sizes_file(students_by_id):
 
     # 1) Lese aus settings.ini das Verzeichnis
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     class_size_dir = config.get('Directories', 'class_size_directory', fallback="./ClassSizes")
 
     # Stelle sicher, dass der Ordner existiert
