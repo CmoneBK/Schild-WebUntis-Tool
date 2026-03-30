@@ -18,7 +18,35 @@ import configparser  # Verarbeiten von Konfigurationsdateien im INI-Format
 import webbrowser  # Öffnen von Webbrowsern
 import threading  # Multithreading-Funktionen
 import argparse  # Parsen von Kommandozeilenargumenten
-import secrets  # Generieren sicherer Zufallswerte (z.B. für Secret Keys)
+import secrets
+import traceback
+import logging
+
+# Logger konfigurieren
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def safe_read_config(config_obj, filename):
+    """
+    Versucht eine Konfigurationsdatei mit utf-8-sig zu laden, 
+    fällt bei Fehlern auf latin-1 zurück.
+    """
+    if not os.path.exists(filename):
+        return False
+    try:
+        config_obj.read(filename, encoding='utf-8-sig')
+        return True
+    except UnicodeDecodeError:
+        try:
+            config_obj.read(filename, encoding='latin-1')
+            return True
+        except Exception as e:
+            print(f"Fehler beim Lesen der Datei {filename}: {e}")
+            return False
+    except Exception as e:
+        print(f"Allgemeiner Fehler beim Lesen der Datei {filename}: {e}")
+        return False
+
 import winshell  # Interaktion mit der Windows-Shell (z.B. Erstellen von Verknüpfungen)
 import pythoncom  # Python COM-Schnittstelle für Windows
 import threading  # Multithreading-Funktionen (Hinweis: Doppelte Importanweisung)
@@ -69,7 +97,7 @@ def print_creation(message):
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     return config.get('Directories', key, fallback=default)
 
 
@@ -101,7 +129,7 @@ admin_warnings_cache = []
 def process_data(no_log=False, no_xlsx=False):
     # Konfigurationsdatei einlesen
     config = configparser.ConfigParser()
-    config.read('settings.ini', encoding='utf-8-sig')
+    safe_read_config(config, 'settings.ini')
     
     # Werte aus der Konfigurationsdatei laden, da in diesem Fall das WebEnd nicht immer geöffnet ist.
     use_abschlussdatum = config.getboolean('ProcessingOptions', 'use_abschlussdatum', fallback=False)
@@ -115,6 +143,7 @@ def process_data(no_log=False, no_xlsx=False):
     warn_aufnahmedatum = config.getboolean('ProcessingOptions', 'warn_aufnahmedatum', fallback=True)
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
     warn_new_students = config.getboolean('ProcessingOptions', 'warn_new_students', fallback=True)
+    warn_karteileichen = config.getboolean('ProcessingOptions', 'warn_karteileichen', fallback=False)
     
     # CLI Parameter für class_change_recipients hat Vorrang vor settings.ini, falls gesetzt
     global cli_args
@@ -134,6 +163,7 @@ def process_data(no_log=False, no_xlsx=False):
     print_info(f"warn_klassenwechsel: {warn_klassenwechsel}")
     print_info(f"class_change_recipients: {class_change_recipients}")
     print_info(f"warn_new_students: {warn_new_students}")
+    print_info(f"warn_karteileichen: {warn_karteileichen}")
 
     # Datenverarbeitung starten
     all_warnings = run(                         #Hier wird die def_run aus der main.py mit den erfassten Einstellungen abgerufen und ausgeführt.
@@ -147,6 +177,7 @@ def process_data(no_log=False, no_xlsx=False):
         warn_aufnahmedatum=warn_aufnahmedatum,
         warn_klassenwechsel=warn_klassenwechsel,
         warn_new_students=warn_new_students,
+        warn_karteileichen=warn_karteileichen,
         class_change_recipients=class_change_recipients,
         no_log=no_log,
         no_xlsx=no_xlsx,
@@ -187,6 +218,7 @@ warn_entlassdatum = True
 warn_aufnahmedatum = True
 warn_klassenwechsel = True
 warn_new_students = True
+warn_karteileichen = False
 create_class_size_file = False
 timeframe_hours = 24
 enable_attestpflicht_column = False
@@ -236,20 +268,54 @@ subject_klassenwechsel = Webuntis-Hinweis: Klassenwechsel bei $Vorname $Nachname
 body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Es gab einen Klassenwechsel des Schülers/der Schülerin <strong>$Vorname $Nachname</strong>.</p><p>Sofern dieser Klassenwechsel nicht am heutigen Tag stattfand, informieren Sie bitte das WebUntis-Team über die Notwendigkeit einer Korrektur. </p><p>Liegt der Wechsel in der Vergangenheit müssen anschließend die Tage zwischen heute und diesem Wechsel nachdokumentiert werden.</p><p></p><p><strong>Alte Klasse:</strong> $alte_klasse</p><p><strong>Neue Klasse:</strong> $neue_klasse</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
 subject_new_student = Webuntis-Hinweis: Neuer Schüler $Vorname $Nachname
 body_new_student = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong> wurde als neu in den importierten Daten erkannt.</p><p>Bitte überprüfen Sie die Daten im digitalen Klassenbuch.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
+subject_karteileiche = Webuntis-Hinweis: Schüler fehlt/gelöscht $Vorname $Nachname
+body_karteileiche = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Bitte prüfen Sie den Verbleib des Schülers, sofern die Ursache nicht bekannt ist.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
 """
 
     # Prüfen, ob settings.ini existiert, und ggf. erstellen
     settings_ini_exists = os.path.exists("settings.ini")
     if not settings_ini_exists:
-        with open("settings.ini", "w", encoding="utf-8") as file:
+        with open("settings.ini", "w", encoding="utf-8-sig") as file:
             file.write(settings_ini_content)
-        print_creation("settings.ini wurde erstellt.")
+        print_success("Standard-Konfigurationsdatei 'settings.ini' wurde erstellt.")
+    else:
+        # Bestehende Konfiguration patchen (neue Felder hinzufügen)
+        config = configparser.ConfigParser()
+        if safe_read_config(config, "settings.ini"):
+            updated = False
+            # ProcessingOptions
+            if not config.has_option('ProcessingOptions', 'warn_karteileichen'):
+                config.set('ProcessingOptions', 'warn_karteileichen', 'False')
+                updated = True
+            
+            if updated:
+                with open("settings.ini", "w", encoding="utf-8-sig") as configfile:
+                    config.write(configfile)
+                print_info("settings.ini wurde um fehlende Einträge aktualisiert (Auto-Patcher).")
 
     # Prüfen, ob email_settings.ini existiert, und ggf. erstellen
-    if not os.path.exists("email_settings.ini"):
-        with open("email_settings.ini", "w", encoding="utf-8") as file:
+    email_settings_ini_exists = os.path.exists("email_settings.ini")
+    if not email_settings_ini_exists:
+        with open("email_settings.ini", "w", encoding="utf-8-sig") as file:
             file.write(email_settings_ini_content)
-        print_creation("email_settings.ini wurde erstellt.")
+        print_success("Standard-Konfigurationsdatei 'email_settings.ini' wurde erstellt.")
+    else:
+        # Bestehende Konfiguration patchen (neue Felder hinzufügen)
+        config = configparser.ConfigParser()
+        if safe_read_config(config, "email_settings.ini"):
+            updated = False
+            # Templates
+            if not config.has_option('Templates', 'subject_karteileiche'):
+                config.set('Templates', 'subject_karteileiche', 'Webuntis-Hinweis: Schüler fehlt/gelöscht $Vorname $Nachname')
+                updated = True
+            if not config.has_option('Templates', 'body_karteileiche'):
+                config.set('Templates', 'body_karteileiche', '<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Bitte prüfen Sie den Verbleib des Schülers, sofern die Ursache nicht bekannt ist.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>')
+                updated = True
+            
+            if updated:
+                with open("email_settings.ini", "w", encoding="utf-8-sig") as configfile:
+                    config.write(configfile)
+                print_info("email_settings.ini wurde um fehlende Einträge aktualisiert (Auto-Patcher).")
 
     # Sicherstellen, dass die in settings.ini definierten Ordner existieren
     config = configparser.ConfigParser()
@@ -386,6 +452,9 @@ def admin_warnings(send_email_flag=False):
 
 #(Get) Route und Funktion zum Öffnen der Webseite, Reinladen der Daten, Initialisieren von Caches für Warnungen, Fehlermeldungen etc., 
 #(Post) sowie auch Ausführung der def_run aus der main.py bei Klick auf den Verarbeiten-Button
+@app.route('/test')
+def test_route(): return 'TEST OK', 200
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     global warnings_cache  # Globaler Cache für die Zwischenspeicherung von Warnungen
@@ -401,7 +470,7 @@ def index():
 
     # Werte aus der settings.ini laden
     config = configparser.ConfigParser()
-    config.read("settings.ini", encoding='utf-8-sig')
+    safe_read_config(config, "settings.ini")
     use_abschlussdatum = config.getboolean('ProcessingOptions', 'use_abschlussdatum', fallback=False)
     create_second_file = config.getboolean('ProcessingOptions', 'create_second_file', fallback=False)
     warn_entlassdatum = config.getboolean('ProcessingOptions', 'warn_entlassdatum', fallback=True)
@@ -409,6 +478,7 @@ def index():
     warn_klassenwechsel = config.getboolean('ProcessingOptions', 'warn_klassenwechsel', fallback=True)
     class_change_recipients = config.get('ProcessingOptions', 'class_change_recipients', fallback='old')
     warn_new_students = config.getboolean('ProcessingOptions', 'warn_new_students', fallback=True)
+    warn_karteileichen = config.getboolean('ProcessingOptions', 'warn_karteileichen', fallback=False)
     create_class_size_file = config.getboolean('ProcessingOptions', 'create_class_size_file', fallback=True) 
     enable_attestpflicht_column = config.getboolean('ProcessingOptions', 'enable_attestpflicht_column', fallback=False) 
     enable_nachteilsausgleich_column= config.getboolean('ProcessingOptions', 'enable_nachteilsausgleich_column', fallback=False)
@@ -426,6 +496,8 @@ def index():
     body_aufnahmedatum = config.get("Templates", "body_aufnahmedatum", fallback="")
     subject_klassenwechsel = config.get("Templates", "subject_klassenwechsel", fallback="")
     body_klassenwechsel = config.get("Templates", "body_klassenwechsel", fallback="")
+    subject_karteileiche = config.get("Templates", "subject_karteileiche", fallback="")
+    body_karteileiche = config.get("Templates", "body_karteileiche", fallback="")
 
     # Lese die Konfigurationspfade aus der settings.ini
     config = configparser.ConfigParser()
@@ -464,6 +536,7 @@ def index():
         warn_klassenwechsel = request.form.get('warn_klassenwechsel') == 'on'
         class_change_recipients = request.form.get('class_change_recipients', class_change_recipients)
         warn_new_students = request.form.get('warn_new_students') == 'on'
+        warn_karteileichen = request.form.get('warn_karteileichen') == 'on'
         create_class_size_file = request.form.get('create_class_size_file') == 'on'
         enable_attestpflicht_column = request.form.get('enable_attestpflicht_column') == 'on'
         enable_nachteilsausgleich_column = request.form.get('enable_nachteilsausgleich_column') == 'on'
@@ -482,6 +555,7 @@ def index():
                 warn_aufnahmedatum=warn_aufnahmedatum,
                 warn_klassenwechsel=warn_klassenwechsel,
                 warn_new_students=warn_new_students,
+                warn_karteileichen=warn_karteileichen,
                 class_change_recipients=class_change_recipients,
                 no_log=no_log,
                 no_xlsx=no_xlsx,
@@ -515,8 +589,9 @@ def index():
         warn_aufnahmedatum=warn_aufnahmedatum,
         warn_klassenwechsel=warn_klassenwechsel,
         class_change_recipients=class_change_recipients,
-        warn_new_students = warn_new_students,
-        create_class_size_file = create_class_size_file,
+        warn_new_students=warn_new_students,
+        warn_karteileichen=warn_karteileichen,
+        create_class_size_file=create_class_size_file,
         enable_attestpflicht_column = enable_attestpflicht_column,
         enable_nachteilsausgleich_column = enable_nachteilsausgleich_column,
         disable_import_file_creation=disable_import_file_creation,
@@ -527,9 +602,12 @@ def index():
         body_aufnahmedatum=body_aufnahmedatum,
         subject_klassenwechsel=subject_klassenwechsel,
         body_klassenwechsel=body_klassenwechsel,
+        subject_karteileiche=subject_karteileiche,
+        body_karteileiche=body_karteileiche,
         no_directory_change=cli_args.get("no_directory_change", False),
         enable_upload=cli_args.get("enable_upload", False),
     )
+
 
 from string import Template
 
@@ -555,6 +633,8 @@ def generate_emails():
                 warning_type = "klassenwechsel"
             elif 'new_student' in warning and warning['new_student']:
                 warning_type = "new_student"
+            elif 'karteileiche' in warning and warning['karteileiche']:
+                warning_type = "karteileiche"
             else:
                 continue  # Unbekannter Warnungstyp wird übersprungen
 
@@ -709,7 +789,9 @@ def get_templates():
             "subject_klassenwechsel": config.get("Templates", "subject_klassenwechsel", fallback=""),
             "body_klassenwechsel": config.get("Templates", "body_klassenwechsel", fallback=""),
             "subject_new_student": config.get("Templates", "subject_new_student", fallback=""),
-            "body_new_student": config.get("Templates", "body_new_student", fallback="")
+            "body_new_student": config.get("Templates", "body_new_student", fallback=""),
+            "subject_karteileiche": config.get("Templates", "subject_karteileiche", fallback=""),
+            "body_karteileiche": config.get("Templates", "body_karteileiche", fallback="")
         }
 
         # Erfolg erst melden, wenn sicher ist, dass alles funktioniert hat
@@ -730,7 +812,7 @@ def update_templates():
     try:
         # E-Mail-Einstellungen laden
         email_config = configparser.ConfigParser()
-        email_config.read('email_settings.ini', encoding='utf-8-sig')
+        safe_read_config(email_config, 'email_settings.ini')
 
         # Vorlagen mit den bereitgestellten Daten aktualisieren
         email_config['Templates']['subject_entlassdatum'] = request.form.get('subject_entlassdatum', '')
@@ -741,9 +823,11 @@ def update_templates():
         email_config['Templates']['body_klassenwechsel'] = request.form.get('body_klassenwechsel', '')
         email_config['Templates']['subject_new_student'] = request.form.get('subject_new_student', '')
         email_config['Templates']['body_new_student'] = request.form.get('body_new_student', '')
+        email_config['Templates']['subject_karteileiche'] = request.form.get('subject_karteileiche', '')
+        email_config['Templates']['body_karteileiche'] = request.form.get('body_karteileiche', '')
 
         # Änderungen in die Datei schreiben
-        with open('email_settings.ini', 'w') as configfile:
+        with open('email_settings.ini', 'w', encoding='utf-8-sig') as configfile:
             email_config.write(configfile)
         print_success("E-Mail-Vorlagen wurden erfolgreich aktualisiert.")
         return jsonify({'message': '✅ E-Mail-Vorlagen erfolgreich gespeichert!'})
@@ -783,7 +867,7 @@ def load_settings():
     settings = {}
     # settings.ini laden
     config = configparser.ConfigParser()
-    config.read("settings.ini", encoding='utf-8-sig')
+    safe_read_config(config, "settings.ini")
     for section in config.sections():
         if section not in settings:
             settings[section] = {}
@@ -791,7 +875,7 @@ def load_settings():
 
     # email_settings.ini laden
     email_config = configparser.ConfigParser()
-    email_config.read("email_settings.ini", encoding='utf-8-sig')
+    safe_read_config(email_config, "email_settings.ini")
     for section in email_config.sections():
         if section not in settings:
             settings[section] = {}
@@ -842,7 +926,7 @@ def save_settings():
 def save_to_settings_ini(settings):
     print_info("Speichere Einstellungen in 'settings.ini'...")
     config = configparser.ConfigParser()
-    config.read("settings.ini", encoding='utf-8-sig')
+    safe_read_config(config, "settings.ini")
     for section, values in settings.items():
         if not config.has_section(section):
             config.add_section(section)
@@ -854,7 +938,7 @@ def save_to_settings_ini(settings):
                 print_info(f"Pfad normalisiert für '{key}': {value}")
             config.set(section, key, str(value))
             print_info(f"Einstellung gesetzt: [{section}] {key} = {value}")
-    with open("settings.ini", "w", encoding="utf-8") as configfile:
+    with open("settings.ini", "w", encoding="utf-8-sig") as configfile:
         config.write(configfile)
     print_success("Einstellungen wurden erfolgreich in 'settings.ini' gespeichert.")
 
@@ -862,7 +946,7 @@ def save_to_settings_ini(settings):
 def save_to_email_settings_ini(settings):
     print_info("Speichere E-Mail-Einstellungen in 'email_settings.ini'...")
     config = configparser.ConfigParser()
-    config.read("email_settings.ini", encoding='utf-8-sig')
+    safe_read_config(config, "email_settings.ini")
     # Bestehende Abschnitte beibehalten
     existing_sections = config.sections()
     # Aktualisiere nur die bereitgestellten Abschnitte
