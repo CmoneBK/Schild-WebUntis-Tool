@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -14,11 +14,43 @@
             margin-top: 10px;
             white-space: pre-wrap; /* Zeilenumbrüche beibehalten */
         }
+        
+        /* --- Dark Mode Styles --- */
+        body.dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+
+        body.dark-mode .card, 
+        body.dark-mode .list-group-item {
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border-color: #333333;
+        }
+
+        body.dark-mode .card-header {
+            border-bottom-color: #333;
+        }
+
+        body.dark-mode .alert-warning {
+            background-color: #5c440b;
+            color: #f8d775;
+            border-color: #725510;
+        }
     </style>
+    <!-- Dark Mode Initializer -->
+    <script>
+        if (localStorage.getItem("darkMode") === "enabled") {
+            document.documentElement.classList.add("dark-mode");
+        }
+    </script>
 </head>
 <body>
     <div class="container mt-5">
-        <h1>Generierte E-Mails</h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>Generierte E-Mails</h1>
+            <button id="darkModeToggle" class="btn btn-outline-secondary">🌙 Dark Mode</button>
+        </div>
 
         {% if emails %}
         <div class="card mt-4">
@@ -57,6 +89,29 @@
                 method: "POST"
             }).then(response => response.json()).then(data => {
                 alert(data.message);
+            });
+        });
+
+        // --- Dark Mode Logic ---
+        document.addEventListener("DOMContentLoaded", function () {
+            const darkModeToggle = document.getElementById("darkModeToggle");
+            
+            if (document.documentElement.classList.contains("dark-mode")) {
+                document.body.classList.add("dark-mode");
+                darkModeToggle.textContent = "☀️ Light Mode";
+            }
+
+            darkModeToggle.addEventListener("click", function () {
+                document.body.classList.toggle("dark-mode");
+                document.documentElement.classList.toggle("dark-mode");
+                
+                if (document.body.classList.contains("dark-mode")) {
+                    localStorage.setItem("darkMode", "enabled");
+                    darkModeToggle.textContent = "☀️ Light Mode";
+                } else {
+                    localStorage.setItem("darkMode", "disabled");
+                    darkModeToggle.textContent = "🌙 Dark Mode";
+                }
             });
         });
     </script>
