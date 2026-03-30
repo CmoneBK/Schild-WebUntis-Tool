@@ -310,6 +310,9 @@ body_karteileiche = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/di
         "xlsx_directory": default_xlsx_dir,
         "schildexport_directory": default_schildexport_dir,
         "class_size_directory": default_class_size_dir,
+        "import_directory": default_import_dir,
+        "attest_file_directory": default_attest_file_directory,
+        "nachteilsausgleich_file_directory": default_nachteilsausgleich_file_directory,
     }
 
     for key, default_path in directories.items():
@@ -323,14 +326,6 @@ body_karteileiche = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/di
             os.makedirs(directory)
             print_creation(f"Ordner '{directory}' wurde erstellt.")
 
-    # Import-Verzeichnis ähnlich behandeln
-    import_dir = config.get('Directories', 'import_directory', fallback=default_import_dir, raw=True)
-    import_dir = os.path.normpath(import_dir)
-    if not os.path.isabs(import_dir):
-        import_dir = os.path.abspath(import_dir)
-    if not os.path.exists(import_dir):
-        os.makedirs(import_dir)
-        print_creation(f"Ordner '{import_dir}' wurde erstellt.")
 
     global admin_warnings_cache
     admin_warnings_cache = []

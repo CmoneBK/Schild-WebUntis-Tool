@@ -602,7 +602,7 @@ def read_students(use_abschlussdatum=False):
     students_by_id = {} # Dictionary für den schnellen Zugriff auf Schülerdaten per ID
 
     # Öffnen der neuesten CSV-Datei und Einlesen der Daten
-    with open(newest_file, 'r', newline='', encoding='utf-8-sig') as csvfile:
+    with open(os.path.join(schildexport_dir, newest_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
         # Überprüfen, ob die notwendigen Spalten vorhanden sind
         header = [column for column in reader.fieldnames if column in columns_to_filter]
