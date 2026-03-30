@@ -187,6 +187,41 @@
             color: #a8f0c3;
             border-color: #1b6636;
         }
+
+        /* --- Dark Mode for Specific Panels --- */
+        body.dark-mode #settingsPanel,
+        body.dark-mode #emailEditor,
+        body.dark-mode #shortcutCreator,
+        body.dark-mode #uploadArea,
+        body.dark-mode #historyPanel,
+        body.dark-mode #settingsContainer > div {
+            background-color: #1e1e1e !important;
+            border-color: #333333 !important;
+            color: #ffffff !important;
+        }
+
+        body.dark-mode .ql-toolbar.ql-snow,
+        body.dark-mode .ql-container.ql-snow {
+            border-color: #444 !important;
+            background-color: #2a2a2a !important;
+            color: #ddd !important;
+        }
+
+        body.dark-mode .ql-snow .ql-stroke {
+            stroke: #ddd !important;
+        }
+
+        body.dark-mode .ql-snow .ql-fill {
+            fill: #ddd !important;
+        }
+
+        body.dark-mode .ql-snow .ql-picker {
+            color: #ddd !important;
+        }
+
+        body.dark-mode .badge-info {
+            background-color: #0b5c72;
+        }
     </style>
 </head>
 <body>
@@ -1096,16 +1131,21 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            // Unified Panel Configuration
             const panels = {
                 settingsPanel: document.getElementById("settingsPanel"),
                 emailEditor: document.getElementById("emailEditor"),
                 shortcutCreator: document.getElementById("shortcutCreator"),
+                uploadArea: document.getElementById("uploadArea"),
+                historyPanel: document.getElementById("historyPanel"),
             };
 
             const toggleButtons = {
                 toggleSettingsButton: document.getElementById("toggle-settings"),
                 toggleEditorButton: document.getElementById("toggleEditor"),
                 toggleShortcutButton: document.getElementById("toggleShortcutCreator"),
+                toggleUploadButton: document.getElementById("toggleUploadArea"),
+                toggleHistoryButton: document.getElementById("toggleHistory"),
             };
 
             const settingsTabs = document.querySelectorAll("#settingsPanel .nav-link");
@@ -1113,11 +1153,20 @@
 
             function togglePanel(panelKey) {
                 Object.entries(panels).forEach(([key, panel]) => {
+                    if (!panel) return;
                     if (key === panelKey) {
                         // Show the selected panel
-                        panel.style.display = panel.style.display === "none" || panel.style.display === "" ? "block" : "none";
-                        if (panelKey === "settingsPanel") {
-                            activateFirstTab();
+                        const isHidden = panel.style.display === "none" || panel.style.display === "";
+                        panel.style.display = isHidden ? "block" : "none";
+                        
+                        if (isHidden) {
+                            if (panelKey === "settingsPanel") {
+                                activateFirstTab();
+                            } else if (panelKey === "historyPanel") {
+                                if (typeof loadHistory === "function") {
+                                    loadHistory(30);
+                                }
+                            }
                         }
                     } else {
                         // Hide other panels
@@ -1127,34 +1176,33 @@
             }
 
             function activateFirstTab() {
-                // Reset all tabs and content panels
                 settingsTabs.forEach((tab) => tab.classList.remove("active"));
                 settingsContentPanels.forEach((content) => content.classList.remove("show", "active"));
-
-                // Activate the first tab and its content
                 if (settingsTabs.length > 0 && settingsContentPanels.length > 0) {
                     settingsTabs[0].classList.add("active");
                     settingsContentPanels[0].classList.add("show", "active");
                 }
             }
 
-            // Event listener for Settings Panel
-            toggleButtons.toggleSettingsButton.addEventListener("click", function () {
-                togglePanel("settingsPanel");
-            });
-
-            // Event listener for Email Editor
-            toggleButtons.toggleEditorButton.addEventListener("click", function () {
-                togglePanel("emailEditor");
-            });
-
-            // Event listener for Shortcut Creator
-            toggleButtons.toggleShortcutButton.addEventListener("click", function () {
-                togglePanel("shortcutCreator");
-            });
+            // Bind all toggle buttons
+            if (toggleButtons.toggleSettingsButton) {
+                toggleButtons.toggleSettingsButton.addEventListener("click", () => togglePanel("settingsPanel"));
+            }
+            if (toggleButtons.toggleEditorButton) {
+                toggleButtons.toggleEditorButton.addEventListener("click", () => togglePanel("emailEditor"));
+            }
+            if (toggleButtons.toggleShortcutButton) {
+                toggleButtons.toggleShortcutButton.addEventListener("click", () => togglePanel("shortcutCreator"));
+            }
+            if (toggleButtons.toggleUploadButton) {
+                toggleButtons.toggleUploadButton.addEventListener("click", () => togglePanel("uploadArea"));
+            }
+            if (toggleButtons.toggleHistoryButton) {
+                toggleButtons.toggleHistoryButton.addEventListener("click", () => togglePanel("historyPanel"));
+            }
 
             // Ensure all panels are initially hidden
-            Object.values(panels).forEach((panel) => (panel.style.display = "none"));
+            Object.values(panels).forEach((panel) => { if (panel) panel.style.display = "none"; });
         });
 
 
@@ -1518,14 +1566,7 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const uploadArea = document.getElementById("uploadArea");
-            const toggleUploadButton = document.getElementById("toggleUploadArea");
-
-            if (toggleUploadButton) {
-                toggleUploadButton.addEventListener("click", function () {
-                    uploadArea.style.display = uploadArea.style.display === "none" || uploadArea.style.display === "" ? "block" : "none";
-                });
-            }
+            // Unified toggle logic handles uploadArea now
 
             // Handle the form submission
             const uploadForm = document.getElementById("uploadForm");
@@ -1762,25 +1803,19 @@
                 }
             });
 
-            // --- History Logic ---
-            const toggleHistoryBtn = document.getElementById("toggleHistory");
-            const historyPanel = document.getElementById("historyPanel");
+            // --- History Logic --- (Toggle logic unified above)
             const loadAllHistoryBtn = document.getElementById("loadAllHistory");
+            if (loadAllHistoryBtn) {
+                loadAllHistoryBtn.addEventListener("click", () => {
+                    if (typeof window.loadHistory === "function") {
+                        window.loadHistory(0);
+                    }
+                });
+            }
+            const historyPanel = document.getElementById("historyPanel");
             
-            toggleHistoryBtn.addEventListener("click", function() {
-                if (historyPanel.style.display === "none") {
-                    historyPanel.style.display = "block";
-                    loadHistory(30); // Default load limit 30
-                } else {
-                    historyPanel.style.display = "none";
-                }
-            });
-
-            loadAllHistoryBtn.addEventListener("click", function() {
-                loadHistory(0); // 0 means all
-            });
-
-            function loadHistory(limit) {
+            // Expose loadHistory globally so it can be called from unified toggle
+            window.loadHistory = function(limit) {
                 const tbody = document.querySelector("#historyTable tbody");
                 tbody.innerHTML = "<tr><td colspan='3' class='text-center'>Lade Historie...</td></tr>";
 
