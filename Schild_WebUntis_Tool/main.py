@@ -1,5 +1,6 @@
 import os
 import csv
+import history_manager
 import configparser
 from datetime import datetime, timedelta
 from openpyxl import Workbook
@@ -222,6 +223,9 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_file_path = os.path.join(log_dir, f'ÄnderungsLog_{timestamp}.log')
     excel_file_path = os.path.join(xlsx_dir, f'ÄnderungsLog_{timestamp}.xlsx')
+    
+    # Änderungen in der Historien-Datenbank speichern
+    history_manager.record_changes(changes, timestamp, previous_file, latest_file)
 
     # Log-Datei erstellen
     if not no_log:
@@ -374,6 +378,9 @@ def compare_timeframe_imports(timeframe_hours=24):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_file_path = os.path.join(log_dir, f'ÄnderungsLog_{timestamp}.log')
     excel_file_path = os.path.join(xlsx_dir, f'ÄnderungsLog_{timestamp}.xlsx')
+
+    # Änderungen in der Historien-Datenbank speichern
+    history_manager.record_changes(changes, timestamp, previous_file, latest_file)
 
     # Log-Datei erstellen
     print_creation(f"Erstelle Log-Datei: {log_file_path}")
