@@ -425,15 +425,151 @@
     </div>
 
     <div class="container mt-5">
-        <div class="d-flex justify-content-between align-items-center mb-3" style="height: 60px;">
-            <button id="toggleWarnings" class="btn btn-warning w-100 mr-2">⚠️ Warnungen</button>
-            <button id="toggleHistory" class="btn btn-dark w-100 mx-2">📜 Historie</button>
-            <button id="toggleEditor" class="btn btn-secondary w-100 mx-2">✉️ Email-Vorlagen Editor</button>
-            {% if enable_upload %}<button id="toggleUploadArea" class="btn btn-warning w-100 mx-2">⬆️ Dateien
-                Hochladen</button>{% endif %}
-            <button id="toggleShortcutCreator" class="btn btn-info w-100 mx-2">#️⃣🔗Befehl- und
-                Verknüpfungs-Erstelltool</button>
-            <button id="toggle-settings" class="btn btn-primary w-100 ml-2">⚙️ Einstellungen</button>
+        <!-- Navigation Grid -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h5 class="text-muted mb-3">📊 Analyse & Übersicht</h5>
+            </div>
+            <div class="col-md-4 mb-2">
+                <button id="toggleDashboard" class="btn btn-primary btn-lg w-100 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center">
+                        <span class="mr-2">📈</span> Dashboard & Analyse
+                    </div>
+                </button>
+            </div>
+            <div class="col-md-4 mb-2">
+                <button id="toggleWarnings" class="btn btn-warning btn-lg w-100 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center">
+                        <span class="mr-2">⚠️</span> Warnungen
+                    </div>
+                </button>
+            </div>
+            <div class="col-md-4 mb-2">
+                <button id="toggleHistory" class="btn btn-dark btn-lg w-100 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center">
+                        <span class="mr-2">📜</span> Historie
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <div class="row mb-5">
+            <div class="col-12">
+                <h5 class="text-muted mb-3">🛠️ Werkzeuge & System</h5>
+            </div>
+            <div class="col-md-3 mb-2">
+                <button id="toggleEditor" class="btn btn-secondary btn-lg w-100 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
+                        <span class="mr-2">✉️</span> Email-Editor
+                    </div>
+                </button>
+            </div>
+            {% if enable_upload %}
+            <div class="col-md-3 mb-2">
+                <button id="toggleUploadArea" class="btn btn-warning btn-lg w-100 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
+                        <span class="mr-2">⬆️</span> Upload
+                    </div>
+                </button>
+            </div>
+            {% endif %}
+            <div class="col-md-3 mb-2">
+                <button id="toggleShortcutCreator" class="btn btn-info btn-lg w-100 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
+                        <span class="mr-2">#️⃣</span> Shortcut-Tool
+                    </div>
+                </button>
+            </div>
+            <div class="col-md-3 mb-2">
+                <button id="toggle-settings" class="btn btn-primary btn-lg w-100 shadow-sm">
+                    <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
+                        <span class="mr-2">⚙️</span> Einstellungen
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard Panel -->
+        <div id="dashboardPanel" class="mt-4" style="display: none;">
+            <h4 class="mb-4">📊 Dashboard & Analyse</h4>
+            <div class="row">
+                <!-- Statistik-Karten -->
+                <div class="col-md-4">
+                    <div class="card text-white bg-primary mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Änderungen Gesamt</h5>
+                            <p class="card-text h2" id="stat-total-changes">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-white bg-warning mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Klassenwechsel (Monat)</h5>
+                            <p class="card-text h2" id="stat-class-changes">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-white bg-success mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Aktivierte Schüler</h5>
+                            <p class="card-text h2" id="stat-active-students">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white">📈 Änderungs-Frequenz (Monatlich)</div>
+                        <div class="card-body">
+                            <canvas id="chart-monthly" height="150"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-dark text-white">🍕 Änderungs-Arten</div>
+                        <div class="card-body d-flex align-items-center">
+                            <canvas id="chart-categories"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">⚠️ Fehler-Hotspots (Klassen)</div>
+                        <div class="card-body">
+                            <canvas id="chart-hotspots" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">🔍 Schüler-Historie Suche</div>
+                        <div class="card-body">
+                            <div class="input-group mb-3">
+                                <input type="text" id="student-search-query" class="form-control" placeholder="Name oder ID eingeben...">
+                                <div class="input-group-append">
+                                    <button class="btn btn-primary" type="button" id="btn-search-history">Suchen</button>
+                                </div>
+                            </div>
+                            <div id="student-history-results" style="max-height: 300px; overflow-y: auto;">
+                                <p class="text-muted text-center">Geben Sie einen Namen ein, um die Historie zu sehen.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 mb-5">
+                <button id="btn-reindex-history" class="btn btn-outline-secondary btn-sm">🔄 Bestehende Logs neu indizieren</button>
+                <button id="btn-reset-history" class="btn btn-outline-danger btn-sm ml-2">🗑️ Historie zurücksetzen</button>
+            </div>
         </div>
 
         <div id="warningsPanel" class="mt-4" style="display: none;" data-has-warnings="{{ 'true' if warnings else 'false' }}">
@@ -1318,6 +1454,7 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='scripts/chart.min.js') }}"></script>
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
@@ -1333,6 +1470,7 @@
                 uploadArea: document.getElementById("uploadArea"),
                 historyPanel: document.getElementById("historyPanel"),
                 warningsPanel: document.getElementById("warningsPanel"),
+                dashboardPanel: document.getElementById("dashboardPanel"),
             };
 
             const toggleButtons = {
@@ -1342,10 +1480,149 @@
                 toggleUploadButton: document.getElementById("toggleUploadArea"),
                 toggleHistoryButton: document.getElementById("toggleHistory"),
                 toggleWarningsButton: document.getElementById("toggleWarnings"),
+                toggleDashboardButton: document.getElementById("toggleDashboard"),
             };
 
             const settingsTabs = document.querySelectorAll("#settingsPanel .nav-link");
             const settingsContentPanels = document.querySelectorAll("#settingsPanel .tab-content > .tab-pane");
+
+            if (toggleButtons.toggleDashboardButton) {
+                toggleButtons.toggleDashboardButton.addEventListener("click", () => {
+                    togglePanel("dashboardPanel");
+                    if (panels.dashboardPanel.style.display === "block") {
+                        loadDashboardData();
+                    }
+                });
+            }
+
+            let charts = {}; // Globale Referenz für Chart-Instanzen
+
+            async function loadDashboardData() {
+                try {
+                    const response = await fetch("/api/history/stats");
+                    const data = await response.json();
+
+                    // Einfache Statistik-Karten
+                    const totalChanges = Object.values(data.categories).reduce((a, b) => a + b, 0);
+                    document.getElementById("stat-total-changes").innerText = totalChanges;
+                    document.getElementById("stat-class-changes").innerText = data.categories["Klasse"] || 0;
+                    document.getElementById("stat-active-students").innerText = data.categories["Status"] || 0;
+
+                    // 1. Monats-Trend (Line Chart)
+                    renderChart('chart-monthly', 'line', {
+                        labels: Object.keys(data.monthly),
+                        datasets: [{
+                            label: 'Änderungen',
+                            data: Object.values(data.monthly),
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    });
+
+                    // 2. Kategorien (Pie Chart)
+                    renderChart('chart-categories', 'pie', {
+                        labels: Object.keys(data.categories),
+                        datasets: [{
+                            data: Object.values(data.categories),
+                            backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22']
+                        }]
+                    }, { plugins: { legend: { position: 'right' } } });
+
+                    // 3. Hotspots (Horizontal Bar)
+                    renderChart('chart-hotspots', 'bar', {
+                        labels: Object.keys(data.hotspots),
+                        datasets: [{
+                            label: 'Anzahl Änderungen',
+                            data: Object.values(data.hotspots),
+                            backgroundColor: '#e74c3c'
+                        }]
+                    }, { indexAxis: 'y' });
+
+                } catch (error) {
+                    console.error("Dashboard-Fehler:", error);
+                }
+            }
+
+            function renderChart(canvasId, type, data, options = {}) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                if (charts[canvasId]) charts[canvasId].destroy();
+                charts[canvasId] = new Chart(ctx, {
+                    type: type,
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        ...options
+                    }
+                });
+            }
+
+            // Historie Suche
+            document.getElementById("btn-search-history").addEventListener("click", performSearch);
+            document.getElementById("student-search-query").addEventListener("keypress", (e) => {
+                if (e.key === "Enter") performSearch();
+            });
+
+            async function performSearch() {
+                const q = document.getElementById("student-search-query").value;
+                const resultsDiv = document.getElementById("student-history-results");
+                if (q.length < 2) return;
+
+                resultsDiv.innerHTML = "⌛ Suche...";
+                const response = await fetch(`/api/history/search?q=${encodeURIComponent(q)}`);
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    resultsDiv.innerHTML = "<p class='text-center mt-3'>Keine Einträge gefunden.</p>";
+                    return;
+                }
+
+                let html = "";
+                data.forEach(item => {
+                    html += `
+                        <div class="card mb-3 shadow-sm border-left-info">
+                            <div class="card-header bg-light"><strong>${item.student.name}</strong> (ID: ${item.student.id})</div>
+                            <div class="card-body p-2">
+                                <table class="table table-sm mb-0" style="font-size: 0.85rem;">
+                                    <thead><tr><th>Datum</th><th>Feld</th><th>Änderung</th></tr></thead>
+                                    <tbody>
+                                        ${item.timeline.map(t => `
+                                            <tr>
+                                                <td class="text-nowrap">${t.timestamp}</td>
+                                                <td>${t.field}</td>
+                                                <td><span class="text-danger">${t.old_value}</span> ➡️ <span class="text-success">${t.new_value}</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                });
+                resultsDiv.innerHTML = html;
+            }
+
+            // DB Management Buttons
+            document.getElementById("btn-reindex-history").addEventListener("click", async () => {
+                const btn = document.getElementById("btn-reindex-history");
+                btn.disabled = true;
+                btn.innerText = "⌛ Indiziere...";
+                const r = await fetch("/api/history/reindex", { method: "POST" });
+                const data = await r.json();
+                alert(data.message);
+                btn.disabled = false;
+                btn.innerText = "🔄 Bestehende Logs neu indizieren";
+                loadDashboardData();
+            });
+
+            document.getElementById("btn-reset-history").addEventListener("click", async () => {
+                if (!confirm("Historie wirklich zurücksetzen? Alle statistischen Daten werden unwiderruflich gelöscht.")) return;
+                await fetch("/api/history/reset", { method: "POST" });
+                alert("Historie wurde zurückgesetzt.");
+                loadDashboardData();
+            });
 
             function togglePanel(panelKey) {
                 Object.entries(panels).forEach(([key, panel]) => {
@@ -1363,6 +1640,10 @@
                                     loadHistory(30);
                                 }
                             }
+                            // Automatisches Scrollen zum Bereich
+                            setTimeout(() => {
+                                panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 100);
                         }
                     } else {
                         // Hide other panels

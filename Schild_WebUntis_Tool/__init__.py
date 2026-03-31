@@ -25,6 +25,7 @@ import logging
 # Logger konfigurieren
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+import history_manager
 
 from utils import safe_read_config
 
@@ -962,6 +963,35 @@ def check_emails_status():
     global generated_emails_cache
     return jsonify({"has_emails": len(generated_emails_cache) > 0})
 
+# --- Dashboard & Historie API ---
+
+@app.route('/api/history/stats', methods=['GET'])
+def get_history_stats():
+    stats = history_manager.get_dashboard_stats()
+    return jsonify(stats)
+
+@app.route('/api/history/search', methods=['GET'])
+def search_history():
+    query = request.args.get('q', '')
+    if len(query) < 2:
+        return jsonify([])
+    results = history_manager.search_student_history(query)
+    return jsonify(results)
+
+@app.route('/api/history/reset', methods=['POST'])
+def reset_history():
+    history_manager.clear_history()
+    return jsonify({"message": "✅ Historie erfolgreich zurückgesetzt."})
+
+@app.route('/api/history/reindex', methods=['POST'])
+def reindex_history():
+    config = configparser.ConfigParser()
+    from utils import safe_read_config
+    safe_read_config(config, 'settings.ini')
+    log_dir = config.get("Directories", "log_directory", fallback="./Logs")
+    count = history_manager.reindex_logs(log_dir)
+    return jsonify({"message": f"✅ {count} Log-Dateien erfolgreich indiziert."})
+
 # Route und Funktion zum Abrufen und Reinladen der Einstellungen des Einstellungs-Panels im WebEnd aus den verschiedenen .ini Dateien
 @app.route('/load-settings', methods=['GET'])
 def load_settings():
@@ -1481,6 +1511,30 @@ if __name__ == "__main__":
     if not args.no_web:
         browser_thread = threading.Thread(target=open_browser)
         browser_thread.start()
+
+    try:
+        # Initialer Check der Historie
+        import sqlite3
+        import history_manager
+        import configparser
+        conn = sqlite3.connect('history.db')
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='comparisons'")
+        if cursor.fetchone():
+            cursor.execute("SELECT COUNT(*) FROM comparisons")
+            count = cursor.fetchone()[0]
+            if count == 0:
+                print_info("✨ Historie ist leer. Starte automatische Indizierung vorhandener Logs...")
+                config = configparser.ConfigParser()
+                from utils import safe_read_config
+                safe_read_config(config, 'settings.ini')
+                log_dir = config.get("Directories", "log_directory", fallback="./Logs")
+                reindexed = history_manager.reindex_logs(log_dir)
+                if reindexed > 0:
+                    print_success(f"✅ {reindexed} historische Log-Dateien wurden automatisch indiziert.")
+        conn.close()
+    except Exception as e:
+        print_warning(f"Hinweis zur Historie-Initialisierung: {e}")
 
     try:
         serve(app, host=cli_args.get("host", "0.0.0.0"), port=cli_args.get("port", 5000))
