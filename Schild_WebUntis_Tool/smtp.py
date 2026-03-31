@@ -118,7 +118,8 @@ def send_email(subject, body, to_addresses, attachment_path=None):
                     raise e
         server.quit()
     except Exception as e:
-        print_error(f"Fehler beim Senden der E-Mail: {e}")
+        # Fehler nicht nur ausgeben, sondern auch an den Aufrufer weitergeben
+        raise e
 
 def log_sent_email(subject, body, to_addresses):
     print_creation("Gesendete E-Mail:")

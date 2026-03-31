@@ -447,13 +447,20 @@
                         <th>Warnung</th>
                         <th>Details</th>
                         <th>Klassenlehrkräfte</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="warningsTableBody">
                     {% for warning in warnings %}
                     <tr>
                         <td>{{ warning['Vorname'] }} {{ warning['Nachname'] }}</td>
-                        <td>{{ warning.get('Klasse', 'N/A') }}</td>
+                        <td>
+                            {% if 'neue_klasse' in warning %}
+                                {{ warning['alte_klasse'] }} ➡️ {{ warning['neue_klasse'] }}
+                            {% else %}
+                                {{ warning.get('Klasse', 'N/A') }}
+                            {% endif %}
+                        </td>
                         <td>{{ warning['warning_message'] }}</td>
                         <td>
                             {% if 'Zeitraum_nicht_dokumentiert' in warning %}
@@ -479,10 +486,24 @@
                             {% endif %}
                         </td>
                         <td>
-                            <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{
-                            warning['Klassenlehrkraft_1_Email'] }})<br>
-                            <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{
-                            warning['Klassenlehrkraft_2_Email'] }})
+                            {% if 'neue_klasse' in warning %}
+                                <strong>Alte Klasse:</strong><br>
+                                {{ warning['alte_Klassenlehrkraft_1'] }} ({{ warning['alte_Klassenlehrkraft_1_Email'] }})<br>
+                                {{ warning['alte_Klassenlehrkraft_2'] }} ({{ warning['alte_Klassenlehrkraft_2_Email'] }})<br>
+                                <div class="mt-2"><strong>Neue Klasse:</strong></div>
+                                {{ warning['neue_Klassenlehrkraft_1'] }} ({{ warning['neue_Klassenlehrkraft_1_Email'] }})<br>
+                                {{ warning['neue_Klassenlehrkraft_2'] }} ({{ warning['neue_Klassenlehrkraft_2_Email'] }})
+                            {% else %}
+                                <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{
+                                warning['Klassenlehrkraft_1_Email'] }})<br>
+                                <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{
+                                warning['Klassenlehrkraft_2_Email'] }})
+                            {% endif %}
+                        </td>
+                        <td class="status-cell">
+                            <span class="badge {{ 'badge-success' if warning.status == 'versendet' else 'badge-warning' }}">
+                                {{ '✅ Versendet' if warning.status == 'versendet' else '⏳ Offen' }}
+                            </span>
                         </td>
                     </tr>
                     {% endfor %}
@@ -788,6 +809,9 @@
                                 <option value="both" {% if class_change_recipients=='both' %}selected{% endif %}>Beide
                                     Klassen</option>
                             </select>
+                            <div id="class_change_both_hint" class="alert alert-info mt-2" style="display: none; font-size: 0.85rem;">
+                                💡 <strong>Tipp:</strong> Bei der Einstellung "Beide" empfehlen wir die Verwendung von <code>$anrede_global</code> und <code>$lehrkraefte_tabelle</code> in der E-Mail-Vorlage, um alle Lehrkräfte korrekt anzusprechen.
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="warn_new_students">🆕 Immer Warnungen für neue Schüler generieren:</label>
@@ -975,6 +999,10 @@
                         </div>
                         <div class="form-group">
                             <label for="bodyKlassenwechsel">📜 Nachricht:</label>
+                            <div class="alert alert-light border mb-2" style="font-size: 0.8rem;">
+                                💡 <strong>Optimierung für kombinierte Mails:</strong><br>
+                                Nutzen Sie <code>$anrede_global</code> für eine passende Anrede ("Kolleginnen und Kollegen") und <code>$lehrkraefte_tabelle</code> um alle beteiligten Lehrkräfte beider Klassen aufzulisten.
+                            </div>
                             <div id="editorBodyKlassenwechsel" class="quill-editor"></div>
                             <textarea id="bodyKlassenwechsel" name="body_klassenwechsel"
                                 class="form-control d-none"></textarea>
@@ -1049,6 +1077,14 @@
                             <tr>
                                 <td>$Klassenlehrkraft_2</td>
                                 <td>Name der zweiten Klassenlehrkraft</td>
+                            </tr>
+                            <tr>
+                                <td>$anrede_global</td>
+                                <td>Dynamische Anrede (z.B. "Kolleginnen und Kollegen" bei Klassenwechseln an beide Klassen).</td>
+                            </tr>
+                            <tr>
+                                <td>$lehrkraefte_tabelle</td>
+                                <td>HTML-Block mit allen beteiligten Lehrkräften beider Klassen.</td>
                             </tr>
                             <!-- Warnung Entlassdatum -->
                             <tr>
@@ -1402,6 +1438,16 @@
                     editorBodyKlassenwechsel.root.innerHTML = data.body_klassenwechsel || "";
                     editorBodyNewStudent.root.innerHTML = data.body_new_student || "";
                     editorBodyKarteileiche.root.innerHTML = data.body_karteileiche || "";
+                    
+                    // Show/Hide class change hint based on initial value
+                    const classChangeSelect = document.getElementById("class_change_recipients");
+                    const classChangeHint = document.getElementById("class_change_both_hint");
+                    if (classChangeSelect && classChangeHint) {
+                        classChangeHint.style.display = classChangeSelect.value === "both" ? "block" : "none";
+                        classChangeSelect.addEventListener("change", function() {
+                            classChangeHint.style.display = this.value === "both" ? "block" : "none";
+                        });
+                    }
                 })
                 .catch(error => {
                     console.error("Error loading email templates:", error);
@@ -2135,6 +2181,39 @@
                     pre.textContent = "Fehler beim Laden: " + err.message;
                 });
         }
+
+        // --- Live Warning Status Polling ---
+        function refreshWarningStatuses() {
+            const warningsPanel = document.getElementById("warningsPanel");
+            // Poll only if there are warnings to track
+            if (!warningsPanel || warningsPanel.getAttribute("data-has-warnings") !== "true") return;
+
+            fetch('/api/get_warnings')
+                .then(response => response.json())
+                .then(warnings => {
+                    const rows = document.querySelectorAll("#warningsTableBody tr");
+                    warnings.forEach((w, index) => {
+                        if (rows[index]) {
+                            const statusCell = rows[index].querySelector(".status-cell");
+                            if (statusCell) {
+                                const isSent = w.status === 'versendet';
+                                const currentBadge = statusCell.querySelector(".badge");
+                                
+                                // Only update if the status actually changed to avoid flickering
+                                const newText = isSent ? '✅ Versendet' : '⏳ Offen';
+                                if (currentBadge && currentBadge.textContent.trim() !== newText) {
+                                    const badgeClass = isSent ? 'badge-success' : 'badge-warning';
+                                    statusCell.innerHTML = `<span class="badge ${badgeClass}">${newText}</span>`;
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(err => console.debug("Status-Check im Hintergrund..."));
+        }
+
+        // Poll every 3 seconds while the page is open
+        setInterval(refreshWarningStatuses, 3000);
     </script>
 </body>
 

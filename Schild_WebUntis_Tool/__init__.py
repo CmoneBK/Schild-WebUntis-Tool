@@ -465,7 +465,7 @@ def test_api():
 @app.route('/', methods=['GET', 'POST'])
 def index():
     global warnings_cache  # Globaler Cache für die Zwischenspeicherung von Warnungen
-    warnings = []
+    warnings = warnings_cache or []
     confirmation = None  # Variable für Bestätigungsnachricht
     errors = []  # Liste für Fehlermeldungen
     warnings_messages = []  # Liste für nicht-blockierende Warnungen
@@ -573,6 +573,8 @@ def index():
                 disable_import_file_if_admin_warning=disable_import_file_if_admin_warning,
                 admin_warnings_cache=admin_warnings_cache
             )
+            for w in warnings:
+                w['status'] = 'offen'
             warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
 
             # Setzt eine Bestätigungsnachricht nach erfolgreicher Ausführung
@@ -630,7 +632,7 @@ def generate_emails():
         config = configparser.ConfigParser()
         safe_read_config(config, 'email_settings.ini')
 
-        for warning in warnings_cache:
+        for i, warning in enumerate(warnings_cache):
             # Bestimme den Typ der Warnung
             if 'neues_entlassdatum' in warning:
                 warning_type = "entlassdatum"
@@ -678,10 +680,15 @@ def generate_emails():
                 return jsonify({"message": f"⚠️ Fehlender Platzhalter: {e} in der Vorlage für {warning_type}"}), 400
 
             # E-Mail zur Liste hinzufügen
+            recipients = warning.get('recipients_list')
+            if not recipients:
+                recipients = [warning.get('Klassenlehrkraft_1_Email', 'N/A'), warning.get('Klassenlehrkraft_2_Email', 'N/A')]
+
             generated_emails_cache.append({
                 'subject': subject,
                 'body': body,
-                'to': [warning.get('Klassenlehrkraft_1_Email', 'N/A'), warning.get('Klassenlehrkraft_2_Email', 'N/A')]
+                'to': recipients,
+                'warning_index': i
             })
         print_success("E-Mails wurden erfolgreich generiert.")
         return jsonify({"message": "✅ Die E-Mails wurden erfolgreich generiert.", "emails": generated_emails_cache})
@@ -906,25 +913,48 @@ def update_templates():
 # Route und Funktion hinter dem "E-Mails Senden" Button im WebEnd zum Senden der E-Mails auf Grundlage der generierten Warnugen und gespeicherten Einstellungen 
 @app.route('/send_emails', methods=['POST'])
 def send_emails():
-    global generated_emails_cache
+    global generated_emails_cache, warnings_cache
     if generated_emails_cache:
         print_info("Beginne mit dem Senden der generierten E-Mails...")
         # Verwende den Cache zum Senden der E-Mails
         for email in generated_emails_cache:
+            # Filtere N/A Adressen vor dem Senden
+            actual_recipients = [r for r in email['to'] if r and r.lower() != 'n/a']
+            
+            if not actual_recipients:
+                print_warning(f"Überspringe E-Mail für '{email['subject']}', da keine gültigen Empfänger vorhanden sind.")
+                continue
+
             try:
                 send_email(
                     subject=email['subject'],
                     body=email['body'],
-                    to_addresses=email['to']
+                    to_addresses=actual_recipients
                 )
-                print_success(f"E-Mail an {email['to']} erfolgreich gesendet.")
+                print_success(f"✅ E-Mail an {actual_recipients} erfolgreich gesendet.")
+                
+                # Status der Warnung aktualisieren
+                idx = email.get('warning_index')
+                if idx is not None and idx < len(warnings_cache):
+                    warnings_cache[idx]['status'] = 'versendet'
+                
+                # Kurze Pause um Rate-Limiting zu vermeiden (z.B. bei Strato)
+                import time
+                time.sleep(2)
             except Exception as e:
-                print_error(f"Fehler beim Senden der E-Mail an {email['to']}: {str(e)}")
-        print_success("Alle E-Mails wurden verarbeitet.")
-        return jsonify({"message": "✅ Die E-Mails wurden erfolgreich versendet."})
+                print_error(f"❌ ❌ ❌ Fehler beim Senden an {actual_recipients}: {str(e)}")
+                
+        print_success("--- Alle E-Mails wurden verarbeitet ---")
+        return jsonify({"message": "📧 Die Verarbeitung der E-Mails ist abgeschlossen."})
     else:
         print_warning("Keine generierten E-Mails zum Senden vorhanden.")
         return jsonify({"message": " ⚠️Keine generierten E-Mails verfügbar, um sie zu versenden."})
+
+# API-Route zum Abrufen der aktuellen Warnungen mit ihrem Status
+@app.route('/api/get_warnings', methods=['GET'])
+def get_warnings():
+    global warnings_cache
+    return jsonify(warnings_cache)
 
 # Route und Funktion zum Abrufen und Reinladen der Einstellungen des Einstellungs-Panels im WebEnd aus den verschiedenen .ini Dateien
 @app.route('/load-settings', methods=['GET'])
