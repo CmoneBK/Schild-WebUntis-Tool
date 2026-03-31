@@ -1841,30 +1841,77 @@
         });
 
         // Ensure class_change_recipients is submitted with the main form
-        document.querySelector("form[method='post']").addEventListener("submit", function (e) {
-            let hiddenInput = document.createElement("input");
-            hiddenInput.type = "hidden";
-            hiddenInput.name = "class_change_recipients";
-            let selectElem = document.getElementById("class_change_recipients");
-            if (selectElem) {
-                hiddenInput.value = selectElem.value;
-                this.appendChild(hiddenInput);
-            }
-        });
+        const mainForm = document.querySelector("form[method='post']");
+        if (mainForm) {
+            mainForm.addEventListener("submit", function (e) {
+                // Reset E-Mail Generation Button
+                const generateEmailsBtn = document.getElementById("generateEmails");
+                if (generateEmailsBtn) {
+                    generateEmailsBtn.innerHTML = "✍ Emails Generieren";
+                    generateEmailsBtn.classList.remove("btn-warning");
+                    generateEmailsBtn.classList.add("btn-info");
+                }
+
+                let hiddenInput = document.createElement("input");
+                hiddenInput.type = "hidden";
+                hiddenInput.name = "class_change_recipients";
+                let selectElem = document.getElementById("class_change_recipients");
+                if (selectElem) {
+                    hiddenInput.value = selectElem.value;
+                    this.appendChild(hiddenInput);
+                }
+            });
+        }
     </script>
 
 
     <script>
-        document.getElementById("generateEmails")?.addEventListener("click", function () {
-            fetch("/generate_emails", {
-                method: "POST"
-            }).then(response => response.json()).then(data => {
-                alert(data.message);
-                if (data.emails) {
+        const generateEmailsBtn = document.getElementById("generateEmails");
+        
+        // Beim Laden der Seite prüfen, ob bereits Emails generiert wurden
+        if (generateEmailsBtn) {
+            fetch("/api/check_emails_status")
+                .then(response => response.json())
+                .then(data => {
+                    if (data.has_emails) {
+                        generateEmailsBtn.innerHTML = "🔍 Generierte Mails anzeigen";
+                        generateEmailsBtn.classList.remove("btn-info");
+                        generateEmailsBtn.classList.add("btn-warning");
+                    }
+                });
+            
+            generateEmailsBtn.addEventListener("click", function () {
+                // Falls die Emails bereits generiert wurden (Button-Text wurde geändert), leiten wir weiter
+                if (this.textContent.includes("anzeigen")) {
                     window.location.href = "/view_generated_emails";
+                    return;
                 }
+
+                // Ansonsten: Emails generieren
+                const originalText = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = "⌛ Generiere...";
+
+                fetch("/generate_emails", {
+                    method: "POST"
+                }).then(response => response.json()).then(data => {
+                    this.disabled = false;
+                    alert(data.message);
+                    if (data.emails) {
+                        // Button umwandeln für den zweiten Klick
+                        this.innerHTML = "🔍 Generierte Mails anzeigen";
+                        this.classList.remove("btn-info");
+                        this.classList.add("btn-warning"); // Farbe ändern zur Hervorhebung
+                    } else {
+                        this.innerHTML = originalText;
+                    }
+                }).catch(err => {
+                    this.disabled = false;
+                    this.innerHTML = originalText;
+                    alert("Fehler bei der Generierung: " + err);
+                });
             });
-        });
+        }
 
         document.getElementById("sendEmails")?.addEventListener("click", function () {
             fetch("/send_emails", {

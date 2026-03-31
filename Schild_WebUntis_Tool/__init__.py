@@ -956,6 +956,12 @@ def get_warnings():
     global warnings_cache
     return jsonify(warnings_cache)
 
+# API-Route zum Prüfen, ob bereits E-Mails generiert wurden
+@app.route('/api/check_emails_status', methods=['GET'])
+def check_emails_status():
+    global generated_emails_cache
+    return jsonify({"has_emails": len(generated_emails_cache) > 0})
+
 # Route und Funktion zum Abrufen und Reinladen der Einstellungen des Einstellungs-Panels im WebEnd aus den verschiedenen .ini Dateien
 @app.route('/load-settings', methods=['GET'])
 def load_settings():
