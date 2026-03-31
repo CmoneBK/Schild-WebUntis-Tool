@@ -23,38 +23,6 @@
             margin-top: 10px;
         }
 
-        #settingsPanel {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-        }
-
-        #emailEditor {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-        }
-
-        #shortcutCreator {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-        }
-
-        #uploadArea {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-        }
-
         .nav-tabs {
             margin-bottom: 15px;
         }
@@ -425,254 +393,285 @@
     </div>
 
     <div class="container mt-5">
-        <!-- Navigation Grid -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h5 class="text-muted mb-3">📊 Analyse & Übersicht</h5>
+        <!-- Navigation Card -->
+        <div class="card shadow mt-4 mb-5">
+            <div class="card-header bg-primary text-white">
+                🎮 Navigation & Module
             </div>
-            <div class="col-md-4 mb-2">
-                <button id="toggleDashboard" class="btn btn-primary btn-lg w-100 shadow-sm">
-                    <div class="d-flex align-items-center justify-content-center">
-                        <span class="mr-2">📈</span> Dashboard & Analyse
+            <div class="card-body">
+                <!-- Navigation Grid -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-3">📊 Analyse & Übersicht</h6>
                     </div>
-                </button>
-            </div>
-            <div class="col-md-4 mb-2">
-                <button id="toggleWarnings" class="btn btn-warning btn-lg w-100 shadow-sm">
-                    <div class="d-flex align-items-center justify-content-center">
-                        <span class="mr-2">⚠️</span> Warnungen
+                    <div class="col-md-4 mb-2">
+                        <button id="toggleDashboard" class="btn btn-primary w-100 shadow-sm">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="mr-2">📈</span> Dashboard & Analyse
+                            </div>
+                        </button>
                     </div>
-                </button>
-            </div>
-            <div class="col-md-4 mb-2">
-                <button id="toggleHistory" class="btn btn-dark btn-lg w-100 shadow-sm">
-                    <div class="d-flex align-items-center justify-content-center">
-                        <span class="mr-2">📜</span> Historie
+                    <div class="col-md-4 mb-2">
+                        <button id="toggleWarnings" class="btn btn-warning w-100 shadow-sm">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="mr-2">⚠️</span> Warnungen
+                            </div>
+                        </button>
                     </div>
-                </button>
-            </div>
-        </div>
+                    <div class="col-md-4 mb-2">
+                        <button id="toggleHistory" class="btn btn-dark w-100 shadow-sm">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="mr-2">📜</span> Historie
+                            </div>
+                        </button>
+                    </div>
+                </div>
 
-        <div class="row mb-5">
-            <div class="col-12">
-                <h5 class="text-muted mb-3">🛠️ Werkzeuge & System</h5>
-            </div>
-            <div class="col-md-3 mb-2">
-                <button id="toggleEditor" class="btn btn-secondary btn-lg w-100 shadow-sm">
-                    <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
-                        <span class="mr-2">✉️</span> Email-Editor
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-muted mb-3">🛠️ Werkzeuge & System</h6>
                     </div>
-                </button>
-            </div>
-            {% if enable_upload %}
-            <div class="col-md-3 mb-2">
-                <button id="toggleUploadArea" class="btn btn-warning btn-lg w-100 shadow-sm">
-                    <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
-                        <span class="mr-2">⬆️</span> Upload
+                    <div class="col-md-3 mb-2">
+                        <button id="toggleEditor" class="btn btn-secondary w-100 shadow-sm">
+                            <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
+                                <span class="mr-2">✉️</span> Email-Editor
+                            </div>
+                        </button>
                     </div>
-                </button>
-            </div>
-            {% endif %}
-            <div class="col-md-3 mb-2">
-                <button id="toggleShortcutCreator" class="btn btn-info btn-lg w-100 shadow-sm">
-                    <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
-                        <span class="mr-2">#️⃣</span> Shortcut-Tool
+                    {% if enable_upload %}
+                    <div class="col-md-3 mb-2">
+                        <button id="toggleUploadArea" class="btn btn-warning w-100 shadow-sm">
+                            <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
+                                <span class="mr-2">⬆️</span> Upload
+                            </div>
+                        </button>
                     </div>
-                </button>
-            </div>
-            <div class="col-md-3 mb-2">
-                <button id="toggle-settings" class="btn btn-primary btn-lg w-100 shadow-sm">
-                    <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
-                        <span class="mr-2">⚙️</span> Einstellungen
+                    {% endif %}
+                    <div class="col-md-3 mb-2">
+                        <button id="toggleShortcutCreator" class="btn btn-info w-100 shadow-sm">
+                            <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
+                                <span class="mr-2">#️⃣</span> Shortcut-Tool
+                            </div>
+                        </button>
                     </div>
-                </button>
+                    <div class="col-md-3 mb-2">
+                        <button id="toggle-settings" class="btn btn-primary w-100 shadow-sm">
+                            <div class="d-flex align-items-center justify-content-center" style="font-size: 0.9rem;">
+                                <span class="mr-2">⚙️</span> Einstellungen
+                            </div>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Dashboard Panel -->
         <div id="dashboardPanel" class="mt-4" style="display: none;">
-            <h4 class="mb-4">📊 Dashboard & Analyse</h4>
-            <div class="row">
-                <!-- Statistik-Karten -->
-                <div class="col-md-4">
-                    <div class="card text-white bg-primary mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Änderungen Gesamt</h5>
-                            <p class="card-text h2" id="stat-total-changes">0</p>
-                        </div>
-                    </div>
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    📊 Dashboard & Analyse
                 </div>
-                <div class="col-md-4">
-                    <div class="card text-white bg-warning mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Klassenwechsel (Monat)</h5>
-                            <p class="card-text h2" id="stat-class-changes">0</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-white bg-success mb-3">
-                        <div class="card-body">
-                            <h5 class="card-title">Aktivierte Schüler</h5>
-                            <p class="card-text h2" id="stat-active-students">0</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row mt-4">
-                <div class="col-md-8">
-                    <div class="card">
-                        <div class="card-header bg-dark text-white">📈 Änderungs-Frequenz (Monatlich)</div>
-                        <div class="card-body">
-                            <canvas id="chart-monthly" height="150"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card h-100">
-                        <div class="card-header bg-dark text-white">🍕 Änderungs-Arten</div>
-                        <div class="card-body d-flex align-items-center">
-                            <canvas id="chart-categories"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row mt-4">
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-danger text-white">⚠️ Fehler-Hotspots (Klassen)</div>
-                        <div class="card-body">
-                            <canvas id="chart-hotspots" height="200"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-info text-white">🔍 Schüler-Historie Suche</div>
-                        <div class="card-body">
-                            <div class="input-group mb-3">
-                                <input type="text" id="student-search-query" class="form-control" placeholder="Name oder ID eingeben...">
-                                <div class="input-group-append">
-                                    <button class="btn btn-primary" type="button" id="btn-search-history">Suchen</button>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Statistik-Karten -->
+                        <div class="col-md-4">
+                            <div class="card text-white bg-primary mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">Änderungen Gesamt</h5>
+                                    <p class="card-text h2" id="stat-total-changes">0</p>
                                 </div>
                             </div>
-                            <div id="student-history-results" style="max-height: 300px; overflow-y: auto;">
-                                <p class="text-muted text-center">Geben Sie einen Namen ein, um die Historie zu sehen.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-white bg-warning mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">Klassenwechsel (Monat)</h5>
+                                    <p class="card-text h2" id="stat-class-changes">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-white bg-success mb-3">
+                                <div class="card-body">
+                                    <h5 class="card-title">Aktivierte Schüler</h5>
+                                    <p class="card-text h2" id="stat-active-students">0</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div class="mt-4 mb-5">
-                <button id="btn-reindex-history" class="btn btn-outline-secondary btn-sm">🔄 Bestehende Logs neu indizieren</button>
-                <button id="btn-reset-history" class="btn btn-outline-danger btn-sm ml-2">🗑️ Historie zurücksetzen</button>
+                    <div class="row mt-4">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header bg-dark text-white">📈 Änderungs-Frequenz (Monatlich)</div>
+                                <div class="card-body">
+                                    <canvas id="chart-monthly" height="150"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-dark text-white">🍕 Änderungs-Arten</div>
+                                <div class="card-body d-flex align-items-center">
+                                    <canvas id="chart-categories"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-danger text-white">⚠️ Fehler-Hotspots (Klassen)</div>
+                                <div class="card-body">
+                                    <canvas id="chart-hotspots" height="200"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-info text-white">🔍 Schüler-Historie Suche</div>
+                                <div class="card-body">
+                                    <div class="input-group mb-3">
+                                        <input type="text" id="student-search-query" class="form-control" placeholder="Name oder ID eingeben...">
+                                        <div class="input-group-append">
+                                            <button class="btn btn-primary" type="button" id="btn-search-history">Suchen</button>
+                                        </div>
+                                    </div>
+                                    <div id="student-history-results" style="max-height: 300px; overflow-y: auto;">
+                                        <p class="text-muted text-center">Geben Sie einen Namen ein, um die Historie zu sehen.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button id="btn-reindex-history" class="btn btn-outline-secondary btn-sm">🔄 Bestehende Logs neu indizieren</button>
+                        <button id="btn-reset-history" class="btn btn-outline-danger btn-sm ml-2">🗑️ Historie zurücksetzen</button>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div id="warningsPanel" class="mt-4" style="display: none;" data-has-warnings="{{ 'true' if warnings else 'false' }}">
-            <h4 class="mb-4">⚠️ Warnungen</h4>
-            {% if warnings %}
-            <table class="table table-striped">
-                <thead class="thead-dark">
-                    <tr>
-                        <th>Schüler</th>
-                        <th>Klasse</th>
-                        <th>Warnung</th>
-                        <th>Details</th>
-                        <th>Klassenlehrkräfte</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody id="warningsTableBody">
-                    {% for warning in warnings %}
-                    <tr>
-                        <td>{{ warning['Vorname'] }} {{ warning['Nachname'] }}</td>
-                        <td>
-                            {% if 'neue_klasse' in warning %}
-                                {{ warning['alte_klasse'] }} ➡️ {{ warning['neue_klasse'] }}
-                            {% else %}
-                                {{ warning.get('Klasse', 'N/A') }}
-                            {% endif %}
-                        </td>
-                        <td>{{ warning['warning_message'] }}</td>
-                        <td>
-                            {% if 'Zeitraum_nicht_dokumentiert' in warning %}
-                            <strong>Zeitraum nicht dokumentiert:</strong> {{ warning['Zeitraum_nicht_dokumentiert'] }}<br>
-                            {% endif %}
-                            {% if 'neues_entlassdatum' in warning %}
-                            <strong>Neues Entlassdatum:</strong> {{ warning['neues_entlassdatum'] }}<br>
-                            <strong>Altes Entlassdatum:</strong> {{ warning['altes_entlassdatum'] }}<br>
-                            {% endif %}
-                            {% if 'neues_aufnahmedatum' in warning %}
-                            <strong>Neues Aufnahmedatum:</strong> {{ warning['neues_aufnahmedatum'] }}<br>
-                            <strong>Altes Aufnahmedatum:</strong> {{ warning['altes_aufnahmedatum'] }}<br>
-                            {% endif %}
-                            {% if 'new_student' in warning and warning.new_student %}
-                            <strong>Aufnahmedatum:</strong> {{ warning['Aufnahmedatum'] }}<br>
-                            {% endif %}
-                            {% if 'karteileiche' in warning and warning.karteileiche %}
-                            <strong>Hinweis:</strong> Schüler fehlt in den Importdaten komplett.<br>
-                            {% endif %}
-                            {% if 'neue_klasse' in warning %}
-                            <strong>Alte Klasse:</strong> {{ warning.get('alte_klasse', 'N/A') }}<br>
-                            <strong>Neue Klasse:</strong> {{ warning.get('neue_klasse', 'N/A') }}
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if 'neue_klasse' in warning %}
-                                <strong>Alte Klasse:</strong><br>
-                                {{ warning['alte_Klassenlehrkraft_1'] }} ({{ warning['alte_Klassenlehrkraft_1_Email'] }})<br>
-                                {{ warning['alte_Klassenlehrkraft_2'] }} ({{ warning['alte_Klassenlehrkraft_2_Email'] }})<br>
-                                <div class="mt-2"><strong>Neue Klasse:</strong></div>
-                                {{ warning['neue_Klassenlehrkraft_1'] }} ({{ warning['neue_Klassenlehrkraft_1_Email'] }})<br>
-                                {{ warning['neue_Klassenlehrkraft_2'] }} ({{ warning['neue_Klassenlehrkraft_2_Email'] }})
-                            {% else %}
-                                <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{
-                                warning['Klassenlehrkraft_1_Email'] }})<br>
-                                <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{
-                                warning['Klassenlehrkraft_2_Email'] }})
-                            {% endif %}
-                        </td>
-                        <td class="status-cell">
-                            <span class="badge {{ 'badge-success' if warning.status == 'versendet' else 'badge-warning' }}">
-                                {{ '✅ Versendet' if warning.status == 'versendet' else '⏳ Offen' }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p>Keine detaillierten Warnungen vorhanden.</p>
-            {% endif %}
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    ⚠️ Warnungen
+                    <div class="btn-group">
+                        <button id="headerGenerateEmails" type="button" class="btn btn-info">✍ Emails Generieren</button>
+                        <button id="headerSendEmails" type="button" class="btn btn-success">📨 Emails Senden</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if warnings %}
+                    <table class="table table-striped">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Schüler</th>
+                                <th>Klasse</th>
+                                <th>Warnung</th>
+                                <th>Details</th>
+                                <th>Klassenlehrkräfte</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="warningsTableBody">
+                            {% for warning in warnings %}
+                            <tr>
+                                <td>{{ warning['Vorname'] }} {{ warning['Nachname'] }}</td>
+                                <td>
+                                    {% if 'neue_klasse' in warning %}
+                                        {{ warning['alte_klasse'] }} ➡️ {{ warning['neue_klasse'] }}
+                                    {% else %}
+                                        {{ warning.get('Klasse', 'N/A') }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ warning['warning_message'] }}</td>
+                                <td>
+                                    {% if 'Zeitraum_nicht_dokumentiert' in warning %}
+                                    <strong>Zeitraum nicht dokumentiert:</strong> {{ warning['Zeitraum_nicht_dokumentiert'] }}<br>
+                                    {% endif %}
+                                    {% if 'neues_entlassdatum' in warning %}
+                                    <strong>Neues Entlassdatum:</strong> {{ warning['neues_entlassdatum'] }}<br>
+                                    <strong>Altes Entlassdatum:</strong> {{ warning['altes_entlassdatum'] }}<br>
+                                    {% endif %}
+                                    {% if 'neues_aufnahmedatum' in warning %}
+                                    <strong>Neues Aufnahmedatum:</strong> {{ warning['neues_aufnahmedatum'] }}<br>
+                                    <strong>Altes Aufnahmedatum:</strong> {{ warning['altes_aufnahmedatum'] }}<br>
+                                    {% endif %}
+                                    {% if 'new_student' in warning and warning.new_student %}
+                                    <strong>Aufnahmedatum:</strong> {{ warning['Aufnahmedatum'] }}<br>
+                                    {% endif %}
+                                    {% if 'karteileiche' in warning and warning.karteileiche %}
+                                    <strong>Hinweis:</strong> Schüler fehlt in den Importdaten komplett.<br>
+                                    {% endif %}
+                                    {% if 'neue_klasse' in warning %}
+                                    <strong>Alte Klasse:</strong> {{ warning.get('alte_klasse', 'N/A') }}<br>
+                                    <strong>Neue Klasse:</strong> {{ warning.get('neue_klasse', 'N/A') }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if 'neue_klasse' in warning %}
+                                        <strong>Alte Klasse:</strong><br>
+                                        {{ warning['alte_Klassenlehrkraft_1'] }} ({{ warning['alte_Klassenlehrkraft_1_Email'] }})<br>
+                                        {{ warning['alte_Klassenlehrkraft_2'] }} ({{ warning['alte_Klassenlehrkraft_2_Email'] }})<br>
+                                        <div class="mt-2"><strong>Neue Klasse:</strong></div>
+                                        {{ warning['neue_Klassenlehrkraft_1'] }} ({{ warning['neue_Klassenlehrkraft_1_Email'] }})<br>
+                                        {{ warning['neue_Klassenlehrkraft_2'] }} ({{ warning['neue_Klassenlehrkraft_2_Email'] }})
+                                    {% else %}
+                                        <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{
+                                        warning['Klassenlehrkraft_1_Email'] }})<br>
+                                        <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{
+                                        warning['Klassenlehrkraft_2_Email'] }})
+                                    {% endif %}
+                                </td>
+                                <td class="status-cell">
+                                    <span class="badge {{ 'badge-success' if warning.status == 'versendet' else 'badge-warning' }}">
+                                        {{ '✅ Versendet' if warning.status == 'versendet' else '⏳ Offen' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>Keine detaillierten Warnungen vorhanden.</p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
         <div id="historyPanel" class="mt-4" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h4>📜 Historie</h4>
-                <button id="loadAllHistory" class="btn btn-sm btn-outline-info">Alle anzeigen</button>
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    📜 Historie
+                    <button id="loadAllHistory" class="btn btn-light">Alle anzeigen</button>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped" id="historyTable">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th style="width: 25%">Verarbeitungszeitpunkt</th>
+                                <th style="width: 50%">Dateien</th>
+                                <th style="width: 25%">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- History entries will be generated here by JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-
-            <table class="table table-striped" id="historyTable">
-                <thead class="thead-dark">
-                    <tr>
-                        <th style="width: 25%">Verarbeitungszeitpunkt</th>
-                        <th style="width: 50%">Dateien</th>
-                        <th style="width: 25%">Aktion</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- History entries will be generated here by JS -->
-                </tbody>
-            </table>
         </div>
 
         <div id="settingsPanel" class="mt-4" style="display: none;">
-            <h4 class="mb-4">⚙️ Einstellungen</h4>
-            <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    ⚙️ Einstellungen
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
                 {% if not no_directory_change %}
                 <li class="nav-item">
                     <a class="nav-link active" id="directories-tab" data-toggle="tab" href="#directories" role="tab"
@@ -1061,12 +1060,18 @@
                     </form>
                 </div>
             </div>
-            <button id="saveSettings" class="btn btn-primary mt-4">Einstellungen speichern</button>
+                    <button id="saveSettings" class="btn btn-primary mt-4">Einstellungen speichern</button>
+                </div>
+            </div>
         </div>
 
         <div id="emailEditor" class="mt-4" style="display: none;">
-            <h4 class="mb-4">✉️ Email-Vorlagen Editor</h4>
-            <ul class="nav nav-tabs" id="emailTabs" role="tablist">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    ✉️ Email-Vorlagen Editor
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="emailTabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link active" id="entlass-tab" data-toggle="tab" href="#entlass" role="tab"
                         aria-controls="entlass" aria-selected="true">➡️ Entlassdatum</a>
@@ -1264,12 +1269,17 @@
                     </table>
                 </div>
             </div>
-            <button id="saveEmailTemplates" class="btn btn-primary mt-4">Speichern</button>
+                    <button id="saveEmailTemplates" class="btn btn-primary mt-4">Speichern</button>
+                </div>
+            </div>
         </div>
         <div id="shortcutCreator" class="mt-4" style="display: none;">
-            <h4 class="mb-4">#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool </h4>
-            <div class="card-body">
-                <p class="text-muted">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    #️⃣🔗 Befehl- und Verknüpfungs-Erstelltool
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
                     Mit diesem Tool können Sie Befehle erstellen, um das Programm direkt mit bestimmten
                     Konfigurationsoptionen
                     (Argumenten) auszuführen ohne diese im Browser auslösen zu müssen. <br />Außerdem können Sie eine
@@ -1314,11 +1324,16 @@
                     <button type="button" class="btn btn-success" id="createShortcut">Verknüpfung Erstellen
                         (Desktop)</button>
                 </form>
+                </div>
             </div>
         </div>
         <div id="uploadArea" class="mt-4" style="display: none;">
-            <h4 class="mb-4">⬆️ Dateien Hochladen</h4>
-            <p>Wählen Sie die Dateien aus, die Sie hochladen möchten:</p>
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    ⬆️ Dateien Hochladen
+                </div>
+                <div class="card-body">
+                    <p>Wählen Sie die Dateien aus, die Sie hochladen möchten:</p>
             <form id="uploadForm">
                 <div class="form-group">
                     <label for="classDataFiles">🏫 Klassendaten hochladen:</label>
@@ -1449,10 +1464,12 @@
                         </ul>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary">Dateien hochladen</button>
-            </form>
+                    <button type="submit" class="btn btn-primary">Dateien hochladen</button>
+                </form>
+            </div>
         </div>
     </div>
+</div>
 
     <script src="{{ url_for('static', filename='scripts/chart.min.js') }}"></script>
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
@@ -2147,60 +2164,73 @@
 
 
     <script>
-        const generateEmailsBtn = document.getElementById("generateEmails");
-        
-        // Beim Laden der Seite prüfen, ob bereits Emails generiert wurden
-        if (generateEmailsBtn) {
-            fetch("/api/check_emails_status")
-                .then(response => response.json())
-                .then(data => {
-                    if (data.has_emails) {
-                        generateEmailsBtn.innerHTML = "🔍 Generierte Mails anzeigen";
-                        generateEmailsBtn.classList.remove("btn-info");
-                        generateEmailsBtn.classList.add("btn-warning");
-                    }
-                });
-            
-            generateEmailsBtn.addEventListener("click", function () {
-                // Falls die Emails bereits generiert wurden (Button-Text wurde geändert), leiten wir weiter
-                if (this.textContent.includes("anzeigen")) {
-                    window.location.href = "/view_generated_emails";
-                    return;
+        // --- Unified Email Logic ---
+        function updateGenerateEmailButtons(hasEmails) {
+            const btns = [document.getElementById("generateEmails"), document.getElementById("headerGenerateEmails")];
+            btns.forEach(btn => {
+                if (!btn) return;
+                if (hasEmails) {
+                    btn.innerHTML = "🔍 Generierte Mails anzeigen";
+                    btn.classList.remove("btn-info");
+                    btn.classList.add("btn-warning");
+                } else {
+                    btn.innerHTML = "✍ Emails Generieren";
+                    btn.classList.remove("btn-warning");
+                    btn.classList.add("btn-info");
                 }
-
-                // Ansonsten: Emails generieren
-                const originalText = this.innerHTML;
-                this.disabled = true;
-                this.innerHTML = "⌛ Generiere...";
-
-                fetch("/generate_emails", {
-                    method: "POST"
-                }).then(response => response.json()).then(data => {
-                    this.disabled = false;
-                    alert(data.message);
-                    if (data.emails) {
-                        // Button umwandeln für den zweiten Klick
-                        this.innerHTML = "🔍 Generierte Mails anzeigen";
-                        this.classList.remove("btn-info");
-                        this.classList.add("btn-warning"); // Farbe ändern zur Hervorhebung
-                    } else {
-                        this.innerHTML = originalText;
-                    }
-                }).catch(err => {
-                    this.disabled = false;
-                    this.innerHTML = originalText;
-                    alert("Fehler bei der Generierung: " + err);
-                });
             });
         }
 
-        document.getElementById("sendEmails")?.addEventListener("click", function () {
+        // On page load, check status
+        fetch("/api/check_emails_status")
+            .then(response => response.json())
+            .then(data => {
+                updateGenerateEmailButtons(data.has_emails);
+            });
+        
+        async function handleEmailGeneration(button) {
+             // Falls die Emails bereits generiert wurden, leiten wir weiter
+             if (button.textContent.includes("anzeigen")) {
+                window.location.href = "/view_generated_emails";
+                return;
+            }
+
+            const originalHTML = button.innerHTML;
+            const allGenerateBtns = [document.getElementById("generateEmails"), document.getElementById("headerGenerateEmails")];
+            
+            allGenerateBtns.forEach(b => { if(b) { b.disabled = true; b.innerHTML = "⌛ Generiere..."; } });
+
+            try {
+                const response = await fetch("/generate_emails", { method: "POST" });
+                const data = await response.json();
+                
+                allGenerateBtns.forEach(b => { if(b) b.disabled = false; });
+                alert(data.message);
+                
+                if (data.emails) {
+                    updateGenerateEmailButtons(true);
+                } else {
+                    updateGenerateEmailButtons(false);
+                }
+            } catch (err) {
+                allGenerateBtns.forEach(b => { if(b) { b.disabled = false; b.innerHTML = "✍ Emails Generieren"; } });
+                alert("Fehler bei der Generierung: " + err);
+            }
+        }
+
+        document.getElementById("generateEmails")?.addEventListener("click", function() { handleEmailGeneration(this); });
+        document.getElementById("headerGenerateEmails")?.addEventListener("click", function() { handleEmailGeneration(this); });
+
+        function handleSendEmails() {
             fetch("/send_emails", {
                 method: "POST"
             }).then(response => response.json()).then(data => {
                 alert(data.message);
             });
-        });
+        }
+
+        document.getElementById("sendEmails")?.addEventListener("click", handleSendEmails);
+        document.getElementById("headerSendEmails")?.addEventListener("click", handleSendEmails);
 
         document.getElementById("testApiConnection")?.addEventListener("click", function() {
             const data = {
