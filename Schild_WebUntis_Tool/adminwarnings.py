@@ -96,10 +96,19 @@ def admin_warnings(send_email_flag=False):
                     })
 
     # Überprüfen, ob CSV-Dateien im Klassenverzeichnis vorhanden sind
-    class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
+    class_csv_files = []
+    if os.path.exists(classes_dir):
+        class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
+    
+    # Falls wir API-Daten haben, brauchen wir die CSV nicht zwingend für weitere Warnungen
+    is_api_data = any(c.get('api_data') for c in classes_by_name.values())
+
     if not class_csv_files:
-        print_admin_warning(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' für die Erstellung von Admin-Warnungen gefunden.")
-        return admin_warnings_cache  # Gibt leere Warnungsliste zurück oder handle dies mit Dummy-Daten
+        if is_api_data:
+            print_info("Nutze API-Daten für Admin-Warnungen, überspringe CSV-spezifische Prüfungen.")
+        else:
+            print_admin_warning(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' für die Erstellung von Admin-Warnungen gefunden.")
+        return admin_warnings_cache
 
     # Neueste Klassen-CSV-Datei bestimmen
     newest_class_file = max(class_csv_files, key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,6 +30,7 @@
             background-color: #f9f9f9;
             border-radius: 8px;
         }
+
         #emailEditor {
             margin-top: 20px;
             border: 1px solid #ddd;
@@ -57,30 +59,33 @@
             margin-bottom: 15px;
         }
 
-            .nav-tabs .nav-link {
-                color: #555;
-                background-color: #e9ecef;
-                border: 1px solid #ddd;
-                margin-right: 5px;
-                border-radius: 5px 5px 0 0;
-            }
+        .nav-tabs .nav-link {
+            color: #555;
+            background-color: #e9ecef;
+            border: 1px solid #ddd;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
 
-                .nav-tabs .nav-link.active {
-                    color: #000;
-                    background-color: #fff;
-                    border-bottom: 1px solid #fff;
-                }
+        .nav-tabs .nav-link.active {
+            color: #000;
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+        }
 
-        #settingsContainer > div {
+        #settingsContainer>div {
             margin-bottom: 20px;
             padding: 10px;
             border: 1px solid #ddd;
             background-color: #f9f9f9;
             border-radius: 5px;
         }
+
         .logo-img {
-            height: 8em; /* Adjust this value to match text size */
-            width: auto; /* Keep aspect ratio */
+            height: 8em;
+            /* Adjust this value to match text size */
+            width: auto;
+            /* Keep aspect ratio */
         }
 
         .d-flex {
@@ -92,25 +97,35 @@
         }
 
         .ml-3 {
-            margin-left: 1rem; /* Space between logo and text */
+            margin-left: 1rem;
+            /* Space between logo and text */
         }
 
         .mb-0 {
-            margin-bottom: 0; /* Remove bottom margin for the title */
+            margin-bottom: 0;
+            /* Remove bottom margin for the title */
         }
 
         .d-flex button {
-            height: 100%; /* Ensures buttons fill the height of the flexbox container */
-            max-height: 40px; /* Sets a consistent max height for all buttons */
-            display: inline-flex; /* Flex alignment within the button itself */
-            align-items: center; /* Centers text/icon vertically */
-            justify-content: center; /* Centers text/icon horizontally */
-            padding: 0; /* Removes excess padding that might affect alignment */
-            margin: 0; /* Normalizes spacing between buttons */
+            height: 100%;
+            /* Ensures buttons fill the height of the flexbox container */
+            max-height: 40px;
+            /* Sets a consistent max height for all buttons */
+            display: inline-flex;
+            /* Flex alignment within the button itself */
+            align-items: center;
+            /* Centers text/icon vertically */
+            justify-content: center;
+            /* Centers text/icon horizontally */
+            padding: 0;
+            /* Removes excess padding that might affect alignment */
+            margin: 0;
+            /* Normalizes spacing between buttons */
         }
 
         .d-flex .btn {
-            line-height: 1.2; /* Ensures text and icons are balanced vertically */
+            line-height: 1.2;
+            /* Ensures text and icons are balanced vertically */
         }
 
         /* --- Dark Mode Styles --- */
@@ -119,8 +134,8 @@
             color: #ffffff;
         }
 
-        body.dark-mode .card, 
-        body.dark-mode .modal-content, 
+        body.dark-mode .card,
+        body.dark-mode .modal-content,
         body.dark-mode .list-group-item {
             background-color: #1e1e1e;
             color: #ffffff;
@@ -131,8 +146,8 @@
             border-bottom-color: #333;
         }
 
-        body.dark-mode input.form-control, 
-        body.dark-mode select.form-control, 
+        body.dark-mode input.form-control,
+        body.dark-mode select.form-control,
         body.dark-mode textarea.form-control {
             background-color: #2c2c2c;
             color: #fff;
@@ -158,6 +173,8 @@
 
         body.dark-mode .nav-tabs .nav-link {
             color: #bbb;
+            background-color: #2c2c2c;
+            border-color: #444;
         }
 
         body.dark-mode .nav-tabs .nav-link.active {
@@ -165,7 +182,7 @@
             background-color: #1e1e1e;
             border-color: #333 #333 #1e1e1e;
         }
-        
+
         body.dark-mode hr {
             border-top-color: #444;
         }
@@ -194,7 +211,7 @@
         body.dark-mode #shortcutCreator,
         body.dark-mode #uploadArea,
         body.dark-mode #historyPanel,
-        body.dark-mode #settingsContainer > div {
+        body.dark-mode #settingsContainer>div {
             background-color: #1e1e1e !important;
             border-color: #333333 !important;
             color: #ffffff !important;
@@ -224,6 +241,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center">
@@ -234,7 +252,7 @@
                 <!-- Title -->
                 <h1 class="ml-3 mb-0">Schild-WebUntis-Tool</h1>
             </div>
-            
+
             <!-- Dark Mode Toggle -->
             <button id="darkModeToggle" class="btn btn-outline-secondary">🌙 Dark Mode</button>
         </div>
@@ -250,32 +268,39 @@
                         <div class="col-md-6">
                             <h5 class="mb-3">Verarbeitungseinstellungen</h5>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="use_abschlussdatum" name="use_abschlussdatum" {% if use_abschlussdatum %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="use_abschlussdatum"
+                                    name="use_abschlussdatum" {% if use_abschlussdatum %}checked{% endif %}>
                                 <label class="form-check-label" for="use_abschlussdatum">
                                     🗓️ Benutze Vorrauss. Abschlussdatum als Entlassdatum
                                 </label>
                             </div>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="enable_attestpflicht_column" name="enable_attestpflicht_column" {% if enable_attestpflicht_column %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="enable_attestpflicht_column"
+                                    name="enable_attestpflicht_column" {% if enable_attestpflicht_column %}checked{%
+                                    endif %}>
                                 <label class="form-check-label" for="enable_attestpflicht_column">
                                     📄 Attestpflicht-Spalte hinzufügen
                                 </label>
                             </div>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="enable_nachteilsausgleich_column" name="enable_nachteilsausgleich_column" {% if enable_nachteilsausgleich_column %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="enable_nachteilsausgleich_column"
+                                    name="enable_nachteilsausgleich_column" {% if enable_nachteilsausgleich_column
+                                    %}checked{% endif %}>
                                 <label class="form-check-label" for="enable_nachteilsausgleich_column">
                                     ♿ Nachteilsausgleich-Spalte hinzufügen
                                 </label>
                             </div>
                             <h5 class="mb-3">Zusätzliche Exporte</h5>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="create_second_file" name="create_second_file" {% if create_second_file %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="create_second_file"
+                                    name="create_second_file" {% if create_second_file %}checked{% endif %}>
                                 <label class="form-check-label" for="create_second_file">
                                     🔎 Erstelle Liste mit fehlenden Entlassdatumsangaben
                                 </label>
                             </div>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="create_class_size_file" name="create_class_size_file" {% if create_class_size_file %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="create_class_size_file"
+                                    name="create_class_size_file" {% if create_class_size_file %}checked{% endif %}>
                                 <label class="form-check-label" for="create_class_size_file">
                                     📊 Erstelle Klassengrößen-Auswertung
                                 </label>
@@ -286,44 +311,54 @@
                         <div class="col-md-6">
                             <h5 class="mb-3">Zu generierende Warnungen/Hinweise</h5>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="warn_entlassdatum" name="warn_entlassdatum" {% if warn_entlassdatum %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="warn_entlassdatum"
+                                    name="warn_entlassdatum" {% if warn_entlassdatum %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_entlassdatum">
                                     ➡️ Ungünstig verschobene Entlassdaten
                                 </label>
                             </div>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="warn_aufnahmedatum" name="warn_aufnahmedatum" {% if warn_aufnahmedatum %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="warn_aufnahmedatum"
+                                    name="warn_aufnahmedatum" {% if warn_aufnahmedatum %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_aufnahmedatum">
                                     ⬅️ Ungünstig verschobene Aufnahmedaten
                                 </label>
                             </div>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="warn_klassenwechsel" name="warn_klassenwechsel" {% if warn_klassenwechsel %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="warn_klassenwechsel"
+                                    name="warn_klassenwechsel" {% if warn_klassenwechsel %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_klassenwechsel">
                                     🔄 Klassenwechsel
                                 </label>
                             </div>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="warn_new_students" name="warn_new_students" {% if warn_new_students %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="warn_new_students"
+                                    name="warn_new_students" {% if warn_new_students %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_new_students">
                                     🆕 neue Schüler
                                 </label>
                             </div>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="warn_karteileichen" name="warn_karteileichen" {% if warn_karteileichen %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="warn_karteileichen"
+                                    name="warn_karteileichen" {% if warn_karteileichen %}checked{% endif %}>
                                 <label class="form-check-label" for="warn_karteileichen">
                                     🧟 Fehlende Schüler (Karteileichen)
                                 </label>
                             </div>
                             <h5 class="mb-3">Exporte Verhindern</h5>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="disable_import_file_creation" name="disable_import_file_creation" {% if disable_import_file_creation %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input" id="disable_import_file_creation"
+                                    name="disable_import_file_creation" {% if disable_import_file_creation %}checked{%
+                                    endif %}>
                                 <label class="form-check-label" for="disable_import_file_creation">
                                     ❌ Nur hier verarbeiten und Importdatei nicht erstellen
                                 </label>
                             </div>
                             <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="disable_import_file_if_admin_warning" name="disable_import_file_if_admin_warning" {% if disable_import_file_if_admin_warning %}checked{% endif %}>
+                                <input type="checkbox" class="form-check-input"
+                                    id="disable_import_file_if_admin_warning"
+                                    name="disable_import_file_if_admin_warning" {% if
+                                    disable_import_file_if_admin_warning %}checked{% endif %}>
                                 <label class="form-check-label" for="disable_import_file_if_admin_warning">
                                     ❗→❌ Importdatei bei Admin-Warnungen nicht erstellen
                                 </label>
@@ -369,56 +404,6 @@
             {% endif %}
         </div>
 
-        {% if warnings %}
-        <h3 class="mt-5">Warnungen:</h3>
-        <table class="table table-striped">
-            <thead class="thead-dark">
-                <tr>
-                    <th>Schüler</th>
-                    <th>Klasse</th>
-                    <th>Warnung</th>
-                    <th>Details</th>
-                    <th>Klassenlehrkräfte</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for warning in warnings %}
-                <tr>
-                    <td>{{ warning['Vorname'] }} {{ warning['Nachname'] }}</td>
-                    <td>{{ warning.get('Klasse', 'N/A') }}</td>
-                    <td>{{ warning['warning_message'] }}</td>
-                    <td>
-                        {% if 'Zeitraum_nicht_dokumentiert' in warning %}
-                        <strong>Zeitraum nicht dokumentiert:</strong> {{ warning['Zeitraum_nicht_dokumentiert'] }}<br>
-                        {% endif %}
-                        {% if 'neues_entlassdatum' in warning %}
-                        <strong>Neues Entlassdatum:</strong> {{ warning['neues_entlassdatum'] }}<br>
-                        <strong>Altes Entlassdatum:</strong> {{ warning['altes_entlassdatum'] }}<br>
-                        {% endif %}
-                        {% if 'neues_aufnahmedatum' in warning %}
-                        <strong>Neues Aufnahmedatum:</strong> {{ warning['neues_aufnahmedatum'] }}<br>
-                        <strong>Altes Aufnahmedatum:</strong> {{ warning['altes_aufnahmedatum'] }}<br>
-                        {% endif %}
-                        {% if 'new_student' in warning and warning.new_student %}
-                        <strong>Aufnahmedatum:</strong> {{ warning['Aufnahmedatum'] }}<br>
-                        {% endif %}
-                        {% if 'karteileiche' in warning and warning.karteileiche %}
-                        <strong>Hinweis:</strong> Schüler fehlt in den Importdaten komplett.<br>
-                        {% endif %}
-                        {% if 'neue_klasse' in warning %}
-                        <strong>Alte Klasse:</strong> {{ warning.get('alte_klasse', 'N/A') }}<br>
-                        <strong>Neue Klasse:</strong> {{ warning.get('neue_klasse', 'N/A') }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{ warning['Klassenlehrkraft_1_Email'] }})<br>
-                        <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{ warning['Klassenlehrkraft_2_Email'] }})
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% endif %}
 
 
 
@@ -441,11 +426,71 @@
 
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-3" style="height: 60px;">
-            <button id="toggleHistory" class="btn btn-dark w-100 mr-2">📜 Historie</button>
+            <button id="toggleWarnings" class="btn btn-warning w-100 mr-2">⚠️ Warnungen</button>
+            <button id="toggleHistory" class="btn btn-dark w-100 mx-2">📜 Historie</button>
             <button id="toggleEditor" class="btn btn-secondary w-100 mx-2">✉️ Email-Vorlagen Editor</button>
-            {% if enable_upload %}<button id="toggleUploadArea" class="btn btn-warning w-100 mx-2">⬆️ Dateien Hochladen</button>{% endif %}
-            <button id="toggleShortcutCreator" class="btn btn-info w-100 mx-2">#️⃣🔗Befehl- und Verknüpfungs-Erstelltool</button>
+            {% if enable_upload %}<button id="toggleUploadArea" class="btn btn-warning w-100 mx-2">⬆️ Dateien
+                Hochladen</button>{% endif %}
+            <button id="toggleShortcutCreator" class="btn btn-info w-100 mx-2">#️⃣🔗Befehl- und
+                Verknüpfungs-Erstelltool</button>
             <button id="toggle-settings" class="btn btn-primary w-100 ml-2">⚙️ Einstellungen</button>
+        </div>
+
+        <div id="warningsPanel" class="mt-4" style="display: none;" data-has-warnings="{{ 'true' if warnings else 'false' }}">
+            <h4 class="mb-4">⚠️ Warnungen</h4>
+            {% if warnings %}
+            <table class="table table-striped">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Schüler</th>
+                        <th>Klasse</th>
+                        <th>Warnung</th>
+                        <th>Details</th>
+                        <th>Klassenlehrkräfte</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for warning in warnings %}
+                    <tr>
+                        <td>{{ warning['Vorname'] }} {{ warning['Nachname'] }}</td>
+                        <td>{{ warning.get('Klasse', 'N/A') }}</td>
+                        <td>{{ warning['warning_message'] }}</td>
+                        <td>
+                            {% if 'Zeitraum_nicht_dokumentiert' in warning %}
+                            <strong>Zeitraum nicht dokumentiert:</strong> {{ warning['Zeitraum_nicht_dokumentiert'] }}<br>
+                            {% endif %}
+                            {% if 'neues_entlassdatum' in warning %}
+                            <strong>Neues Entlassdatum:</strong> {{ warning['neues_entlassdatum'] }}<br>
+                            <strong>Altes Entlassdatum:</strong> {{ warning['altes_entlassdatum'] }}<br>
+                            {% endif %}
+                            {% if 'neues_aufnahmedatum' in warning %}
+                            <strong>Neues Aufnahmedatum:</strong> {{ warning['neues_aufnahmedatum'] }}<br>
+                            <strong>Altes Aufnahmedatum:</strong> {{ warning['altes_aufnahmedatum'] }}<br>
+                            {% endif %}
+                            {% if 'new_student' in warning and warning.new_student %}
+                            <strong>Aufnahmedatum:</strong> {{ warning['Aufnahmedatum'] }}<br>
+                            {% endif %}
+                            {% if 'karteileiche' in warning and warning.karteileiche %}
+                            <strong>Hinweis:</strong> Schüler fehlt in den Importdaten komplett.<br>
+                            {% endif %}
+                            {% if 'neue_klasse' in warning %}
+                            <strong>Alte Klasse:</strong> {{ warning.get('alte_klasse', 'N/A') }}<br>
+                            <strong>Neue Klasse:</strong> {{ warning.get('neue_klasse', 'N/A') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>Klassenlehrkraft 1:</strong> {{ warning['Klassenlehrkraft_1'] }} ({{
+                            warning['Klassenlehrkraft_1_Email'] }})<br>
+                            <strong>Klassenlehrkraft 2:</strong> {{ warning['Klassenlehrkraft_2'] }} ({{
+                            warning['Klassenlehrkraft_2_Email'] }})
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>Keine detaillierten Warnungen vorhanden.</p>
+            {% endif %}
         </div>
 
         <div id="historyPanel" class="mt-4" style="display: none;">
@@ -453,7 +498,7 @@
                 <h4>📜 Historie</h4>
                 <button id="loadAllHistory" class="btn btn-sm btn-outline-info">Alle anzeigen</button>
             </div>
-            
+
             <table class="table table-striped" id="historyTable">
                 <thead class="thead-dark">
                     <tr>
@@ -473,32 +518,43 @@
             <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
                 {% if not no_directory_change %}
                 <li class="nav-item">
-                    <a class="nav-link active" id="directories-tab" data-toggle="tab" href="#directories" role="tab" aria-controls="directories" aria-selected="true">📁 Verzeichnisse</a>
+                    <a class="nav-link active" id="directories-tab" data-toggle="tab" href="#directories" role="tab"
+                        aria-controls="directories" aria-selected="true">📁 Verzeichnisse</a>
                 </li>
                 {% endif %}
                 <li class="nav-item">
-                    <a class="nav-link" id="processing-tab" data-toggle="tab" href="#processing" role="tab" aria-controls="processing" aria-selected="false">🛠️ Verarbeitung</a>
+                    <a class="nav-link" id="processing-tab" data-toggle="tab" href="#processing" role="tab"
+                        aria-controls="processing" aria-selected="false">🛠️ Verarbeitung</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="warnings-tab" data-toggle="tab" href="#warnings" role="tab" aria-controls="warnings" aria-selected="false">⚠️ Warnungen</a>
+                    <a class="nav-link" id="warnings-tab" data-toggle="tab" href="#warnings" role="tab"
+                        aria-controls="warnings" aria-selected="false">⚠️ Warnungen</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="console-tab" data-toggle="tab" href="#console" role="tab" aria-controls="console" aria-selected="false">🎛️ Konsole</a>
+                    <a class="nav-link" id="console-tab" data-toggle="tab" href="#console" role="tab"
+                        aria-controls="console" aria-selected="false">🎛️ Konsole</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="smtp-tab" data-toggle="tab" href="#smtp" role="tab" aria-controls="smtp" aria-selected="false">📤 SMTP</a>
+                    <a class="nav-link" id="smtp-tab" data-toggle="tab" href="#smtp" role="tab" aria-controls="smtp"
+                        aria-selected="false">📤 SMTP</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="oauth-tab" data-toggle="tab" href="#oauth" role="tab" aria-controls="oauth" aria-selected="false">🔐 OAuth</a>
+                    <a class="nav-link" id="oauth-tab" data-toggle="tab" href="#oauth" role="tab" aria-controls="oauth"
+                        aria-selected="false">🔐 OAuth</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="admin-tab" data-toggle="tab" href="#admin" role="tab" aria-controls="admin" aria-selected="false"> 📧 Admin-Kontakt</a>
+                    <a class="nav-link" id="admin-tab" data-toggle="tab" href="#admin" role="tab" aria-controls="admin"
+                        aria-selected="false"> 📧 Admin-Kontakt</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="webuntis-tab" data-toggle="tab" href="#webuntis" role="tab" aria-controls="webuntis" aria-selected="false"> 🌐 WebUntis API</a>
                 </li>
             </ul>
             <div class="tab-content mt-3">
                 <!-- Standard-Verzeichnisse -->
                 {% if not no_directory_change %}
-                <div class="tab-pane fade show active" id="directories" role="tabpanel" aria-labelledby="directories-tab">
+                <div class="tab-pane fade show active" id="directories" role="tabpanel"
+                    aria-labelledby="directories-tab">
                     <form id="form-directories">
 
                         <!-- Überschrift für Import-Verzeichnisse -->
@@ -508,9 +564,11 @@
                         <div class="form-group">
                             <label for="classes_directory">🏫 Klassendatenverzeichnis:</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="classes_directory" name="classes_directory" readonly>
+                                <input type="text" class="form-control" id="classes_directory" name="classes_directory"
+                                    readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="classes_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="classes_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -519,9 +577,11 @@
                         <div class="form-group">
                             <label for="teachers_directory">🧑‍🏫 Lehrerdatenverzeichnis:</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="teachers_directory" name="teachers_directory" readonly>
+                                <input type="text" class="form-control" id="teachers_directory"
+                                    name="teachers_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="teachers_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="teachers_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -530,9 +590,11 @@
                         <div class="form-group">
                             <label for="schildexport_directory">🟦📥 Schild Exporte:</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="schildexport_directory" name="schildexport_directory" readonly>
+                                <input type="text" class="form-control" id="schildexport_directory"
+                                    name="schildexport_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="schildexport_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="schildexport_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -541,19 +603,24 @@
                         <div class="form-group">
                             <label for="attest_file_directory">📑 Attestpflicht-Datei-Verzeichnis:</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="attest_file_directory" name="attest_file_directory" readonly>
+                                <input type="text" class="form-control" id="attest_file_directory"
+                                    name="attest_file_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="attest_file_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="attest_file_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
                         <!-- Nachteilsausgleich-Verzeichnis -->
                         <div class="form-group">
-                            <label for="nachteilsausgleich_file_directory">♿ Nachteilsausgleich-Datei-Verzeichnis: </label>
+                            <label for="nachteilsausgleich_file_directory">♿ Nachteilsausgleich-Datei-Verzeichnis:
+                            </label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="nachteilsausgleich_file_directory" name="nachteilsausgleich_file_directory" readonly>
+                                <input type="text" class="form-control" id="nachteilsausgleich_file_directory"
+                                    name="nachteilsausgleich_file_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="nachteilsausgleich_file_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="nachteilsausgleich_file_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -569,9 +636,11 @@
                         <div class="form-group">
                             <label for="log_directory">📋 Logverzeichnis:</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="log_directory" name="log_directory" readonly>
+                                <input type="text" class="form-control" id="log_directory" name="log_directory"
+                                    readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="log_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="log_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -580,9 +649,11 @@
                         <div class="form-group">
                             <label for="xlsx_directory">𝄜 Excel-Verzeichnis:</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="xlsx_directory" name="xlsx_directory" readonly>
+                                <input type="text" class="form-control" id="xlsx_directory" name="xlsx_directory"
+                                    readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="xlsx_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="xlsx_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -591,9 +662,11 @@
                         <div class="form-group">
                             <label for="import_directory">🟧📤 WebUntis Importe:</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="import_directory" name="import_directory" readonly>
+                                <input type="text" class="form-control" id="import_directory" name="import_directory"
+                                    readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="import_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="import_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -602,9 +675,11 @@
                         <div class="form-group">
                             <label for="class_size_directory">📊 Klassengrößen-Verzeichnis:</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="class_size_directory" name="class_size_directory" readonly>
+                                <input type="text" class="form-control" id="class_size_directory"
+                                    name="class_size_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary" data-directory-input="class_size_directory">Durchsuchen</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="class_size_directory">Durchsuchen</button>
                                 </div>
                             </div>
                         </div>
@@ -618,7 +693,8 @@
                     <form id="form-processing">
                         <h5 class="mb-3">Verarbeitungseinstellungen</h5>
                         <div class="form-group">
-                            <label for="use_abschlussdatum">🗓️ Immer Vorraussichtliches Abschlussdatum verwenden:</label>
+                            <label for="use_abschlussdatum">🗓️ Immer Vorraussichtliches Abschlussdatum
+                                verwenden:</label>
                             <select class="form-control" id="use_abschlussdatum" name="use_abschlussdatum">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
@@ -626,21 +702,25 @@
                         </div>
                         <div class="form-group">
                             <label for="enable_attestpflicht_column">📄 Immer Attestpflicht-Spalte hinzufügen:</label>
-                            <select class="form-control" id="enable_attestpflicht_column" name="enable_attestpflicht_column">
+                            <select class="form-control" id="enable_attestpflicht_column"
+                                name="enable_attestpflicht_column">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="enable_nachteilsausgleich_column">♿ Immer Nachteilsausgleich-Spalte hinzufügen:</label>
-                            <select class="form-control" id="enable_nachteilsausgleich_column" name="enable_nachteilsausgleich_column">
+                            <label for="enable_nachteilsausgleich_column">♿ Immer Nachteilsausgleich-Spalte
+                                hinzufügen:</label>
+                            <select class="form-control" id="enable_nachteilsausgleich_column"
+                                name="enable_nachteilsausgleich_column">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
                             </select>
                         </div>
                         <h5 class="mb-3">Zusätzliche Exporte</h5>
                         <div class="form-group">
-                            <label for="create_second_file">🔎 Immer Datei zur Analyse fehlender Entlassdaten erstellen:</label>
+                            <label for="create_second_file">🔎 Immer Datei zur Analyse fehlender Entlassdaten
+                                erstellen:</label>
                             <select class="form-control" id="create_second_file" name="create_second_file">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
@@ -655,15 +735,19 @@
                         </div>
                         <h5 class="mb-3">Exporte Verhindern</h5>
                         <div class="form-group">
-                            <label for="disable_import_file_creation">❌ Nur hier verarbeiten und Importdatei nicht erstellen:</label>
-                            <select class="form-control" id="disable_import_file_creation" name="disable_import_file_creation">
+                            <label for="disable_import_file_creation">❌ Nur hier verarbeiten und Importdatei nicht
+                                erstellen:</label>
+                            <select class="form-control" id="disable_import_file_creation"
+                                name="disable_import_file_creation">
                                 <option value="False">Nein</option>
                                 <option value="True">Ja</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="disable_import_file_if_admin_warning">❗→❌ Importdatei bei Admin-Warnungen nicht erstellen:</label>
-                            <select class="form-control" id="disable_import_file_if_admin_warning" name="disable_import_file_if_admin_warning">
+                            <label for="disable_import_file_if_admin_warning">❗→❌ Importdatei bei Admin-Warnungen nicht
+                                erstellen:</label>
+                            <select class="form-control" id="disable_import_file_if_admin_warning"
+                                name="disable_import_file_if_admin_warning">
                                 <option value="False">Nein</option>
                                 <option value="True">Ja</option>
                             </select>
@@ -697,9 +781,12 @@
                         <div class="form-group">
                             <label for="class_change_recipients">🔄 Empfänger der Klassenwechsel-Warnung:</label>
                             <select class="form-control" id="class_change_recipients" name="class_change_recipients">
-                                <option value="old" {% if class_change_recipients == 'old' %}selected{% endif %}>Nur Vorherige (Alte) Klasse</option>
-                                <option value="new" {% if class_change_recipients == 'new' %}selected{% endif %}>Nur Aktuelle (Neue) Klasse</option>
-                                <option value="both" {% if class_change_recipients == 'both' %}selected{% endif %}>Beide Klassen</option>
+                                <option value="old" {% if class_change_recipients=='old' %}selected{% endif %}>Nur
+                                    Vorherige (Alte) Klasse</option>
+                                <option value="new" {% if class_change_recipients=='new' %}selected{% endif %}>Nur
+                                    Aktuelle (Neue) Klasse</option>
+                                <option value="both" {% if class_change_recipients=='both' %}selected{% endif %}>Beide
+                                    Klassen</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -710,7 +797,8 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="setting_warn_karteileichen">🧟 Immer Warnungen für Karteileichen generieren:</label>
+                            <label for="setting_warn_karteileichen">🧟 Immer Warnungen für Karteileichen
+                                generieren:</label>
                             <select class="form-control" id="setting_warn_karteileichen" name="warn_karteileichen">
                                 <option value="True">Aktiv</option>
                                 <option value="False">Inaktiv</option>
@@ -773,11 +861,43 @@
                 </div>
                 <!-- Admin-Kontakt -->
                 <div class="tab-pane fade" id="admin" role="tabpanel" aria-labelledby="admin-tab">
-                    <form id="form-admin">
                         <div class="form-group">
                             <label for="admin_email">📨 Admin-E-Mail-Adresse:</label>
                             <input type="email" class="form-control" id="admin_email" name="admin_email">
                         </div>
+                    </form>
+                </div>
+                <!-- WebUntis API -->
+                <div class="tab-pane fade" id="webuntis" role="tabpanel" aria-labelledby="webuntis-tab">
+                    <form id="form-webuntis">
+                        <div class="form-group">
+                            <label for="use_api">🌐 WebUntis API verwenden:</label>
+                            <select class="form-control" id="use_api" name="use_api">
+                                <option value="True">Ja (Hybrid-Modus)</option>
+                                <option value="False">Nein (Nur CSV)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="server_url">🔗 Server-URL:</label>
+                            <input type="text" class="form-control" id="server_url" name="server_url" placeholder="https://neptun.webuntis.com/WebUntis/jsonrpc.do">
+                        </div>
+                        <div class="form-group">
+                            <label for="school">🏫 Schulname (intern):</label>
+                            <input type="text" class="form-control" id="school" name="school">
+                        </div>
+                        <div class="form-group">
+                            <label for="user">👤 Benutzername:</label>
+                            <input type="text" class="form-control" id="user" name="user">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">🔑 Passwort:</label>
+                            <input type="password" class="form-control" id="password" name="password">
+                        </div>
+                        <div class="form-group">
+                            <label for="client_name">📱 Client-Name:</label>
+                            <input type="text" class="form-control" id="client_name" name="client_name">
+                        </div>
+                        <button type="button" id="testApiConnection" class="btn btn-outline-info">🔍 Verbindung testen</button>
                     </form>
                 </div>
             </div>
@@ -788,22 +908,28 @@
             <h4 class="mb-4">✉️ Email-Vorlagen Editor</h4>
             <ul class="nav nav-tabs" id="emailTabs" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link active" id="entlass-tab" data-toggle="tab" href="#entlass" role="tab" aria-controls="entlass" aria-selected="true">➡️ Entlassdatum</a>
+                    <a class="nav-link active" id="entlass-tab" data-toggle="tab" href="#entlass" role="tab"
+                        aria-controls="entlass" aria-selected="true">➡️ Entlassdatum</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="aufnahme-tab" data-toggle="tab" href="#aufnahme" role="tab" aria-controls="aufnahme" aria-selected="false">⬅️ Aufnahmedatum</a>
+                    <a class="nav-link" id="aufnahme-tab" data-toggle="tab" href="#aufnahme" role="tab"
+                        aria-controls="aufnahme" aria-selected="false">⬅️ Aufnahmedatum</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="klassenwechsel-tab" data-toggle="tab" href="#klassenwechsel" role="tab" aria-controls="klassenwechsel" aria-selected="false">🔄 Klassenwechsel</a>
+                    <a class="nav-link" id="klassenwechsel-tab" data-toggle="tab" href="#klassenwechsel" role="tab"
+                        aria-controls="klassenwechsel" aria-selected="false">🔄 Klassenwechsel</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="newstudent-tab" data-toggle="tab" href="#newstudent" role="tab" aria-controls="newstudent" aria-selected="false">🆕 Neue Schüler</a>
+                    <a class="nav-link" id="newstudent-tab" data-toggle="tab" href="#newstudent" role="tab"
+                        aria-controls="newstudent" aria-selected="false">🆕 Neue Schüler</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="karteileiche-tab" data-toggle="tab" href="#karteileiche" role="tab" aria-controls="karteileiche" aria-selected="false">🧟 Karteileichen</a>
+                    <a class="nav-link" id="karteileiche-tab" data-toggle="tab" href="#karteileiche" role="tab"
+                        aria-controls="karteileiche" aria-selected="false">🧟 Karteileichen</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" id="email-info-tab" data-toggle="tab" href="#email-info" role="tab" aria-controls="email-info" aria-selected="false">🗝️ℹ️Schlüssel-Info</a>
+                    <a class="nav-link" id="email-info-tab" data-toggle="tab" href="#email-info" role="tab"
+                        aria-controls="email-info" aria-selected="false">🗝️ℹ️Schlüssel-Info</a>
                 </li>
             </ul>
             <div class="tab-content mt-3">
@@ -812,12 +938,14 @@
                     <form id="entlassForm">
                         <div class="form-group">
                             <label for="subjectEntlassdatum">📧 Betreff:</label>
-                            <input type="text" class="form-control" id="subjectEntlassdatum" name="subject_entlassdatum">
+                            <input type="text" class="form-control" id="subjectEntlassdatum"
+                                name="subject_entlassdatum">
                         </div>
                         <div class="form-group">
                             <label for="bodyEntlassdatum">📜 Nachricht:</label>
                             <div id="editorBodyEntlassdatum" class="quill-editor"></div>
-                            <textarea id="bodyEntlassdatum" name="body_entlassdatum" class="form-control d-none"></textarea>
+                            <textarea id="bodyEntlassdatum" name="body_entlassdatum"
+                                class="form-control d-none"></textarea>
                         </div>
                     </form>
                 </div>
@@ -826,12 +954,14 @@
                     <form id="aufnahmeForm">
                         <div class="form-group">
                             <label for="subjectAufnahmedatum">📧 Betreff:</label>
-                            <input type="text" class="form-control" id="subjectAufnahmedatum" name="subject_aufnahmedatum">
+                            <input type="text" class="form-control" id="subjectAufnahmedatum"
+                                name="subject_aufnahmedatum">
                         </div>
                         <div class="form-group">
                             <label for="bodyAufnahmedatum">📜 Nachricht:</label>
                             <div id="editorBodyAufnahmedatum" class="quill-editor"></div>
-                            <textarea id="bodyAufnahmedatum" name="body_aufnahmedatum" class="form-control d-none"></textarea>
+                            <textarea id="bodyAufnahmedatum" name="body_aufnahmedatum"
+                                class="form-control d-none"></textarea>
                         </div>
                     </form>
                 </div>
@@ -840,12 +970,14 @@
                     <form id="klassenwechselForm">
                         <div class="form-group">
                             <label for="subjectKlassenwechsel">📧 Betreff:</label>
-                            <input type="text" class="form-control" id="subjectKlassenwechsel" name="subject_klassenwechsel">
+                            <input type="text" class="form-control" id="subjectKlassenwechsel"
+                                name="subject_klassenwechsel">
                         </div>
                         <div class="form-group">
                             <label for="bodyKlassenwechsel">📜 Nachricht:</label>
                             <div id="editorBodyKlassenwechsel" class="quill-editor"></div>
-                            <textarea id="bodyKlassenwechsel" name="body_klassenwechsel" class="form-control d-none"></textarea>
+                            <textarea id="bodyKlassenwechsel" name="body_klassenwechsel"
+                                class="form-control d-none"></textarea>
                         </div>
                     </form>
                 </div>
@@ -859,7 +991,8 @@
                         <div class="form-group">
                             <label for="bodyNewStudent">📜 Nachricht:</label>
                             <div id="editorBodyNewStudent" class="quill-editor"></div>
-                            <textarea id="bodyNewStudent" name="body_new_student" class="form-control d-none"></textarea>
+                            <textarea id="bodyNewStudent" name="body_new_student"
+                                class="form-control d-none"></textarea>
                         </div>
                     </form>
                 </div>
@@ -868,12 +1001,14 @@
                     <form id="karteileicheForm">
                         <div class="form-group">
                             <label for="subjectKarteileiche">📧 Betreff:</label>
-                            <input type="text" class="form-control" id="subjectKarteileiche" name="subject_karteileiche">
+                            <input type="text" class="form-control" id="subjectKarteileiche"
+                                name="subject_karteileiche">
                         </div>
                         <div class="form-group">
                             <label for="bodyKarteileiche">📜 Nachricht:</label>
                             <div id="editorBodyKarteileiche" class="quill-editor"></div>
-                            <textarea id="bodyKarteileiche" name="body_karteileiche" class="form-control d-none"></textarea>
+                            <textarea id="bodyKarteileiche" name="body_karteileiche"
+                                class="form-control d-none"></textarea>
                         </div>
                     </form>
                 </div>
@@ -963,16 +1098,21 @@
             <h4 class="mb-4">#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool </h4>
             <div class="card-body">
                 <p class="text-muted">
-                    Mit diesem Tool können Sie Befehle erstellen, um das Programm direkt mit bestimmten Konfigurationsoptionen
-                    (Argumenten) auszuführen ohne diese im Browser auslösen zu müssen. <br />Außerdem können Sie eine Verknüpfung
-                    erstellen, die bequem vom Desktop oder einem beliebigen anderen Ort aus aufgerufen werden kann. <br />
-                    Fügen Sie gewünschte Argumente hinzu, und generieren Sie entweder einen Befehl zum Ausführen in der Windows-Eingabeaufforderung (CMD) oder eine Verknüpfung.
+                    Mit diesem Tool können Sie Befehle erstellen, um das Programm direkt mit bestimmten
+                    Konfigurationsoptionen
+                    (Argumenten) auszuführen ohne diese im Browser auslösen zu müssen. <br />Außerdem können Sie eine
+                    Verknüpfung
+                    erstellen, die bequem vom Desktop oder einem beliebigen anderen Ort aus aufgerufen werden kann.
+                    <br />
+                    Fügen Sie gewünschte Argumente hinzu, und generieren Sie entweder einen Befehl zum Ausführen in der
+                    Windows-Eingabeaufforderung (CMD) oder eine Verknüpfung.
                 </p>
                 <form id="shortcutForm">
                     <div class="form-group">
                         <label for="exePath">Pfad der Ausführungs-Datei:</label>
                         <div class="input-group">
-                            <input type="text" class="form-control" id="exePath" value="Schild-WebUntis-Tool.exe" placeholder="Pfad zur ausführbaren Datei">
+                            <input type="text" class="form-control" id="exePath" value="Schild-WebUntis-Tool.exe"
+                                placeholder="Pfad zur ausführbaren Datei">
                         </div>
                         <small id="fileValidationMessage" class="form-text text-danger"></small>
                     </div>
@@ -986,7 +1126,8 @@
                                 <button type="button" class="btn btn-secondary" id="addArg">Argument hinzufügen</button>
                             </div>
                         </div>
-                        <small id="argDescription" class="form-text text-muted">Select an argument to see its description.</small>
+                        <small id="argDescription" class="form-text text-muted">Select an argument to see its
+                            description.</small>
                     </div>
                     <div class="form-group">
                         <label for="args">Verwendete Argumente:</label>
@@ -996,8 +1137,10 @@
                         <label for="outputCommand">Generierter Befehl:</label>
                         <input type="text" class="form-control" id="outputCommand" readonly>
                     </div>
-                    <button type="button" class="btn btn-primary" id="generateCommand">Befehl Generieren (für CMD)</button>
-                    <button type="button" class="btn btn-success" id="createShortcut">Verknüpfung Erstellen (Desktop)</button>
+                    <button type="button" class="btn btn-primary" id="generateCommand">Befehl Generieren (für
+                        CMD)</button>
+                    <button type="button" class="btn btn-success" id="createShortcut">Verknüpfung Erstellen
+                        (Desktop)</button>
                 </form>
             </div>
         </div>
@@ -1008,9 +1151,11 @@
                 <div class="form-group">
                     <label for="classDataFiles">🏫 Klassendaten hochladen:</label>
                     <div class="input-group">
-                        <input type="file" class="form-control-file" id="classDataFiles" name="class_data_files" multiple>
+                        <input type="file" class="form-control-file" id="classDataFiles" name="class_data_files"
+                            multiple>
                         <div class="input-group-append">
-                            <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#classDataHelp" aria-expanded="false" aria-controls="classDataHelp">
+                            <button type="button" class="btn btn-link" data-toggle="collapse"
+                                data-target="#classDataHelp" aria-expanded="false" aria-controls="classDataHelp">
                                 ℹ️ Hilfestellung
                             </button>
                         </div>
@@ -1027,12 +1172,14 @@
                                 Kopieren Sie die Tabelle in eine Excel-Datei.
                             </li>
                             <li>
-                                Die Datei sollte folgende Spalten in genau dieser Reihenfolge enthalten (nichts umbenennen):
+                                Die Datei sollte folgende Spalten in genau dieser Reihenfolge enthalten (nichts
+                                umbenennen):
                             </li>
                         </ol>
                         <pre><code>Auswahl, [eine Leere Spalte], Klasse, Langname, Alias, Jahrgangsstufe, Text, Klassenlehrkraft, Klassenlehrkraft, Abteilung, Von, Bis</code></pre>
                         <p>
-                            <b>Hinweis:</b> Die Tabelle aus WebUntis kann einfach kopiert und eingefügt werden, ohne zusätzliche Änderungen vorzunehmen.
+                            <b>Hinweis:</b> Die Tabelle aus WebUntis kann einfach kopiert und eingefügt werden, ohne
+                            zusätzliche Änderungen vorzunehmen.
                         </p>
                         <p>
                             Exportieren Sie diese Excel-Datei anschließend mit Excel als <code>.csv</code>.
@@ -1042,9 +1189,11 @@
                 <div class="form-group">
                     <label for="teacherDataFiles">🧑‍🏫 Lehrerdaten hochladen:</label>
                     <div class="input-group">
-                        <input type="file" class="form-control-file" id="teacherDataFiles" name="teacher_data_files" multiple>
+                        <input type="file" class="form-control-file" id="teacherDataFiles" name="teacher_data_files"
+                            multiple>
                         <div class="input-group-append">
-                            <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#teacherDataHelp" aria-expanded="false" aria-controls="teacherDataHelp">
+                            <button type="button" class="btn btn-link" data-toggle="collapse"
+                                data-target="#teacherDataHelp" aria-expanded="false" aria-controls="teacherDataHelp">
                                 ℹ️ Hilfestellung
                             </button>
                         </div>
@@ -1064,7 +1213,8 @@
                                 Wählen Sie den <strong>CSV-Bericht</strong> bei "Lehrkräfte".
                             </li>
                             <li>
-                                **Wichtiger Hinweis:** Das Feld für die E-Mail-Adressen muss mit den Dienst-E-Mail-Adressen der Kollegen gefüllt sein, damit es nachher funktioniert.
+                                **Wichtiger Hinweis:** Das Feld für die E-Mail-Adressen muss mit den
+                                Dienst-E-Mail-Adressen der Kollegen gefüllt sein, damit es nachher funktioniert.
                             </li>
                         </ol>
                     </div>
@@ -1072,9 +1222,11 @@
                 <div class="form-group">
                     <label for="schildExportFiles">🟦 Schild-Export Dateien hochladen:</label>
                     <div class="input-group">
-                        <input type="file" class="form-control-file" id="schildExportFiles" name="schild_export_files" multiple>
+                        <input type="file" class="form-control-file" id="schildExportFiles" name="schild_export_files"
+                            multiple>
                         <div class="input-group-append">
-                            <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#schildExportHelp" aria-expanded="false" aria-controls="schildExportHelp">
+                            <button type="button" class="btn btn-link" data-toggle="collapse"
+                                data-target="#schildExportHelp" aria-expanded="false" aria-controls="schildExportHelp">
                                 ℹ️ Hilfestellung
                             </button>
                         </div>
@@ -1089,13 +1241,16 @@
                                 Unten bei Laufbahninfo bei Schuljahr das aktuelle Schuljahr auswählen.
                             </li>
                             <li>
-                                Oben rechts bei Status: <em>Aktiv</em>, <em>Abschluss</em> und <em>Abgänger</em> anwählen.
+                                Oben rechts bei Status: <em>Aktiv</em>, <em>Abschluss</em> und <em>Abgänger</em>
+                                anwählen.
                             </li>
                             <li>
-                                Speichern Sie diesen Filter, damit Sie ihn später über "Auswahl - Vorhandene Filter laden" wieder verwenden können.
+                                Speichern Sie diesen Filter, damit Sie ihn später über "Auswahl - Vorhandene Filter
+                                laden" wieder verwenden können.
                             </li>
                             <li>
-                                Export aus SchildNRW als Text/Excel Export, jedoch unbedingt mit der manuell eingegebenen Dateiendung <code>.csv</code>.
+                                Export aus SchildNRW als Text/Excel Export, jedoch unbedingt mit der manuell
+                                eingegebenen Dateiendung <code>.csv</code>.
                             </li>
                             <li>
                                 Als Separator ist <code>;</code> zu wählen.
@@ -1108,13 +1263,16 @@
                         <p><b>Hinweise:</b></p>
                         <ul>
                             <li>
-                                Der Export funktioniert nicht, wenn die Datei als Excel-Datei exportiert und anschließend als <code>.csv</code> gespeichert wird.
+                                Der Export funktioniert nicht, wenn die Datei als Excel-Datei exportiert und
+                                anschließend als <code>.csv</code> gespeichert wird.
                             </li>
                             <li>
-                                Ergänzen Sie die Endung <code>.csv</code> manuell, nachdem Sie den Exporttyp <em>Textdatei</em> ausgewählt haben.
+                                Ergänzen Sie die Endung <code>.csv</code> manuell, nachdem Sie den Exporttyp
+                                <em>Textdatei</em> ausgewählt haben.
                             </li>
                             <li>
-                                Speichern Sie die Exporteinstellungen als Vorlage ab, um sie später schneller verwenden zu können.
+                                Speichern Sie die Exporteinstellungen als Vorlage ab, um sie später schneller verwenden
+                                zu können.
                             </li>
                         </ul>
                     </div>
@@ -1138,6 +1296,7 @@
                 shortcutCreator: document.getElementById("shortcutCreator"),
                 uploadArea: document.getElementById("uploadArea"),
                 historyPanel: document.getElementById("historyPanel"),
+                warningsPanel: document.getElementById("warningsPanel"),
             };
 
             const toggleButtons = {
@@ -1146,6 +1305,7 @@
                 toggleShortcutButton: document.getElementById("toggleShortcutCreator"),
                 toggleUploadButton: document.getElementById("toggleUploadArea"),
                 toggleHistoryButton: document.getElementById("toggleHistory"),
+                toggleWarningsButton: document.getElementById("toggleWarnings"),
             };
 
             const settingsTabs = document.querySelectorAll("#settingsPanel .nav-link");
@@ -1158,7 +1318,7 @@
                         // Show the selected panel
                         const isHidden = panel.style.display === "none" || panel.style.display === "";
                         panel.style.display = isHidden ? "block" : "none";
-                        
+
                         if (isHidden) {
                             if (panelKey === "settingsPanel") {
                                 activateFirstTab();
@@ -1200,9 +1360,19 @@
             if (toggleButtons.toggleHistoryButton) {
                 toggleButtons.toggleHistoryButton.addEventListener("click", () => togglePanel("historyPanel"));
             }
+            if (toggleButtons.toggleWarningsButton) {
+                toggleButtons.toggleWarningsButton.addEventListener("click", () => togglePanel("warningsPanel"));
+            }
 
             // Ensure all panels are initially hidden
             Object.values(panels).forEach((panel) => { if (panel) panel.style.display = "none"; });
+
+            // Auto-open warnings if present
+            const warningsPanel = document.getElementById("warningsPanel");
+            if (warningsPanel && warningsPanel.getAttribute("data-has-warnings") === "true") {
+                togglePanel("warningsPanel");
+                warningsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         });
 
 
@@ -1340,6 +1510,7 @@
                 { id: "smtp", form: "form-smtp" },
                 { id: "oauth", form: "form-oauth" },
                 { id: "admin", form: "form-admin" },
+                { id: "webuntis", form: "form-webuntis" },
             ];
 
             // Einstellungen laden
@@ -1389,6 +1560,13 @@
                             "credentials_path": "form-oauth",
                             // Admin
                             "admin_email": "form-admin",
+                            // WebUntis API
+                            "use_api": "form-webuntis",
+                            "server_url": "form-webuntis",
+                            "school": "form-webuntis",
+                            "user": "form-webuntis",
+                            "password": "form-webuntis",
+                            "client_name": "form-webuntis",
                         };
 
                         // Loop over settings and populate forms
@@ -1456,6 +1634,13 @@
                     "credentials_path": "OAuth",
                     // Admin
                     "admin_email": "Email", // Since admin_email is under [Email] section
+                    // WebUntis API
+                    "use_api": "WebUntisAPI",
+                    "server_url": "WebUntisAPI",
+                    "school": "WebUntisAPI",
+                    "user": "WebUntisAPI",
+                    "password": "WebUntisAPI",
+                    "client_name": "WebUntisAPI",
                 };
 
                 // Collect data from all forms
@@ -1615,7 +1800,7 @@
             hiddenInput.type = "hidden";
             hiddenInput.name = "class_change_recipients";
             let selectElem = document.getElementById("class_change_recipients");
-            if(selectElem) {
+            if (selectElem) {
                 hiddenInput.value = selectElem.value;
                 this.appendChild(hiddenInput);
             }
@@ -1640,6 +1825,36 @@
                 method: "POST"
             }).then(response => response.json()).then(data => {
                 alert(data.message);
+            });
+        });
+
+        document.getElementById("testApiConnection")?.addEventListener("click", function() {
+            const data = {
+                server_url: document.getElementById("server_url").value,
+                school: document.getElementById("school").value,
+                user: document.getElementById("user").value,
+                password: document.getElementById("password").value,
+                client_name: document.getElementById("client_name").value
+            };
+            
+            this.disabled = true;
+            this.textContent = "⌛ Teste...";
+            
+            fetch("/test_api", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                this.disabled = false;
+                this.textContent = "🔍 Verbindung testen";
+            })
+            .catch(err => {
+                alert("Fehler beim Verbindungstest: " + err);
+                this.disabled = false;
+                this.textContent = "🔍 Verbindung testen";
             });
         });
     </script>
@@ -1747,7 +1962,8 @@
     </script>
 
     <!-- Historie Log Viewer Modal -->
-    <div class="modal fade" id="logViewerModal" tabindex="-1" role="dialog" aria-labelledby="logViewerModalLabel" aria-hidden="true">
+    <div class="modal fade" id="logViewerModal" tabindex="-1" role="dialog" aria-labelledby="logViewerModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header">
@@ -1757,7 +1973,8 @@
                     </button>
                 </div>
                 <div class="modal-body">
-                    <pre id="logContentPre" style="white-space: pre-wrap; word-wrap: break-word; background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 60vh; overflow-y: auto;"></pre>
+                    <pre id="logContentPre"
+                        style="white-space: pre-wrap; word-wrap: break-word; background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 60vh; overflow-y: auto;"></pre>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
@@ -1771,7 +1988,7 @@
         document.addEventListener("DOMContentLoaded", function () {
             // --- Dark Mode Logic ---
             const darkModeToggle = document.getElementById("darkModeToggle");
-            
+
             // Sync initial state if it was added to documentElement
             if (document.documentElement.classList.contains("dark-mode")) {
                 document.body.classList.add("dark-mode");
@@ -1781,7 +1998,7 @@
             darkModeToggle.addEventListener("click", function () {
                 document.body.classList.toggle("dark-mode");
                 document.documentElement.classList.toggle("dark-mode");
-                
+
                 if (document.body.classList.contains("dark-mode")) {
                     localStorage.setItem("darkMode", "enabled");
                     darkModeToggle.textContent = "☀️ Light Mode";
@@ -1813,9 +2030,9 @@
                 });
             }
             const historyPanel = document.getElementById("historyPanel");
-            
+
             // Expose loadHistory globally so it can be called from unified toggle
-            window.loadHistory = function(limit) {
+            window.loadHistory = function (limit) {
                 const tbody = document.querySelector("#historyTable tbody");
                 tbody.innerHTML = "<tr><td colspan='3' class='text-center'>Lade Historie...</td></tr>";
 
@@ -1830,7 +2047,7 @@
 
                         data.forEach(entry => {
                             const tr = document.createElement("tr");
-                            
+
                             // Zeit
                             const tdTime = document.createElement("td");
                             tdTime.innerHTML = `<strong>${entry.display_time}</strong>`;
@@ -1849,9 +2066,25 @@
                             if (entry.log_file) {
                                 const btn = document.createElement("button");
                                 btn.className = "btn btn-sm btn-outline-primary";
-                                btn.textContent = "📄 Log Anzeigen";
+                                btn.innerHTML = "📄 Log";
                                 btn.onclick = () => viewLog(entry.log_file);
                                 tdActions.appendChild(btn);
+                            }
+                            if (entry.xlsx_file) {
+                                // Download Button
+                                const btnDl = document.createElement("a");
+                                btnDl.className = "btn btn-sm btn-outline-success ml-2";
+                                btnDl.innerHTML = "📥 Excel";
+                                btnDl.href = `/api/xlsx_download/${encodeURIComponent(entry.xlsx_file)}`;
+                                btnDl.target = "_blank";
+                                tdActions.appendChild(btnDl);
+
+                                // View Button
+                                const btnView = document.createElement("button");
+                                btnView.className = "btn btn-sm btn-outline-info ml-1";
+                                btnView.innerHTML = "🔍 View";
+                                btnView.onclick = () => viewExcel(entry.xlsx_file);
+                                tdActions.appendChild(btnView);
                             }
                             tr.appendChild(tdActions);
 
@@ -1883,6 +2116,26 @@
                     pre.textContent = "Fehler beim Laden: " + err.message;
                 });
         }
+
+        // Global function for XLSX viewing
+        function viewExcel(filename) {
+            const pre = document.getElementById("logContentPre");
+            pre.innerHTML = "Lade Excel-Datei Vorschau...";
+            $('#logViewerModal').modal('show');
+
+            fetch(`/api/xlsx_view/${encodeURIComponent(filename)}`)
+                .then(response => {
+                    if (!response.ok) throw new Error("Netzwerkfehler oder Datei nicht gefunden");
+                    return response.text();
+                })
+                .then(html => {
+                    pre.innerHTML = html;
+                })
+                .catch(err => {
+                    pre.textContent = "Fehler beim Laden: " + err.message;
+                });
+        }
     </script>
 </body>
+
 </html>

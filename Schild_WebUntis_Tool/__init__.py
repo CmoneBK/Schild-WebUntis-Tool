@@ -35,7 +35,7 @@ import werkzeug  # Werkzeug-Bibliothek für WSGI-Anwendungen (von Flask verwende
 import tkinter as tk  # GUI-Toolkit für die Dateiauswahl-Dialoge
 import colorama  # Ausgabe von farbigem Text in der Konsole
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
-from flask import Flask, render_template, request, jsonify, session  # Flask-Webframework
+from flask import Flask, render_template, request, jsonify, session, send_from_directory  # Flask-Webframework
 from main import run, read_students, read_classes, compare_timeframe_imports  # Funktionen aus eigenen Modulen importieren
 from smtp import send_email  # Funktion zum Versenden von E-Mails aus eigenem Modul
 from waitress import serve  # WSGI-Server zum Bereitstellen der Flask-Anwendung
@@ -250,7 +250,14 @@ body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_
 subject_new_student = Webuntis-Hinweis: Neuer Schüler $Vorname $Nachname
 body_new_student = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong> wurde als neu in den importierten Daten erkannt.</p><p>Bitte überprüfen Sie die Daten im digitalen Klassenbuch.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
 subject_karteileiche = Webuntis-Hinweis: Schüler fehlt/gelöscht $Vorname $Nachname
-body_karteileiche = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Bitte prüfen Sie den Verbleib des Schülers, sofern die Ursache nicht bekannt ist.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
+body_karteileiche = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Dies wird dazu führen, dass seine Daten, darunter auch sein Entlassdatum, sein Status (inkl. von Aktiv nach Abschluss/Abgang) nicht mehr aktualisiert werden. Sofern das in Ordnung ist, ist keine weitere Aktion erforderlich. Falls nicht, prüfen Sie bitte den Verbleib des Schülers.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
+[WebUntisAPI]
+use_api = False
+server_url = https://neptun.webuntis.com/WebUntis/jsonrpc.do
+school = schoolname
+user = user
+password = password
+client_name = Schild-WebUntis-Tool
 """
 
     # Prüfen, ob settings.ini existiert, und ggf. erstellen
@@ -291,6 +298,16 @@ body_karteileiche = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/di
                 updated = True
             if not config.has_option('Templates', 'body_karteileiche'):
                 config.set('Templates', 'body_karteileiche', '<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Bitte prüfen Sie den Verbleib des Schülers, sofern die Ursache nicht bekannt ist.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>')
+                updated = True
+            
+            if not config.has_section('WebUntisAPI'):
+                config.add_section('WebUntisAPI')
+                config.set('WebUntisAPI', 'use_api', 'False')
+                config.set('WebUntisAPI', 'server_url', 'https://neptun.webuntis.com/WebUntis/jsonrpc.do')
+                config.set('WebUntisAPI', 'school', 'schoolname')
+                config.set('WebUntisAPI', 'user', 'user')
+                config.set('WebUntisAPI', 'password', 'password')
+                config.set('WebUntisAPI', 'client_name', 'Schild-WebUntis-Tool')
                 updated = True
             
             if updated:
@@ -430,6 +447,20 @@ def admin_warnings(send_email_flag=False):
 #(Post) sowie auch Ausführung der def_run aus der main.py bei Klick auf den Verarbeiten-Button
 @app.route('/test')
 def test_route(): return 'TEST OK', 200
+
+@app.route('/test_api', methods=['POST'])
+def test_api():
+    from webuntis_api import WebUntisClient
+    data = request.json
+    client = WebUntisClient(
+        server_url=data.get('server_url'),
+        school=data.get('school'),
+        user=data.get('user'),
+        password=data.get('password'),
+        client_name=data.get('client_name', 'Schild-WebUntis-Tool')
+    )
+    success, message = client.test_connection()
+    return jsonify({'success': success, 'message': message})
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -745,6 +776,65 @@ def get_log_content(filename):
                 return content, 200, {'Content-Type': 'text/plain; charset=utf-8'}
         except Exception as e2:
             return jsonify({"error": f"Dateiformat kann nicht gelesen werden: {str(e2)}"}), 500
+
+# Route zum Anzeigen des Inhalts einer Excel-Log-Datei im WeUI Modal (Konvertierung in HTML-Tabelle)
+@app.route('/api/xlsx_view/<path:filename>', methods=['GET'])
+def view_xlsx(filename):
+    from openpyxl import load_workbook
+    config = configparser.ConfigParser()
+    config.read("settings.ini", encoding='utf-8-sig')
+    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelExports")
+    
+    # Pfad-Sicherheitsprüfung
+    safe_filename = os.path.basename(filename)
+    file_path = os.path.join(xlsx_dir, safe_filename)
+
+    # Pfad absolut machen
+    if not os.path.isabs(xlsx_dir):
+        xlsx_dir = os.path.abspath(xlsx_dir)
+    file_path = os.path.join(xlsx_dir, safe_filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "Excel-Datei nicht gefunden"}), 404
+        
+    try:
+        wb = load_workbook(file_path, data_only=True)
+        ws = wb.active
+        
+        # HTML-Tabelle generieren
+        html = '<div class="table-responsive"><table class="table table-sm table-bordered table-striped">'
+        for row in ws.iter_rows(values_only=True):
+            html += '<tr>'
+            for cell in row:
+                # Zellinhalt sicher als String behandeln
+                cell_val = str(cell) if cell is not None else ""
+                # Stil wie im Excel (rote Markierung bei "->")
+                style = ' style="background-color: #FFCCCC;"' if "->" in cell_val else ""
+                html += f'<td{style}>{cell_val}</td>'
+            html += '</tr>'
+        html += '</table></div>'
+        
+        return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+    except Exception as e:
+        return jsonify({"error": f"Excel konnte nicht gelesen werden: {str(e)}"}), 500
+
+# Route zum Herunterladen einer Excel-Log-Datei aus dem ExcelExports-Verzeichnis
+@app.route('/api/xlsx_download/<path:filename>', methods=['GET'])
+def download_xlsx(filename):
+    config = configparser.ConfigParser()
+    config.read("settings.ini", encoding='utf-8-sig')
+    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelExports")
+    
+    # Pfad-Sicherheitsprüfung
+    safe_filename = os.path.basename(filename)
+    # Sicherstellen, dass das Verzeichnis absolut ist, falls nötig
+    if not os.path.isabs(xlsx_dir):
+        xlsx_dir = os.path.abspath(xlsx_dir)
+        
+    if not os.path.exists(os.path.join(xlsx_dir, safe_filename)):
+        return jsonify({"error": "Excel-Datei nicht gefunden"}), 404
+        
+    return send_from_directory(xlsx_dir, safe_filename, as_attachment=True)
 # Route und Funktion zum Abruf der E-Mail Inhalte des Vorlagen-Email-Editors im WebEnd. 
 @app.route('/get_templates', methods=['GET'])
 def get_templates():
