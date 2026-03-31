@@ -334,7 +334,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Klassengrößen Auswertung:** Es wurde die Option zur Generirung eines zusätzlichen Auswertungsdokuments zu den Klassengrößen/stärken hinzugefügt. Diese Datei kann so mit jedem Import generiert und Interessierten (Vertretungsteam, Stundenplaner) zur Verfügung gestellt werden.
 </details>
 
-### Update 2.9
+### Update 2.9.5
 - **Optionale Warnungen für aus dem Schild-Export verschwundene Schüler:** Das dürfte bei dem Filter: "Aktuelles Schuljahr - Aktive, Abgänger und Abschlüsse" im Grund nie auftreten (außer vielleicht ganz zum Schluss beim Hochschulen)
 - **Klassenwechsel Email-Versand an alle Klassenlehrer (statt nur die der alten Klasse):** Email Versand der Warnemails über Klassenwechsel wahlweise an die Klassenlehrkräfte der alten Klasse, der neuen Klasse, oder Beide.
 - **Importdatei Erstellung unterbinden:** Option zum Verhindern der Erstellung der WebUntis-Importdatei wenn zum Beispiel Admin Warnungen existieren. Das ist sehr wichtig für vollautomatisierte Nutzung dieses Tools
