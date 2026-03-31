@@ -470,21 +470,77 @@ def compare_timeframe_imports(timeframe_hours=24):
 
 
 def read_classes(classes_dir, teachers_dir, return_teachers=False):
-    # Funktion zum Einlesen der Klassen- und Lehrerdaten
-    print_info("Lese Klassen- und Lehrerdaten ein...")
+    # 0) WebUntis API Vorbereitung (Hybrid-Modus)
+    config_api = configparser.ConfigParser()
+    safe_read_config(config_api, 'email_settings.ini')
+    use_api = config_api.getboolean('WebUntisAPI', 'use_api', fallback=False)
+    
+    teachers = {}
+    classes_by_name = {}
+    api_success = False
 
-    # Prüfen, ob der Ordner für Klassendaten existiert
-    if not os.path.exists(classes_dir):
-        print_warning(f"Warnung: Der Ordner '{classes_dir}' existiert nicht.")
-        dummy_classes = {
-            "dummy_class_1": {
-                "Klassenlehrkraft_1": "Max Muster",
-                "Klassenlehrkraft_1_Email": "max.muster@example.com",
-                "Klassenlehrkraft_2": "Erika Beispiel",
-                "Klassenlehrkraft_2_Email": "erika.beispiel@example.com",
+    if use_api:
+        from webuntis_api import WebUntisClient
+        try:
+            print_info("Lese Daten über WebUntis API...")
+            client = WebUntisClient(
+                server_url=config_api.get('WebUntisAPI', 'server_url'),
+                school=config_api.get('WebUntisAPI', 'school'),
+                user=config_api.get('WebUntisAPI', 'user'),
+                password=config_api.get('WebUntisAPI', 'password'),
+                client_name=config_api.get('WebUntisAPI', 'client_name', fallback='Schild-WebUntis-Tool')
+            )
+            if client.authenticate():
+                # 1) Lehrer laden
+                api_teachers = client.get_teachers()
+                for t in api_teachers:
+                    t_name = t.get('name')
+                    if t_name:
+                        teachers[t_name] = {
+                            'email': t.get('address.email') or t.get('email') or '',
+                            'forename': t.get('foreName', ''),
+                            'longname': t.get('longName', '')
+                        }
+                
+                # 2) Klassen laden
+                api_classes = client.get_classes()
+                for c in api_classes:
+                    c_name = (c.get('name') or "").strip().lower()
+                    if c_name:
+                        classes_by_name[c_name] = {
+                            'Klassenlehrkraft_1': '', # API liefert oft keine KL direkt in getKlassen
+                            'Klassenlehrkraft_1_Email': '',
+                            'Klassenlehrkraft_2': '',
+                            'Klassenlehrkraft_2_Email': '',
+                            'api_data': True # Markierung für Admin-Warnings
+                        }
+                
+                client.logout()
+                api_success = True
+                print_success(f"Daten erfolgreich über API geladen ({len(teachers)} Lehrer, {len(classes_by_name)} Klassen).")
+                if return_teachers:
+                    return classes_by_name, teachers
+                return classes_by_name
+        except Exception as e:
+            print_warning(f"WebUntis API Fehler (Fallback auf CSV): {e}")
+
+    if not api_success:
+        # --- BESTEHENDER CSV-LOGIK-BLOCK ---
+        # Funktion zum Einlesen der Klassen- und Lehrerdaten
+        print_info("Lese Klassen- und Lehrerdaten aus CSV ein...")
+
+        # Prüfen, ob der Ordner für Klassendaten existiert
+        if not os.path.exists(classes_dir):
+            print_warning(f"Warnung: Der Ordner '{classes_dir}' existiert nicht.")
+            dummy_classes = {
+                "dummy_class_1": {
+                    "Klassenlehrkraft_1": "Max Muster",
+                    "Klassenlehrkraft_1_Email": "max.muster@example.com",
+                    "Klassenlehrkraft_2": "Erika Beispiel",
+                    "Klassenlehrkraft_2_Email": "erika.beispiel@example.com",
+                }
             }
-        }
-        return (dummy_classes, {}) if return_teachers else dummy_classes
+            return (dummy_classes, {}) if return_teachers else dummy_classes
 
     # Neueste Klassen-CSV-Datei finden
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
@@ -538,6 +594,8 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
             except Exception as e:
                 print_error(f"Fehler beim Einlesen der Lehrkräfte-Datei: {e}")
                 teachers = {}  # Fallback auf leere Lehrer-Daten
+
+    # --- ENDE CSV-LOGIK-BLOCK ---
 
     # Klassen-CSV-Datei einlesen und Lehrkräfte-Emails zuordnen
     print_info("Verarbeite Klassen-CSV-Datei und ordne Lehrkräfte zu...")
