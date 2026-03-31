@@ -919,35 +919,71 @@ def create_class_change_warnings(classes_by_name, students_by_id, class_change_r
                         alte_klasse_str = previous_class.strip().lower()
                         neue_klasse_str = new_class.strip().lower()
 
-                        def add_warning_for_class(klasse_lookup_str):
-                            klassen_info = classes_by_name.get(klasse_lookup_str, {})
-                            if not klassen_info:
-                                print_warning(f"Klasse '{klasse_lookup_str}' nicht in Klasseninformationen gefunden.")
+                        alte_klassen_info = classes_by_name.get(alte_klasse_str, {})
+                        neue_klassen_info = classes_by_name.get(neue_klasse_str, {})
 
-                            # Warnung hinzufügen
-                            warnings.append({
-                                'Nachname': row['Nachname'],
-                                'Vorname': row['Vorname'],
-                                'alte_klasse': previous_class,
-                                'neue_klasse': new_class,
-                                'Klassenlehrkraft_1': klassen_info.get('Klassenlehrkraft_1', 'N/A'),
-                                'Klassenlehrkraft_1_Email': klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
-                                'Klassenlehrkraft_2': klassen_info.get('Klassenlehrkraft_2', 'N/A'),
-                                'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
-                                'Volljaehrig': students_by_id[interne_id].get('Volljährig', 'Unbekannt'),  # Volljaehrig hinzufügen
-                                'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),  # Status Schlüssel hinzufügen
-                                'warning_message': "Klassenwechsel muss im Digitalen Klassenbuch manuell korrigiert werden, da die Änderung im System ab dem aktuellen Tag gilt."
-                            })
+                        if not alte_klassen_info:
+                             print_warning(f"Alte Klasse '{previous_class}' nicht in Klasseninformationen gefunden.")
+                        if not neue_klassen_info:
+                             print_warning(f"Neue Klasse '{new_class}' nicht in Klasseninformationen gefunden.")
 
+                        # Recipient-Logic bestimmen
+                        recipients = []
                         if class_change_recipients in ["old", "both"]:
-                            add_warning_for_class(alte_klasse_str)
-                            print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class} (Empfänger: ALTE Klasse).")
-
+                             recipients.extend([alte_klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'), alte_klassen_info.get('Klassenlehrkraft_2_Email', 'N/A')])
                         if class_change_recipients in ["new", "both"]:
-                            add_warning_for_class(neue_klasse_str)
-                            print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class} (Empfänger: NEUE Klasse).")
+                             recipients.extend([neue_klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'), neue_klassen_info.get('Klassenlehrkraft_2_Email', 'N/A')])
+                        
+                        # E-Mails "N/A" und Duplikate filtern
+                        recipients = list(set([r for r in recipients if r != 'N/A']))
+                        if not recipients: recipients = ['N/A']
+
+                        # Lehrkräfte-Texte für E-Mail vorbereiten
+                        lehrkraefte_liste_alt = f"{alte_klassen_info.get('Klassenlehrkraft_1', 'N/A')} & {alte_klassen_info.get('Klassenlehrkraft_2', 'N/A')}"
+                        lehrkraefte_liste_neu = f"{neue_klassen_info.get('Klassenlehrkraft_1', 'N/A')} & {neue_klassen_info.get('Klassenlehrkraft_2', 'N/A')}"
+                        
+                        # Ein Sammel-String für den E-Mail Body
+                        lehrkraefte_tabelle = (
+                            f"<strong>Beteiligte Lehrkräfte:</strong><br>"
+                            f"Alte Klasse ({previous_class}): {lehrkraefte_liste_alt}<br>"
+                            f"Neue Klasse ({new_class}): {lehrkraefte_liste_neu}"
+                        )
+
+                        # Warnung hinzufügen (Konsolidiert)
+                        warnings.append({
+                            'Nachname': row['Nachname'],
+                            'Vorname': row['Vorname'],
+                            'alte_klasse': previous_class,
+                            'neue_klasse': new_class,
+                            # Lehrer für die alte Klasse (für spezifische Platzhalter)
+                            'alte_Klassenlehrkraft_1': alte_klassen_info.get('Klassenlehrkraft_1', 'N/A'),
+                            'alte_Klassenlehrkraft_1_Email': alte_klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
+                            'alte_Klassenlehrkraft_2': alte_klassen_info.get('Klassenlehrkraft_2', 'N/A'),
+                            'alte_Klassenlehrkraft_2_Email': alte_klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+                            # Lehrer für die neue Klasse
+                            'neue_Klassenlehrkraft_1': neue_klassen_info.get('Klassenlehrkraft_1', 'N/A'),
+                            'neue_Klassenlehrkraft_1_Email': neue_klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
+                            'neue_Klassenlehrkraft_2': neue_klassen_info.get('Klassenlehrkraft_2', 'N/A'),
+                            'neue_Klassenlehrkraft_2_Email': neue_klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+                            # Standard-Lehrer Felder (Wiederhergestellt für Kompatibilität)
+                            'Klassenlehrkraft_1': neue_klassen_info.get('Klassenlehrkraft_1', 'N/A'),
+                            'Klassenlehrkraft_1_Email': neue_klassen_info.get('Klassenlehrkraft_1_Email', 'N/A'),
+                            'Klassenlehrkraft_2': neue_klassen_info.get('Klassenlehrkraft_2', 'N/A'),
+                            'Klassenlehrkraft_2_Email': neue_klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+                            # Neue Felder für konsolidierte Mails
+                            'anrede_global': "Kolleginnen und Kollegen" if class_change_recipients == "both" else neue_klassen_info.get('Klassenlehrkraft_1', 'N/A'),
+                            'lehrkraefte_tabelle': lehrkraefte_tabelle,
+                            'recipients_list': recipients,
+                            'Volljaehrig': students_by_id[interne_id].get('Volljährig', 'Unbekannt'),
+                            'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),
+                            'warning_message': "Klassenwechsel muss im Digitalen Klassenbuch manuell korrigiert werden, da die Änderung im System ab dem aktuellen Tag gilt."
+                        })
+                        print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class}.")
     else:
         print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
+    
+    print_info(f"Anzahl der erstellten Klassenwechsel-Warnungen: {len(warnings)}")
+    return warnings
     print_info(f"Anzahl der erstellten Klassenwechsel-Warnungen: {len(warnings)}")
     return warnings
 

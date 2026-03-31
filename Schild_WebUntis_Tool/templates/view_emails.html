@@ -85,10 +85,24 @@
 
     <script>
         document.getElementById("sendEmails")?.addEventListener("click", function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Senden...';
+            
             fetch("/send_emails", {
                 method: "POST"
-            }).then(response => response.json()).then(data => {
+            })
+            .then(response => response.json())
+            .then(data => {
                 alert(data.message);
+                btn.innerHTML = "✅ E-Mails wurden versendet";
+                btn.className = "btn btn-outline-success";
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Fehler beim Senden: " + err);
+                btn.disabled = false;
+                btn.innerHTML = "Emails Senden";
             });
         });
 
