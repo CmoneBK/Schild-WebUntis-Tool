@@ -431,8 +431,31 @@
                     <!-- Buttons am Ende, unter der row -->
                     <div class="btn-group mt-4">
                         <button type="submit" class="btn btn-primary">▶️ Verarbeiten</button>
-                        <button id="generateEmails" type="button" class="btn btn-info">✍ Emails Generieren</button>
-                        <button id="sendEmails" type="button" class="btn btn-success">📨 Emails Senden</button>
+                        <button id="validateImports" type="button" class="btn btn-secondary ml-2">🔍 Dateien prüfen</button>
+                        <button id="generateEmails" type="button" class="btn btn-info ml-2">✍ Emails Generieren</button>
+                        <button id="sendEmails" type="button" class="btn btn-success ml-2">📨 Emails Senden</button>
+                    </div>
+                    <div id="validationReportContainer" class="mt-3">
+                        {% if initial_validation %}
+                            {% for file_name, result in initial_validation.files.items() %}
+                                {% if result.status != 'success' %}
+                                    <div class="alert alert-{{ 'danger' if result.status == 'error' else 'warning' }} alert-dismissible fade show" role="alert">
+                                        <strong>{{ file_name }}:</strong> 
+                                        {% if result.message %}{{ result.message }}{% endif %}
+                                        {% if result.messages %}
+                                            <ul class="mb-0">
+                                            {% for msg in result.messages %}
+                                                <li>{{ msg }}</li>
+                                            {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
                     </div>
                 </form>
             </div>
@@ -608,6 +631,26 @@
                                 <div class="card-header bg-dark text-white">🍕 Änderungs-Arten</div>
                                 <div class="card-body d-flex align-items-center">
                                     <canvas id="chart-categories"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detaillierte Trends (Neu) -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                                    <span>📊 Änderungs-Trends (Detailverlauf)</span>
+                                    <div class="btn-group btn-group-sm">
+                                        <button id="btn-trend-monthly" class="btn btn-outline-light active">Monatlich</button>
+                                        <button id="btn-trend-weekly" class="btn btn-outline-light ml-1">Wöchentlich</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div style="height: 350px;">
+                                        <canvas id="chart-trends"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1728,10 +1771,55 @@
                         }]
                     }, { indexAxis: 'y' });
 
+                    // 4. Detail-Trends (Stacked Bar Chart)
+                    window.dashboardTrendData = data.trends;
+                    renderTrendChart('monthly');
+
                 } catch (error) {
                     console.error("Dashboard-Fehler:", error);
                 }
             }
+
+            function renderTrendChart(timeUnit) {
+                const trendData = window.dashboardTrendData?.[timeUnit];
+                if (!trendData) return;
+
+                const labels = Object.keys(trendData).sort();
+                const fields = new Set();
+                labels.forEach(unit => Object.keys(trendData[unit]).forEach(f => fields.add(f)));
+
+                // Wir nutzen die Top-Farben für die häufigsten Felder
+                const colorPalette = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#7f8c8d'];
+                
+                const datasets = Array.from(fields).map((field, index) => {
+                    return {
+                        label: field,
+                        data: labels.map(unit => trendData[unit][field] || 0),
+                        backgroundColor: colorPalette[index % colorPalette.length],
+                        stack: 'combined'
+                    };
+                });
+
+                renderChart('chart-trends', 'bar', {
+                    labels: labels,
+                    datasets: datasets
+                }, {
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12 } }
+                    }
+                });
+
+                // Button-Styles aktualisieren
+                document.getElementById('btn-trend-monthly').classList.toggle('active', timeUnit === 'monthly');
+                document.getElementById('btn-trend-weekly').classList.toggle('active', timeUnit === 'weekly');
+            }
+
+            document.getElementById('btn-trend-monthly')?.addEventListener('click', () => renderTrendChart('monthly'));
+            document.getElementById('btn-trend-weekly')?.addEventListener('click', () => renderTrendChart('weekly'));
 
             async function loadClassList() {
                 try {
@@ -2533,7 +2621,13 @@
         // Ensure class_change_recipients is submitted with the main form
         const mainForm = document.querySelector("form[method='post']");
         if (mainForm) {
-            mainForm.addEventListener("submit", function (e) {
+            mainForm.addEventListener("submit", async function (e) {
+                // If this is a re-submission after check, don't re-check
+                if (this.dataset.validated === "true") {
+                    this.dataset.validated = "false";
+                    return;
+                }
+
                 // Check for open warnings
                 const openWarnings = document.querySelectorAll("#warningsTableBody .badge-warning");
                 if (openWarnings.length > 0) {
@@ -2542,6 +2636,42 @@
                         e.preventDefault();
                         return;
                     }
+                }
+
+                // Perform a quick pre-check via API
+                e.preventDefault();
+                try {
+                    const response = await fetch('/api/validate_imports');
+                    const report = await response.json();
+                    
+                    if (!report.success) {
+                        let errorMsg = "Die Vorab-Prüfung der Dateien hat Fehler ergeben:\n";
+                        for (const [file, res] of Object.entries(report.files)) {
+                            if (res.status === 'error') {
+                                errorMsg += `- ${file}: ${res.message || res.messages[0]}\n`;
+                            }
+                        }
+                        errorMsg += "\nMöchten Sie trotz dieser Fehler verarbeiten? (Dies kann zu Fehlern führen)";
+                        if (!confirm(errorMsg)) {
+                            return;
+                        }
+                    } else {
+                        // Check for warnings even if success
+                        let hasWarnings = false;
+                        let warnMsg = "Hinweise zur Dateiprüfung:\n";
+                        for (const [file, res] of Object.entries(report.files)) {
+                            if (res.status === 'warning') {
+                                hasWarnings = true;
+                                warnMsg += `- ${file}:\n  * ${res.messages.join('\n  * ')}\n`;
+                            }
+                        }
+                        if (hasWarnings) {
+                            warnMsg += "\nMöchten Sie trotzdem fortfahren?";
+                            if (!confirm(warnMsg)) return;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Validierungsfehler:", err);
                 }
 
                 // Reset E-Mail Generation Button
@@ -2560,8 +2690,57 @@
                     hiddenInput.value = selectElem.value;
                     this.appendChild(hiddenInput);
                 }
+                
+                this.dataset.validated = "true";
+                this.submit();
             });
         }
+
+        // --- Validate Files Button Logic ---
+        document.getElementById("validateImports")?.addEventListener("click", function() {
+            const container = document.getElementById("validationReportContainer");
+            const btn = this;
+            btn.innerHTML = "⌛ Prüfe...";
+            btn.disabled = true;
+
+            fetch('/api/validate_imports')
+                .then(r => r.json())
+                .then(report => {
+                    btn.innerHTML = "🔍 Dateien prüfen";
+                    btn.disabled = false;
+                    container.innerHTML = ""; // Clear old reports
+
+                    if (report.success && Object.values(report.files).every(f => f.status === 'success')) {
+                        container.innerHTML = `<div class="alert alert-success alert-dismissible fade show">
+                            ✅ Alle Dateien erfolgreich geprüft!
+                            <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        </div>`;
+                        return;
+                    }
+
+                    for (const [fileName, result] of Object.entries(report.files)) {
+                        if (result.status !== 'success') {
+                            const alertClass = result.status === 'error' ? 'danger' : 'warning';
+                            let html = `<div class="alert alert-${alertClass} alert-dismissible fade show">
+                                <strong>${fileName}:</strong> ${result.message || ''}`;
+                            
+                            if (result.messages && result.messages.length > 0) {
+                                html += `<ul class="mb-0">`;
+                                result.messages.forEach(m => html += `<li>${m}</li>`);
+                                html += `</ul>`;
+                            }
+                            
+                            html += `<button type="button" class="close" data-dismiss="alert">&times;</button></div>`;
+                            container.innerHTML += html;
+                        }
+                    }
+                })
+                .catch(err => {
+                    btn.innerHTML = "🔍 Dateien prüfen";
+                    btn.disabled = false;
+                    alert("Fehler bei der Prüfung: " + err);
+                });
+        });
     </script>
 
 

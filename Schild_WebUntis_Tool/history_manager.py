@@ -214,12 +214,41 @@ def get_dashboard_stats():
         GROUP BY class ORDER BY count DESC LIMIT 5
     ''')
     hotspot_classes = {row['class']: row['count'] for row in cursor.fetchall()}
+
+    # 4. Trends (Monatlich & Wöchentlich nach Feld)
+    # Monatlicher Trend
+    cursor.execute('''
+        SELECT strftime('%Y-%m', timestamp) as time_unit, field, COUNT(*) as count 
+        FROM comparisons c JOIN changes ch ON c.id = ch.comparison_id 
+        GROUP BY time_unit, field ORDER BY time_unit ASC
+    ''')
+    monthly_trends = {}
+    for row in cursor.fetchall():
+        t, f, c = row['time_unit'], row['field'], row['count']
+        if t not in monthly_trends: monthly_trends[t] = {}
+        monthly_trends[t][f] = c
+        
+    # Wöchentlicher Trend
+    cursor.execute('''
+        SELECT strftime('%Y-W%W', timestamp) as time_unit, field, COUNT(*) as count 
+        FROM comparisons c JOIN changes ch ON c.id = ch.comparison_id 
+        GROUP BY time_unit, field ORDER BY time_unit ASC
+    ''')
+    weekly_trends = {}
+    for row in cursor.fetchall():
+        t, f, c = row['time_unit'], row['field'], row['count']
+        if t not in weekly_trends: weekly_trends[t] = {}
+        weekly_trends[t][f] = c
     
     conn.close()
     return {
         "monthly": monthly_changes,
         "categories": category_stats,
-        "hotspots": hotspot_classes
+        "hotspots": hotspot_classes,
+        "trends": {
+            "monthly": monthly_trends,
+            "weekly": weekly_trends
+        }
     }
 
 def get_all_classes():

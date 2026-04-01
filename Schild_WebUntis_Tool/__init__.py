@@ -37,7 +37,7 @@ import tkinter as tk  # GUI-Toolkit für die Dateiauswahl-Dialoge
 import colorama  # Ausgabe von farbigem Text in der Konsole
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
 from flask import Flask, render_template, request, jsonify, session, send_from_directory  # Flask-Webframework
-from main import run, read_students, read_classes, compare_timeframe_imports  # Funktionen aus eigenen Modulen importieren
+from main import run, read_students, read_classes, compare_timeframe_imports, validate_imports  # Funktionen aus eigenen Modulen importieren
 from smtp import send_email  # Funktion zum Versenden von E-Mails aus eigenem Modul
 from waitress import serve  # WSGI-Server zum Bereitstellen der Flask-Anwendung
 from tkinter import filedialog  # Datei- und Verzeichnisauswahl-Dialoge
@@ -656,6 +656,7 @@ def index():
         body_karteileiche=body_karteileiche,
         no_directory_change=cli_args.get("no_directory_change", False),
         enable_upload=cli_args.get("enable_upload", False),
+        initial_validation=validate_imports()
     )
 
 
@@ -1002,6 +1003,12 @@ def send_emails():
 def get_warnings():
     global warnings_cache
     return jsonify(warnings_cache)
+
+# API-Route zum Durchführen eines Vorab-Checks der Import-Dateien
+@app.route('/api/validate_imports', methods=['GET'])
+def api_validate_imports():
+    report = validate_imports()
+    return jsonify(report)
 
 # API-Route zum Prüfen, ob bereits E-Mails generiert wurden
 @app.route('/api/check_emails_status', methods=['GET'])
