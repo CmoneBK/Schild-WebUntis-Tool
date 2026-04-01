@@ -145,6 +145,30 @@
             border-color: #444;
         }
 
+        /* Toast Notification Styles */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1060;
+        }
+        .custom-toast {
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        body.dark-mode .custom-toast {
+            background: #218838;
+        }
+
         body.dark-mode .nav-tabs .nav-link.active {
             color: #fff;
             background-color: #1e1e1e;
@@ -200,8 +224,78 @@
             fill: #ddd !important;
         }
 
+        /* --- Dark Mode fix for search results --- */
+        body.dark-mode .card-header.bg-light {
+            background-color: #333 !important;
+            color: #fff !important;
+        }
+
+        .timeline-scroll {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        body.dark-mode .dark-mode-bg-dark {
+            background-color: #2c2c2c !important;
+            border-color: #444 !important;
+        }
+
+        body.dark-mode #dashboard-class-input {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        body.dark-mode #dashboard-class-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
         body.dark-mode .ql-snow .ql-picker {
             color: #ddd !important;
+        }
+
+        /* Email Editor styling */
+        .quill-editor {
+            height: 350px;
+            background-color: white;
+            color: black;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0 auto;
+            max-width: 700px;
+            border: 1px solid #ccc !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .ql-container.ql-snow {
+            border: none !important;
+        }
+        .ql-toolbar.ql-snow {
+            border: 1px solid #ccc !important;
+            border-bottom: none !important;
+            background: #f8f9fa;
+            margin: 0 auto;
+            max-width: 700px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .ql-editor p {
+            margin-bottom: 8px !important;
+            line-height: 1.5;
+        }
+        .ql-editor {
+            white-space: pre-wrap !important;
+        }
+        
+        body.dark-mode .quill-editor {
+            background-color: #ffffff; /* Editoren immer weiß lassen für echte Vorschau */
+            color: #333333;
+        }
+
+        body.dark-mode #emailEditor {
+            background-color: var(--dark-bg);
         }
 
         body.dark-mode .badge-info {
@@ -546,9 +640,70 @@
                         </div>
                     </div>
 
-                    <div class="mt-4">
-                        <button id="btn-reindex-history" class="btn btn-outline-secondary">🔄 Bestehende Logs neu indizieren</button>
-                        <button id="btn-reset-history" class="btn btn-outline-danger ml-2">🗑️ Historie zurücksetzen</button>
+                    <!-- Klassenspezifische Details -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                                    <span>📈 Klassenspezifische Details</span>
+                                    <div class="w-25">
+                                        <input type="text" id="dashboard-class-input" class="form-control form-control-sm border-white" placeholder="Klasse suchen..." list="class-datalist">
+                                        <datalist id="class-datalist"></datalist>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="class-stats-placeholder" class="text-center py-5">
+                                        <p class="text-muted">Bitte wählen Sie eine Klasse aus, um detaillierte Auswertungen zu sehen.</p>
+                                    </div>
+                                    <div id="class-stats-content" style="display: none;">
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <h6>Änderungs-Arten</h6>
+                                                <div style="height: 250px;">
+                                                    <canvas id="chart-class-categories"></canvas>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <h6>Änderungs-Timeline (Klasse)</h6>
+                                                    <div>
+                                                        <button class="btn btn-sm btn-outline-secondary" onclick="copyClassTimeline()">📋 Kopieren</button>
+                                                        <button class="btn btn-sm btn-outline-success ml-1" onclick="exportClassTimeline()">📊 Excel</button>
+                                                    </div>
+                                                </div>
+                                                <div class="timeline-scroll border rounded p-2 bg-light dark-mode-bg-dark">
+                                                    <table class="table table-sm table-striped mb-0" style="font-size: 0.85rem;">
+                                                        <thead class="thead-dark">
+                                                            <tr>
+                                                                <th>Datum</th>
+                                                                <th>Schüler</th>
+                                                                <th>Feld</th>
+                                                                <th>Änderung</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="class-history-table-body">
+                                                            <!-- Wird per JS gefüllt -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4 border-danger mt-4">
+                        <div class="card-header bg-danger text-white">⚙️ Datenbank-Verwaltung</div>
+                        <div class="card-body">
+                            <p class="text-muted small">Verwenden Sie diese Optionen, um die Historien-Datenbank zu pflegen oder für ein neues Schuljahr zurückzusetzen.</p>
+                            <div class="d-flex flex-wrap">
+                                <button class="btn btn-info m-1" onclick="syncClasses()">📋 Klassen-Daten synchronisieren</button>
+                                <button id="btn-reindex-history" class="btn btn-warning m-1">🔄 Bestehende Logs neu indizieren</button>
+                                <button id="btn-reset-history" class="btn btn-danger m-1">⚠️ Historie löschen (Reset)</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1107,7 +1262,10 @@
                                 name="subject_entlassdatum">
                         </div>
                         <div class="form-group">
-                            <label for="bodyEntlassdatum">📜 Nachricht:</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="mb-0" for="bodyEntlassdatum">📜 Nachricht:</label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetTemplate('entlassdatum')">🔄 Standard-Vorlage laden</button>
+                            </div>
                             <div id="editorBodyEntlassdatum" class="quill-editor"></div>
                             <textarea id="bodyEntlassdatum" name="body_entlassdatum"
                                 class="form-control d-none"></textarea>
@@ -1123,7 +1281,10 @@
                                 name="subject_aufnahmedatum">
                         </div>
                         <div class="form-group">
-                            <label for="bodyAufnahmedatum">📜 Nachricht:</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="mb-0" for="bodyAufnahmedatum">📜 Nachricht:</label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetTemplate('aufnahmedatum')">🔄 Standard-Vorlage laden</button>
+                            </div>
                             <div id="editorBodyAufnahmedatum" class="quill-editor"></div>
                             <textarea id="bodyAufnahmedatum" name="body_aufnahmedatum"
                                 class="form-control d-none"></textarea>
@@ -1139,7 +1300,10 @@
                                 name="subject_klassenwechsel">
                         </div>
                         <div class="form-group">
-                            <label for="bodyKlassenwechsel">📜 Nachricht:</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="mb-0" for="bodyKlassenwechsel">📜 Nachricht:</label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetTemplate('klassenwechsel')">🔄 Standard-Vorlage laden</button>
+                            </div>
                             <div class="alert alert-light border mb-2" style="font-size: 0.8rem;">
                                 💡 <strong>Optimierung für kombinierte Mails:</strong><br>
                                 Nutzen Sie <code>$anrede_global</code> für eine passende Anrede ("Kolleginnen und Kollegen") und <code>$lehrkraefte_tabelle</code> um alle beteiligten Lehrkräfte beider Klassen aufzulisten.
@@ -1158,7 +1322,10 @@
                             <input type="text" class="form-control" id="subjectNewStudent" name="subject_new_student">
                         </div>
                         <div class="form-group">
-                            <label for="bodyNewStudent">📜 Nachricht:</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="mb-0" for="bodyNewStudent">📜 Nachricht:</label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetTemplate('new_student')">🔄 Standard-Vorlage laden</button>
+                            </div>
                             <div id="editorBodyNewStudent" class="quill-editor"></div>
                             <textarea id="bodyNewStudent" name="body_new_student"
                                 class="form-control d-none"></textarea>
@@ -1174,7 +1341,10 @@
                                 name="subject_karteileiche">
                         </div>
                         <div class="form-group">
-                            <label for="bodyKarteileiche">📜 Nachricht:</label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="mb-0" for="bodyKarteileiche">📜 Nachricht:</label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetTemplate('karteileiche')">🔄 Standard-Vorlage laden</button>
+                            </div>
                             <div id="editorBodyKarteileiche" class="quill-editor"></div>
                             <textarea id="bodyKarteileiche" name="body_karteileiche"
                                 class="form-control d-none"></textarea>
@@ -1508,6 +1678,7 @@
                     togglePanel("dashboardPanel");
                     if (panels.dashboardPanel.style.display === "block") {
                         loadDashboardData();
+                        loadClassList();
                     }
                 });
             }
@@ -1562,6 +1733,74 @@
                 }
             }
 
+            async function loadClassList() {
+                try {
+                    const response = await fetch("/api/history/classes");
+                    const classes = await response.json();
+                    const datalist = document.getElementById("class-datalist");
+                    
+                    datalist.innerHTML = '';
+                    classes.forEach(cls => {
+                        const opt = document.createElement("option");
+                        opt.value = cls;
+                        datalist.appendChild(opt);
+                    });
+                    
+                    // Speichere die Liste für Validierung
+                    window.availableClasses = classes;
+                } catch (err) {
+                    console.error("Fehler beim Laden der Klassenliste:", err);
+                }
+            }
+
+            document.getElementById("dashboard-class-input").addEventListener("input", function() {
+                const className = this.value;
+                // Prüfen ob es eine gültige Klasse aus der Liste ist
+                if (window.availableClasses && window.availableClasses.includes(className)) {
+                    loadClassStats(className);
+                } else if (!className) {
+                    document.getElementById("class-stats-placeholder").style.display = "block";
+                    document.getElementById("class-stats-content").style.display = "none";
+                }
+            });
+
+            async function loadClassStats(className) {
+                try {
+                    const response = await fetch(`/api/history/class_stats/${encodeURIComponent(className)}`);
+                    const data = await response.json();
+                    
+                    document.getElementById("class-stats-placeholder").style.display = "none";
+                    document.getElementById("class-stats-content").style.display = "block";
+                    
+                    // Chart für Klassenkategorien
+                    renderChart('chart-class-categories', 'doughnut', {
+                        labels: Object.keys(data.categories),
+                        datasets: [{
+                            data: Object.values(data.categories),
+                            backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#1abc9c', '#9b59b6']
+                        }]
+                    }, { plugins: { legend: { position: 'bottom' } } });
+                    
+                    // Table für Klassen-Timeline
+                    const tableBody = document.getElementById("class-history-table-body");
+                    tableBody.innerHTML = data.timeline.map(t => `
+                        <tr>
+                            <td class="text-nowrap">${t.timestamp}</td>
+                            <td><strong>${t.name}</strong></td>
+                            <td>${t.field}</td>
+                            <td><span class="text-danger">${t.old_value}</span> ➡️ <span class="text-success">${t.new_value}</span></td>
+                        </tr>
+                    `).join('');
+                    
+                    // Markierung für Kopierfunktion
+                    window.currentClassTimeline = data.timeline;
+                    window.currentClassName = className;
+                    
+                } catch (err) {
+                    console.error("Fehler beim Laden der Klassenstats:", err);
+                }
+            }
+
             function renderChart(canvasId, type, data, options = {}) {
                 const ctx = document.getElementById(canvasId).getContext('2d');
                 if (charts[canvasId]) charts[canvasId].destroy();
@@ -1600,7 +1839,13 @@
                 data.forEach(item => {
                     html += `
                         <div class="card mb-3 shadow-sm border-left-info">
-                            <div class="card-header bg-light"><strong>${item.student.name}</strong> (ID: ${item.student.id})</div>
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <span><strong>${item.student.name}</strong> (ID: ${item.student.id})</span>
+                                <div>
+                                    <button class="btn btn-xs btn-outline-secondary py-0" style="font-size: 0.7rem;" onclick="copyStudentTimeline('${item.student.id}')">📋 Kopieren</button>
+                                    <button class="btn btn-xs btn-outline-success py-0 ml-1" style="font-size: 0.7rem;" onclick="exportStudentTimeline('${item.student.id}')">📊 Excel</button>
+                                </div>
+                            </div>
                             <div class="card-body p-2">
                                 <table class="table table-sm mb-0" style="font-size: 0.85rem;">
                                     <thead><tr><th>Datum</th><th>Feld</th><th>Änderung</th></tr></thead>
@@ -1619,9 +1864,83 @@
                     `;
                 });
                 resultsDiv.innerHTML = html;
+                window.lastStudentSearchResults = data;
+            }
+
+            // Export Hilfsfunktionen
+            window.copyClassTimeline = function() {
+                if (!window.currentClassTimeline) return;
+                let text = "Datum\tName\tID\tFeld\tAlt\tNeu\n";
+                window.currentClassTimeline.forEach(t => {
+                    text += `${t.timestamp}\t${t.name}\t${t.student_id}\t${t.field}\t${t.old_value}\t${t.new_value}\n`;
+                });
+                navigator.clipboard.writeText(text);
+                showToast("Klassen-Historie in Zwischenablage kopiert.");
+            };
+
+            window.exportClassTimeline = function() {
+                if (!window.currentClassName) return;
+                window.location.href = `/api/history/export/excel?type=class&id=${encodeURIComponent(window.currentClassName)}`;
+            };
+
+            window.copyStudentTimeline = function(studentId) {
+                const item = window.lastStudentSearchResults.find(i => i.student.id === studentId);
+                if (!item) return;
+                let text = "Datum\tFeld\tAlt\tNeu\tQuelle\n";
+                item.timeline.forEach(t => {
+                    text += `${t.timestamp}\t${t.field}\t${t.old_value}\t${t.new_value}\t${t.file_b}\n`;
+                });
+                navigator.clipboard.writeText(text);
+                showToast(`Historie von ${item.student.name} kopiert.`);
+            };
+
+            window.exportStudentTimeline = function(studentId) {
+                window.location.href = `/api/history/export/excel?type=student&id=${encodeURIComponent(studentId)}`;
+            };
+
+            function showToast(msg) {
+                // Einfache Alert-Alternative für Feedback
+                const toast = document.createElement("div");
+                toast.style.position = "fixed";
+                toast.style.bottom = "20px";
+                toast.style.right = "20px";
+                toast.style.backgroundColor = "#333";
+                toast.style.color = "#fff";
+                toast.style.padding = "10px 20px";
+                toast.style.borderRadius = "5px";
+                toast.style.zIndex = "9999";
+                toast.innerText = msg;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
             }
 
             // DB Management Buttons
+            window.clearHistory = async function() {
+                if (!confirm("Möchten Sie wirklich die gesamte Historie löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.")) return;
+                try {
+                    const response = await fetch("/api/history/clear", { method: 'POST' });
+                    const res = await response.json();
+                    if (res.success) {
+                        showToast("Historie erfolgreich gelöscht.");
+                        location.reload();
+                    }
+                } catch (err) { alert("Fehler beim Löschen."); }
+            };
+
+            window.syncClasses = async function() {
+                try {
+                    showToast("Synchronisiere Klassen-Daten...");
+                    const response = await fetch("/api/history/sync", { method: 'POST' });
+                    const res = await response.json();
+                    if (res.success) {
+                        showToast(res.message);
+                        loadClassList(); // Liste im Dashboard aktualisieren
+                    } else {
+                        alert(res.message);
+                    }
+                } catch (err) { alert("Fehler bei der Synchronisierung."); }
+            };
+
             document.getElementById("btn-reindex-history").addEventListener("click", async () => {
                 const btn = document.getElementById("btn-reindex-history");
                 btn.disabled = true;
@@ -1712,12 +2031,84 @@
 
         document.addEventListener("DOMContentLoaded", function () {
             // Initialisiere WYSIWYG-Editoren
-            const editorOptions = { theme: 'snow' };
-            const editorBodyEntlassdatum = new Quill('#editorBodyEntlassdatum', { theme: 'snow' });
-            const editorBodyAufnahmedatum = new Quill('#editorBodyAufnahmedatum', { theme: 'snow' });
-            const editorBodyKlassenwechsel = new Quill('#editorBodyKlassenwechsel', { theme: 'snow' });
-            const editorBodyNewStudent = new Quill('#editorBodyNewStudent', { theme: 'snow' });
-            const editorBodyKarteileiche = new Quill('#editorBodyKarteileiche', { theme: 'snow' });
+            // Register style attributor for inline styles (compatible with emails)
+            const AlignStyle = Quill.import('attributors/style/align');
+            Quill.register(AlignStyle, true);
+
+            const quillOptions = {
+                theme: 'snow',
+                modules: {
+                    clipboard: {
+                        matchers: [
+                            ['BR', (node, delta) => {
+                                return delta.insert('\n');
+                            }]
+                        ]
+                    }
+                }
+            };
+
+            const editorBodyEntlassdatum = new Quill('#editorBodyEntlassdatum', quillOptions);
+            const editorBodyAufnahmedatum = new Quill('#editorBodyAufnahmedatum', quillOptions);
+            const editorBodyKlassenwechsel = new Quill('#editorBodyKlassenwechsel', quillOptions);
+            const editorBodyNewStudent = new Quill('#editorBodyNewStudent', quillOptions);
+            const editorBodyKarteileiche = new Quill('#editorBodyKarteileiche', quillOptions);
+
+            // Store editors in a global map for access
+            window.editors = {
+                'entlassdatum': editorBodyEntlassdatum,
+                'aufnahmedatum': editorBodyAufnahmedatum,
+                'klassenwechsel': editorBodyKlassenwechsel,
+                'new_student': editorBodyNewStudent,
+                'karteileiche': editorBodyKarteileiche
+            };
+            
+            // Toast Notification System
+            window.showToast = function(message) {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                toast.className = 'custom-toast';
+                toast.textContent = message;
+                container.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transition = 'opacity 0.5s ease-out';
+                    setTimeout(() => toast.remove(), 500);
+                }, 3000);
+            };
+
+            // Helfer: Text in HTML-Absätze konvertieren
+            function textToHtml(text) {
+                if (!text) return "";
+                // Wir konvertieren \r\n und \n zwingend in <br>, um Zeilenumbrüche sichtbar zu machen
+                // Auch wenn bereits Tags wie <strong> vorhanden sind.
+                let html = text.replace(/\n/g, "<br>");
+                // Falls bereits <p> enthalten ist, lassen wir es so, fügen aber die <br> hinzu
+                return html;
+            }
+
+            window.resetTemplate = async function(type) {
+                if (!confirm("Soll diese Vorlage wirklich auf den Standard zurückgesetzt werden?")) return;
+                try {
+                    const response = await fetch(`/api/templates/default/${type}`);
+                    const data = await response.json();
+                    if (data.subject && data.body) {
+                        const subjectInputId = {
+                            'entlassdatum': 'subjectEntlassdatum',
+                            'aufnahmedatum': 'subjectAufnahmedatum',
+                            'klassenwechsel': 'subjectKlassenwechsel',
+                            'new_student': 'subjectNewStudent',
+                            'karteileiche': 'subjectKarteileiche'
+                        }[type];
+                        document.getElementById(subjectInputId).value = data.subject || "";
+                        window.editors[type].root.innerHTML = textToHtml(data.body || "");
+                        showToast("Standard-Vorlage geladen.");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Fehler beim Laden der Standard-Vorlage.");
+                }
+            };
 
             // Load templates dynamically
             fetch("/get_templates")
@@ -1729,13 +2120,13 @@
                     document.getElementById("subjectKlassenwechsel").value = data.subject_klassenwechsel || "";
                     document.getElementById("subjectNewStudent").value = data.subject_new_student || "";
                     document.getElementById("subjectKarteileiche").value = data.subject_karteileiche || "";
-
-                    // Populate body fields in Quill editors
-                    editorBodyEntlassdatum.root.innerHTML = data.body_entlassdatum || "";
-                    editorBodyAufnahmedatum.root.innerHTML = data.body_aufnahmedatum || "";
-                    editorBodyKlassenwechsel.root.innerHTML = data.body_klassenwechsel || "";
-                    editorBodyNewStudent.root.innerHTML = data.body_new_student || "";
-                    editorBodyKarteileiche.root.innerHTML = data.body_karteileiche || "";
+                    
+                    // Populate body fields in Quill editors with auto-conversion
+                    editorBodyEntlassdatum.root.innerHTML = textToHtml(data.body_entlassdatum || "");
+                    editorBodyAufnahmedatum.root.innerHTML = textToHtml(data.body_aufnahmedatum || "");
+                    editorBodyKlassenwechsel.root.innerHTML = textToHtml(data.body_klassenwechsel || "");
+                    editorBodyNewStudent.root.innerHTML = textToHtml(data.body_new_student || "");
+                    editorBodyKarteileiche.root.innerHTML = textToHtml(data.body_karteileiche || "");
                     
                     // Show/Hide class change hint based on initial value
                     const classChangeSelect = document.getElementById("class_change_recipients");
@@ -1797,8 +2188,9 @@
                     emailTabs.forEach(t => t.classList.remove("active"));
                     tab.classList.add("active");
 
-                    // Content-Panels wechseln
-                    const allPanels = document.querySelectorAll(".tab-content > .tab-pane");
+                    // Content-Panels wechseln (Scoped to email editor)
+                    const tabContainer = document.querySelector('#emailEditor .tab-content');
+                    const allPanels = tabContainer.querySelectorAll(".tab-pane");
                     allPanels.forEach(panel => panel.classList.remove("show", "active"));
                     const targetPanel = document.querySelector(tab.getAttribute("href"));
                     if (targetPanel) {
@@ -2142,6 +2534,16 @@
         const mainForm = document.querySelector("form[method='post']");
         if (mainForm) {
             mainForm.addEventListener("submit", function (e) {
+                // Check for open warnings
+                const openWarnings = document.querySelectorAll("#warningsTableBody .badge-warning");
+                if (openWarnings.length > 0) {
+                    const message = "Es sind noch offene (nicht versendete) Warnungen vorhanden. Wenn Sie nun neu verarbeiten, werden diese Warnungen überschrieben und tauchen nicht mehr auf. Möchten Sie trotzdem fortfahren?";
+                    if (!confirm(message)) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+
                 // Reset E-Mail Generation Button
                 const generateEmailsBtn = document.getElementById("generateEmails");
                 if (generateEmailsBtn) {
@@ -2573,6 +2975,8 @@
         // Poll every 3 seconds while the page is open
         setInterval(refreshWarningStatuses, 3000);
     </script>
+    <!-- Toast Container for Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
 </body>
 
 </html>

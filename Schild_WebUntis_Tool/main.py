@@ -82,6 +82,9 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     classes_by_name = read_classes(classes_dir, teachers_dir)
     output_data_students, students_by_id = read_students(use_abschlussdatum)
 
+    # Historische Klassen-Zuordnung synchronisieren
+    sync_student_classes_from_latest()
+
     # Warnungen erstellen basierend auf der Benutzerauswahl
     if warn_entlassdatum:
         warnings = create_warnings(classes_by_name, students_by_id)
@@ -127,6 +130,43 @@ def get_directory(key, default=None):
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', key, fallback=default)
+
+def sync_student_classes_from_latest():
+    """Liest den neuesten Schild-Export und aktualisiert Namen und Klassen in der Historien-DB."""
+    print_info("Synchronisiere Schüler-Klassen-Mapping mit der Historien-Datenbank...")
+    try:
+        # 1. Neuesten Import finden (WebUntis Importe Verzeichnis)
+        import_dir = get_directory('import_directory', './WebUntis Importe')
+        if not os.path.exists(import_dir):
+            print_warning(f"Verzeichnis {import_dir} existiert nicht.")
+            return False
+
+        output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+        if not output_files:
+            print_warning("Keine Importdatei zur Synchronisierung gefunden.")
+            return False
+            
+        newest_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
+        full_path = os.path.join(import_dir, newest_file)
+        data = read_csv(full_path)
+        
+        # 2. Mapping erstellen
+        student_list = []
+        for student_id, row in data.items():
+            student_list.append({
+                'id': student_id,
+                'name': f"{row.get('Vorname', '')} {row.get('Nachname', '')}",
+                'class': row.get('Klasse', '')
+            })
+            
+        # 3. Bulk Update in history_manager
+        if student_list:
+            history_manager.bulk_update_students(student_list)
+            print_success(f"{len(student_list)} Schüler erfolgreich mit der Historie synchronisiert.")
+            return True
+    except Exception as e:
+        print_error(f"Fehler bei der Klassen-Synchronisierung: {e}")
+    return False
 
 
 def read_csv(file_path):
@@ -213,7 +253,13 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
                 change_details[field] = {"old": old_value, "new": new_value}
 
         if row_changed:
-            changes.append({"student_id": student_id, "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}", "changes": change_details, "row": updated_row})
+            changes.append({
+                "student_id": student_id,
+                "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}",
+                "current_class": latest_student.get('Klasse', ''),
+                "changes": change_details,
+                "row": updated_row
+            })
     if not changes:
         print_warning("Keine Änderungen zwischen den Dateien festgestellt. Abbruch der Log-Erstellung.")
         print_warningtext("Prüfen Sie, ob Sie die selbe Schild-Export Datei zwei mal verarbeitet haben.")
@@ -232,7 +278,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
         print_creation(f"Erstelle Log-Datei: {log_file_path}")
         with open(log_file_path, 'w', encoding='utf-8') as log_file:
             for change in changes:
-                log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']})\n")
+                log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']}) [Klasse: {change['current_class']}]\n")
                 for field, values in change['changes'].items():
                     log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
                 log_file.write("\n")
@@ -369,7 +415,13 @@ def compare_timeframe_imports(timeframe_hours=24):
                 change_details[field] = {"old": old_value, "new": new_value}
 
         if row_changed:
-            changes.append({"student_id": student_id, "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}", "changes": change_details, "row": updated_row})
+            changes.append({
+                "student_id": student_id,
+                "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}",
+                "current_class": latest_student.get('Klasse', ''),
+                "changes": change_details,
+                "row": updated_row
+            })
 
     if not changes:
         print_warning("Keine Änderungen festgestellt.")
