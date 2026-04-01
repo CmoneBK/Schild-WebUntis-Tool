@@ -42,6 +42,163 @@ def print_info(message):
 def print_creation(message):
     thread_safe_print(Fore.WHITE, f"✨ {message}")
 
+# --- Validierungskonstanten ---
+SCHILD_REQUIRED_COLUMNS = [
+    'Interne ID-Nummer', 'Nachname', 'Vorname', 'Klasse', 'Klassenlehrer', 
+    'Geburtsdatum', 'Geschlecht', 'vorauss. Abschlussdatum', 'Aufnahmedatum', 
+    'Entlassdatum', 'Volljährig', 'Schulpflicht erfüllt', 'Status'
+]
+SCHILD_OPTIONAL_COLUMNS = {
+    'E-Mail (privat)': 'E-Mail-Korrespondenz mit Schülern über WebUntis nicht möglich.',
+    'Telefon-Nr.': 'Notfall-Kontaktdaten (Telefon) fehlen in WebUntis.',
+    'Fax-Nr.': 'Faxnummern fehlen in WebUntis.',
+    'Straße': 'Adressdaten (Straße) der Schüler fehlen in WebUntis.',
+    'Postleitzahl': 'Adressdaten (PLZ) der Schüler fehlen in WebUntis.',
+    'Ortsname': 'Adressdaten (Ort) der Schüler fehlen in WebUntis.'
+}
+
+TEACHER_REQUIRED_COLUMNS = [
+    'name', 'longName', 'foreName', 'title', 'birthDate', 'pnr', 
+    'address.email', 'address.phone', 'address.mobile', 'address.street', 
+    'address.postCode', 'address.city'
+]
+
+CLASS_REQUIRED_COLUMNS = [
+    'Auswahl', '', 'Klasse', 'Langname', 'Alias', 'Jahrgangsstufe', 
+    'Text', 'Klassenlehrkraft', 'Klassenlehrkraft', 'Abteilung', 'Von', 'Bis'
+]
+
+def validate_imports():
+    """
+    Führt einen Vorab-Check aller benötigten Export-Dateien durch.
+    Gibt einen Report über fehlende Dateien oder Spalten zurück.
+    """
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    
+    report = {
+        "success": True,
+        "files": {}
+    }
+
+    # 1. Schild-Export prüfen
+    schild_dir = config.get('Directories', 'schildexport_directory', fallback='.')
+    if schild_dir in ('.', '', None): schild_dir = os.getcwd()
+    
+    schild_files = [f for f in os.listdir(schild_dir) if f.endswith('.csv')]
+    if not schild_files:
+        report["files"]["Schild-Export"] = {"status": "error", "message": "Keine CSV-Datei im Schild-Export Verzeichnis gefunden."}
+        report["success"] = False
+    else:
+        newest_schild = max(schild_files, key=lambda f: os.path.getctime(os.path.join(schild_dir, f)))
+        file_path = os.path.join(schild_dir, newest_schild)
+        try:
+            with open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
+                # Erstes Zeichen prüfen für Separator-Check
+                first_line = f.readline()
+                f.seek(0)
+                
+                separator = ';'
+                if ';' not in first_line and ',' in first_line:
+                    report["files"]["Schild-Export"] = {"status": "error", "message": f"Falscher Separator in '{newest_schild}'. Erwartet: ';', gefunden: ','"}
+                    report["success"] = False
+                else:
+                    reader = csv.DictReader(f, delimiter=';')
+                    headers = reader.fieldnames or []
+                    
+                    missing_req = [col for col in SCHILD_REQUIRED_COLUMNS if col not in headers]
+                    missing_opt = [col for col in SCHILD_OPTIONAL_COLUMNS if col not in headers]
+                    
+                    file_status = "success"
+                    messages = []
+                    
+                    if missing_req:
+                        file_status = "error"
+                        messages.append(f"Erforderliche Spalten fehlen: {', '.join(missing_req)}")
+                        report["success"] = False
+                    
+                    if missing_opt:
+                        if file_status != "error": file_status = "warning"
+                        for col in missing_opt:
+                            messages.append(f"Info (Optional): Spalte '{col}' fehlt. ({SCHILD_OPTIONAL_COLUMNS[col]})")
+                    
+                    report["files"]["Schild-Export"] = {
+                        "status": file_status, 
+                        "file": newest_schild,
+                        "messages": messages
+                    }
+        except Exception as e:
+            report["files"]["Schild-Export"] = {"status": "error", "message": f"Fehler beim Lesen: {str(e)}"}
+            report["success"] = False
+
+    # 2. Lehrer-Daten prüfen
+    teachers_dir = config.get('Directories', 'teachers_directory', fallback='./Lehrerdaten')
+    if not os.path.exists(teachers_dir):
+        report["files"]["Lehrer-Daten"] = {"status": "error", "message": f"Verzeichnis '{teachers_dir}' nicht gefunden."}
+        report["success"] = False
+    else:
+        teacher_files = [f for f in os.listdir(teachers_dir) if f.endswith('.csv')]
+        if not teacher_files:
+            report["files"]["Lehrer-Daten"] = {"status": "error", "message": "Keine CSV-Datei im Lehrerdatenverzeichnis gefunden."}
+            report["success"] = False
+        else:
+            newest_teacher = max(teacher_files, key=lambda f: os.path.getctime(os.path.join(teachers_dir, f)))
+            file_path = os.path.join(teachers_dir, newest_teacher)
+            try:
+                with open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
+                    reader = csv.DictReader(f, delimiter='\t')
+                    headers = reader.fieldnames or []
+                    missing = [col for col in TEACHER_REQUIRED_COLUMNS if col not in headers]
+                    
+                    if missing:
+                        report["files"]["Lehrer-Daten"] = {"status": "error", "file": newest_teacher, "message": f"Erforderliche Spalten fehlen (Tab-Trenner prüfen!): {', '.join(missing)}"}
+                        report["success"] = False
+                    else:
+                        report["files"]["Lehrer-Daten"] = {"status": "success", "file": newest_teacher}
+            except Exception as e:
+                report["files"]["Lehrer-Daten"] = {"status": "error", "message": f"Fehler beim Lesen: {str(e)}"}
+                report["success"] = False
+
+    # 3. Klassen-Daten prüfen
+    classes_dir = config.get('Directories', 'classes_directory', fallback='./Klassendaten')
+    if not os.path.exists(classes_dir):
+        report["files"]["Klassen-Daten"] = {"status": "error", "message": f"Verzeichnis '{classes_dir}' nicht gefunden."}
+        report["success"] = False
+    else:
+        class_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
+        if not class_files:
+            report["files"]["Klassen-Daten"] = {"status": "error", "message": "Keine CSV-Datei im Klassendatenverzeichnis gefunden."}
+            report["success"] = False
+        else:
+            newest_class = max(class_files, key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))
+            file_path = os.path.join(classes_dir, newest_class)
+            try:
+                with open(file_path, 'r', encoding='utf-8-sig', newline='') as f:
+                    reader = csv.reader(f, delimiter=';')
+                    headers = next(reader, [])
+                    
+                    # Klassen-Export hat oft exakte Spaltenreihenfolge
+                    if len(headers) < len(CLASS_REQUIRED_COLUMNS):
+                        report["files"]["Klassen-Daten"] = {"status": "error", "file": newest_class, "message": f"Zu wenige Spalten gefunden ({len(headers)} statt {len(CLASS_REQUIRED_COLUMNS)})."}
+                        report["success"] = False
+                    else:
+                        # Wir prüfen die ersten 12 Spalten
+                        # Die 2. Spalte ist oft ein leerer String oder '[eine Leere Spalte]' im README
+                        # Wir prüfen hier eher die Existenz kritischer Spalten wie 'Klasse', 'Langname', 'Klassenlehrkraft'
+                        critical_checks = {2: 'Klasse', 3: 'Langname', 7: 'Klassenlehrkraft'}
+                        missing_crit = [v for k, v in critical_checks.items() if len(headers) <= k or headers[k] != v]
+                        
+                        if missing_crit:
+                            report["files"]["Klassen-Daten"] = {"status": "error", "file": newest_class, "message": f"Kritische Spaltennamen falsch oder an falscher Position: {', '.join(missing_crit)}"}
+                            report["success"] = False
+                        else:
+                            report["files"]["Klassen-Daten"] = {"status": "success", "file": newest_class}
+            except Exception as e:
+                report["files"]["Klassen-Daten"] = {"status": "error", "message": f"Fehler beim Lesen: {str(e)}"}
+                report["success"] = False
+
+    return report
+
 def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht_column=False, create_class_size_file=False, disable_import_file_creation=False, disable_import_file_if_admin_warning=False, warn_entlassdatum=True, warn_aufnahmedatum=True, warn_klassenwechsel=True, warn_new_students=True, warn_karteileichen=False, class_change_recipients="both", no_log=False, no_xlsx=False, admin_warnings_cache=None, enable_nachteilsausgleich_column=False):
     if admin_warnings_cache is None:
         admin_warnings_cache = []
