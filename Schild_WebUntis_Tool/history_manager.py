@@ -80,11 +80,12 @@ def record_changes(changes_list, timestamp=None, file_a="N/A", file_b="N/A"):
                     INSERT INTO changes (comparison_id, student_id, field, old_value, new_value)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (comp_id, student_id, field, values['old'], values['new']))
-                
-                # Wenn es ein Klassenwechsel ist, die last_known_class beim Studenten aktualisieren
-                if field == 'Klasse':
-                    cursor.execute('UPDATE students SET last_known_class = ? WHERE id = ?', 
-                                   (values['new'], student_id))
+            
+            # Unabhängig von einer Änderung im Feld 'Klasse', die last_known_class aktualisieren
+            current_class = change.get('current_class')
+            if current_class:
+                cursor.execute('UPDATE students SET last_known_class = ? WHERE id = ?', 
+                               (current_class, student_id))
         
         conn.commit()
     except Exception as e:
@@ -92,6 +93,33 @@ def record_changes(changes_list, timestamp=None, file_a="N/A", file_b="N/A"):
         print(f"Fehler beim Speichern der Historie: {e}")
     finally:
         if conn: conn.close()
+
+def update_student_info(student_id, name, class_name):
+    """Aktualisiert die Basisdaten eines Schülers (Name & Klasse)."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO students (id, name, last_known_class) VALUES (?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET name=excluded.name, last_known_class=excluded.last_known_class
+    ''', (student_id, name, class_name))
+    conn.commit()
+    conn.close()
+
+def bulk_update_students(student_list):
+    """Aktualisiert eine Liste von Schülern in einer Transaktion."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.executemany('''
+            INSERT INTO students (id, name, last_known_class) VALUES (?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET name=excluded.name, last_known_class=excluded.last_known_class
+        ''', [(s['id'], s['name'], s['class']) for s in student_list])
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(f"Fehler beim Bulk-Update: {e}")
+    finally:
+        conn.close()
 
 import re
 def reindex_logs(log_dir):
@@ -119,13 +147,14 @@ def reindex_logs(log_dir):
             for block in student_blocks:
                 if not block.strip(): continue
                 lines = block.split('\n')
-                # Erste Zeile enthält Name und ID: "Name (ID: 123)"
+                # Erweiterte Suche nach Name, ID und optionaler Klasse: "Name (ID: 123) [Klasse: 5a]"
                 header = lines[0]
-                match_header = re.search(r'(.*) \(ID: (.*)\)', header)
+                match_header = re.search(r'(.*) \(ID: (.*)\)(?: \[Klasse: (.*)\])?', header)
                 if not match_header: continue
                 
                 name = match_header.group(1).strip()
                 student_id = match_header.group(2).strip()
+                current_class = match_header.group(3).strip() if match_header.group(3) else None
                 
                 student_changes = {}
                 for line in lines[1:]:
@@ -142,6 +171,7 @@ def reindex_logs(log_dir):
                     changes_for_db.append({
                         "student_id": student_id,
                         "name": name,
+                        "current_class": current_class,
                         "changes": student_changes
                     })
             
@@ -190,6 +220,52 @@ def get_dashboard_stats():
         "monthly": monthly_changes,
         "categories": category_stats,
         "hotspots": hotspot_classes
+    }
+
+def get_all_classes():
+    """Gibt eine Liste aller Klassen zurück, die in der Historie vorkommen."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT DISTINCT last_known_class FROM students 
+        WHERE last_known_class IS NOT NULL AND last_known_class != '' 
+        ORDER BY last_known_class ASC
+    ''')
+    classes = [row['last_known_class'] for row in cursor.fetchall()]
+    conn.close()
+    return classes
+
+def get_class_analytics(class_name):
+    """Gibt detaillierte Statistiken und die Historie für eine bestimmte Klasse zurück."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # 1. Kategorien-Verteilung für diese Klasse
+    cursor.execute('''
+        SELECT field, COUNT(*) as count 
+        FROM changes ch
+        JOIN students s ON ch.student_id = s.id
+        WHERE s.last_known_class = ?
+        GROUP BY field ORDER BY count DESC
+    ''', (class_name,))
+    categories = {row['field']: row['count'] for row in cursor.fetchall()}
+    
+    # 2. Zeitstrahl aller Änderungen in dieser Klasse
+    cursor.execute('''
+        SELECT c.timestamp, s.name, ch.field, ch.old_value, ch.new_value, s.id as student_id
+        FROM changes ch
+        JOIN comparisons c ON ch.comparison_id = c.id
+        JOIN students s ON ch.student_id = s.id
+        WHERE s.last_known_class = ?
+        ORDER BY c.timestamp DESC
+        LIMIT 100
+    ''', (class_name,))
+    timeline = [dict(row) for row in cursor.fetchall()]
+    
+    conn.close()
+    return {
+        "categories": categories,
+        "timeline": timeline
     }
 
 def search_student_history(query):

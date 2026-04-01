@@ -168,6 +168,30 @@ def process_data(no_log=False, no_xlsx=False):
     print_success("Verarbeitung über die Konsole abgeschlossen.")
     return all_warnings
 
+# Standard-Vorlagen für E-Mails
+DEFAULT_TEMPLATES = {
+    "entlassdatum": {
+        "subject": "Webuntis-Hinweis: Entlassdatum-Problem bei $Vorname $Nachname",
+        "body": "<p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Es gibt ein Problem mit dem Entlassdatum des Schülers/der Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong>.</p><p></p><p><strong>Neues Entlassdatum:</strong> $neues_entlassdatum</p><p><strong>Altes Entlassdatum:</strong> $altes_entlassdatum</p><p></p><p>$zeitraum_text</p><p></p><p>In dieser Zeit war der Schüler/die Schülerin nun offiziel teil der Klasse, jedoch nicht im digitalen Klassenbuch dokumentierbar. Dies muss nun nachgeholt werden.</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>"
+    },
+    "aufnahmedatum": {
+        "subject": "Webuntis-Hinweis: Aufnahmedatum-Problem bei $Vorname $Nachname",
+        "body": "<p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Das Aufnahmedatum des Schülers/der Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong> hat sich geändert.</p><p></p><p><strong>Neues Aufnahmedatum:</strong> $neues_aufnahmedatum</p><p><strong>Altes Aufnahmedatum:</strong> $altes_aufnahmedatum</p><p></p><p>$zeitraum_text</p><p></p><p>In dieser Zeit war der Schüler/die Schülerin nun offiziel teil der Klasse, jedoch nicht im digitalen Klassenbuch dokumentierbar. Dies muss nun nachgeholt werden.</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>"
+    },
+    "klassenwechsel": {
+        "subject": "Webuntis-Hinweis: Klassenwechsel bei $Vorname $Nachname",
+        "body": "<p>Sehr geehrte/r $anrede_global,</p><p>Es gab einen Klassenwechsel des Schülers/der Schülerin <strong>$Vorname $Nachname</strong>.</p><p>Sofern dieser Klassenwechsel nicht am heutigen Tag stattfand, informieren Sie bitte das WebUntis-Team über die Notwendigkeit einer Korrektur. </p><p>Liegt der Wechsel in der Vergangenheit müssen anschließend die Tage zwischen heute und diesem Wechsel nachdokumentiert werden.</p><p></p><p>$lehrkraefte_tabelle</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>"
+    },
+    "new_student": {
+        "subject": "Webuntis-Hinweis: Neuer Schüler $Vorname $Nachname",
+        "body": "<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong> wurde als neu in den importierten Daten erkannt.</p><p>Bitte überprüfen Sie die Daten im digitalen Klassenbuch.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>"
+    },
+    "karteileiche": {
+        "subject": "Webuntis-Hinweis: Schüler fehlt/gelöscht $Vorname $Nachname",
+        "body": "<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Dies wird dazu führen, dass seine Daten, darunter auch sein Entlassdatum, sein Status (inkl. von Aktiv nach Abschluss/Abgang) nicht mehr aktualisiert werden. Sofern das in Ordnung ist, ist keine weitere Aktion erforderlich. Falls nicht, prüfen Sie bitte den Verbleib des Schülers.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>"
+    }
+}
+
 # Prüfen, ob die Konfigurationsdateien existieren, und sie bei Bedarf mit Standardwerten erstellen. Die Funktion wird unmittlbar bei Start des Servers unter "if __name__ == "__main__":" abgerufen.
 def ensure_ini_files_exist():
     # Standardverzeichnisse definieren
@@ -215,7 +239,7 @@ class_change_recipients = both
 """
 
     # Standard-Inhalt für email_settings.ini vorbereiten
-    email_settings_ini_content = """# Einstellungen für den E-Mail-Versand
+    email_settings_ini_content = f"""# Einstellungen für den E-Mail-Versand
 # Passen Sie diese Einstellungen an Ihren SMTP-Server an.
 # Beispiele:
 # smtp_server = smtp.gmail.com # SMTP-Server-Adresse
@@ -239,19 +263,19 @@ use_oauth = False
 credentials_path = ./config/credentials.json
 
 # Vorlagen für generierte E-Mails
-# Verwenden Sie Platzhalter wie {Vorname}, {Nachname}, {Klasse}, {neues_entlassdatum}, etc.
+# Verwenden Sie Platzhalter wie {{Vorname}}, {{Nachname}}, {{Klasse}}, {{neues_entlassdatum}}, etc.
 
 [Templates]
-subject_entlassdatum = Webuntis-Hinweis: Entlassdatum-Problem bei $Vorname $Nachname
-body_entlassdatum = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Es gibt ein Problem mit dem Entlassdatum des Schülers/der Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong>.</p><p></p><p><strong>Neues Entlassdatum:</strong> $neues_entlassdatum</p><p><strong>Altes Entlassdatum:</strong> $altes_entlassdatum</p><p></p><p>$zeitraum_text</p><p></p><p>In dieser Zeit war der Schüler/die Schülerin nun offiziel teil der Klasse, jedoch nicht im digitalen Klassenbuch dokumentierbar. Dies muss nun nachgeholt werden.</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
-subject_aufnahmedatum = Webuntis-Hinweis: Aufnahmedatum-Problem bei $Vorname $Nachname
-body_aufnahmedatum = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Das Aufnahmedatum des Schülers/der Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong> hat sich geändert.</p><p></p><p><strong>Neues Aufnahmedatum:</strong> $neues_aufnahmedatum</p><p><strong>Altes Aufnahmedatum:</strong> $altes_aufnahmedatum</p><p></p><p>$zeitraum_text</p><p></p><p>In dieser Zeit war der Schüler/die Schülerin nun offiziel teil der Klasse, jedoch nicht im digitalen Klassenbuch dokumentierbar. Dies muss nun nachgeholt werden.</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
-subject_klassenwechsel = Webuntis-Hinweis: Klassenwechsel bei $Vorname $Nachname
-body_klassenwechsel = <p>Sehr geehrter/Sehr geehrte Herr/Frau $Klassenlehrkraft_1,</p><p>Es gab einen Klassenwechsel des Schülers/der Schülerin <strong>$Vorname $Nachname</strong>.</p><p>Sofern dieser Klassenwechsel nicht am heutigen Tag stattfand, informieren Sie bitte das WebUntis-Team über die Notwendigkeit einer Korrektur. </p><p>Liegt der Wechsel in der Vergangenheit müssen anschließend die Tage zwischen heute und diesem Wechsel nachdokumentiert werden.</p><p></p><p><strong>Alte Klasse:</strong> $alte_klasse</p><p><strong>Neue Klasse:</strong> $neue_klasse</p><p></p><p><strong>Klassenlehrkraft 1:</strong> $Klassenlehrkraft_1, E-Mail: $Klassenlehrkraft_1_Email</p><p><strong>Klassenlehrkraft 2:</strong> $Klassenlehrkraft_2, E-Mail: $Klassenlehrkraft_2_Email</p><p></p><p><strong>Hinweis:</strong> Es ist nicht möglich auf diese E-Mail Adresse zu antworten.</p><p></p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
-subject_new_student = Webuntis-Hinweis: Neuer Schüler $Vorname $Nachname
-body_new_student = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> aus der Klasse <strong>$Klasse</strong> wurde als neu in den importierten Daten erkannt.</p><p>Bitte überprüfen Sie die Daten im digitalen Klassenbuch.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
-subject_karteileiche = Webuntis-Hinweis: Schüler fehlt/gelöscht $Vorname $Nachname
-body_karteileiche = <p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Dies wird dazu führen, dass seine Daten, darunter auch sein Entlassdatum, sein Status (inkl. von Aktiv nach Abschluss/Abgang) nicht mehr aktualisiert werden. Sofern das in Ordnung ist, ist keine weitere Aktion erforderlich. Falls nicht, prüfen Sie bitte den Verbleib des Schülers.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>
+subject_entlassdatum = {DEFAULT_TEMPLATES['entlassdatum']['subject']}
+body_entlassdatum = {DEFAULT_TEMPLATES['entlassdatum']['body']}
+subject_aufnahmedatum = {DEFAULT_TEMPLATES['aufnahmedatum']['subject']}
+body_aufnahmedatum = {DEFAULT_TEMPLATES['aufnahmedatum']['body']}
+subject_klassenwechsel = {DEFAULT_TEMPLATES['klassenwechsel']['subject']}
+body_klassenwechsel = {DEFAULT_TEMPLATES['klassenwechsel']['body']}
+subject_new_student = {DEFAULT_TEMPLATES['new_student']['subject']}
+body_new_student = {DEFAULT_TEMPLATES['new_student']['body']}
+subject_karteileiche = {DEFAULT_TEMPLATES['karteileiche']['subject']}
+body_karteileiche = {DEFAULT_TEMPLATES['karteileiche']['body']}
 [WebUntisAPI]
 use_api = False
 server_url = https://neptun.webuntis.com/WebUntis/jsonrpc.do
@@ -298,8 +322,24 @@ client_name = Schild-WebUntis-Tool
                 config.set('Templates', 'subject_karteileiche', 'Webuntis-Hinweis: Schüler fehlt/gelöscht $Vorname $Nachname')
                 updated = True
             if not config.has_option('Templates', 'body_karteileiche'):
-                config.set('Templates', 'body_karteileiche', '<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Bitte prüfen Sie den Verbleib des Schülers, sofern die Ursache nicht bekannt ist.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>')
+                config.set('Templates', 'body_karteileiche', DEFAULT_TEMPLATES['karteileiche']['body'])
                 updated = True
+            
+            # Ensure other templates are also present (Silent Update)
+            for t_type in ['entlassdatum', 'aufnahmedatum', 'klassenwechsel', 'new_student']:
+                if not config.has_option('Templates', f'subject_{t_type}'):
+                    config.set('Templates', f'subject_{t_type}', DEFAULT_TEMPLATES[t_type]['subject'])
+                    updated = True
+                if not config.has_option('Templates', f'body_{t_type}'):
+                    config.set('Templates', f'body_{t_type}', DEFAULT_TEMPLATES[t_type]['body'])
+                    updated = True
+
+            # Spezielles Update für Klassenwechsel (Force Update auf neues Tabellen-Format)
+            if config.has_option('Templates', 'body_klassenwechsel'):
+                current_body = config.get('Templates', 'body_klassenwechsel')
+                if "$lehrkraefte_tabelle" not in current_body:
+                    config.set('Templates', 'body_klassenwechsel', DEFAULT_TEMPLATES['klassenwechsel']['body'])
+                    updated = True
             
             if not config.has_section('WebUntisAPI'):
                 config.add_section('WebUntisAPI')
@@ -910,6 +950,12 @@ def update_templates():
         print_error(error_message)
         return jsonify({'message': f'❌ Fehler beim Speichern der E-Mail-Vorlagen: {str(e)}'}), 500
 
+@app.route('/api/templates/default/<template_type>', methods=['GET'])
+def get_default_template(template_type):
+    if template_type in DEFAULT_TEMPLATES:
+        return jsonify(DEFAULT_TEMPLATES[template_type])
+    return jsonify({"error": "Template type not found"}), 404
+
 
 # Route und Funktion hinter dem "E-Mails Senden" Button im WebEnd zum Senden der E-Mails auf Grundlage der generierten Warnugen und gespeicherten Einstellungen 
 @app.route('/send_emails', methods=['POST'])
@@ -969,6 +1015,86 @@ def check_emails_status():
 def get_history_stats():
     stats = history_manager.get_dashboard_stats()
     return jsonify(stats)
+
+@app.route('/api/history/classes', methods=['GET'])
+def get_history_classes():
+    classes = history_manager.get_all_classes()
+    return jsonify(classes)
+
+@app.route('/api/history/class_stats/<class_name>', methods=['GET'])
+def get_class_stats(class_name):
+    stats = history_manager.get_class_analytics(class_name)
+    return jsonify(stats)
+
+@app.route('/api/history/export/excel', methods=['GET'])
+def export_history_excel():
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill
+    from flask import send_file
+    
+    export_type = request.args.get('type') # 'student' or 'class'
+    identifier = request.args.get('id')
+    
+    if not export_type or not identifier:
+        return jsonify({"error": "Missing parameters"}), 400
+        
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Historie"
+    
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    
+    if export_type == 'student':
+        data = history_manager.search_student_history(identifier)
+        if not data: return "No data", 404
+        student = data[0]['student']
+        timeline = data[0]['timeline']
+        ws.append(["Datum", "Feld", "Alter Wert", "Neuer Wert", "Quelle"])
+        for t in timeline:
+            ws.append([t['timestamp'], t['field'], t['old_value'], t['new_value'], t['file_b']])
+        filename = f"Historie_{student['name']}_{identifier}.xlsx"
+    else:
+        stats = history_manager.get_class_analytics(identifier)
+        timeline = stats['timeline']
+        ws.append(["Datum", "Schüler Name", "Schüler ID", "Feld", "Alter Wert", "Neuer Wert"])
+        for t in timeline:
+            ws.append([t['timestamp'], t['name'], t['student_id'], t['field'], t['old_value'], t['new_value']])
+        filename = f"Klassen_Historie_{identifier}.xlsx"
+
+    # Spaltenbreite und Styling
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[column].width = max_length + 3
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    return send_file(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        as_attachment=True,
+        download_name=filename
+    )
+
+@app.route('/api/history/sync', methods=['POST'])
+def sync_history_classes():
+    import main
+    success = main.sync_student_classes_from_latest()
+    if success:
+        return jsonify({"success": True, "message": "Synchronisierung erfolgreich abgeschlossen."})
+    else:
+        return jsonify({"success": False, "message": "Synchronisierung fehlgeschlagen oder keine Quelldaten gefunden."}), 500
 
 @app.route('/api/history/search', methods=['GET'])
 def search_history():
