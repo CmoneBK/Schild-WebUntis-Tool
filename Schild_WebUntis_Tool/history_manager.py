@@ -123,50 +123,77 @@ def bulk_update_students(student_list):
 
 import re
 def reindex_logs(log_dir):
-    """Parst vorhandene .log Dateien im Verzeichnis und importiert sie in die DB."""
+    """Parst vorhandene .log Dateien im Verzeichnis und importiert sie in die DB.
+    Überspringt Dateien, die bereits in der DB erfasst sind (Duplikat-Schutz per file_b).
+    """
     if not os.path.exists(log_dir):
         return 0
-    
-    log_files = [f for f in os.listdir(log_dir) if f.endswith('.log') and 'ÄnderungsLog' in f]
+
+    # Bereits importierte Log-Dateinamen laden (Duplikat-Schutz)
+    conn = get_connection()
+    already_imported = set(
+        row[0] for row in conn.execute("SELECT file_b FROM comparisons WHERE file_b IS NOT NULL").fetchall()
+    )
+    conn.close()
+
+    log_files = sorted(
+        [f for f in os.listdir(log_dir) if f.endswith('.log') and 'nderungsLog' in f]
+    )
     count = 0
-    
+
     for filename in log_files:
+        if filename in already_imported:
+            continue
+
         filepath = os.path.join(log_dir, filename)
+
         # Zeitstempel aus Dateiname extrahieren (Format: ÄnderungsLog_YYYY-MM-DD_HH-MM-SS.log)
         match = re.search(r'(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})', filename)
-        timestamp = match.group(1).replace('_', ' ') if match else datetime.fromtimestamp(os.path.getctime(filepath)).strftime("%Y-%m-%d %H:%M:%S")
-        
+        if match:
+            try:
+                ts = datetime.strptime(match.group(1), "%Y-%m-%d_%H-%M-%S")
+                timestamp = ts.strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                timestamp = datetime.fromtimestamp(os.path.getctime(filepath)).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            timestamp = datetime.fromtimestamp(os.path.getctime(filepath)).strftime("%Y-%m-%d %H:%M:%S")
+
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
                 content = f.read()
-            
+
             # Zerlege Inhalt nach Schüler-Blöcken
             student_blocks = content.split('Schüler: ')
             changes_for_db = []
-            
+
             for block in student_blocks:
-                if not block.strip(): continue
+                if not block.strip():
+                    continue
                 lines = block.split('\n')
-                # Erweiterte Suche nach Name, ID und optionaler Klasse: "Name (ID: 123) [Klasse: 5a]"
+                # Erkennt: "Name (ID: 123) [Klasse: 5a]" und "Name (ID: 123)"
                 header = lines[0]
-                match_header = re.search(r'(.*) \(ID: (.*)\)(?: \[Klasse: (.*)\])?', header)
-                if not match_header: continue
-                
+                match_header = re.search(r'(.*) \(ID: (.*?)\)(?: \[Klasse: (.*?)\])?', header)
+                if not match_header:
+                    continue
+
                 name = match_header.group(1).strip()
                 student_id = match_header.group(2).strip()
                 current_class = match_header.group(3).strip() if match_header.group(3) else None
-                
+
                 student_changes = {}
                 for line in lines[1:]:
                     if ' -> ' in line:
                         # Format: "  Feld: alt -> neu"
+                        # Trennzeichen ist ': ' (Feld von Wert), dann ' -> ' (alt von neu)
                         parts = line.split(': ', 1)
-                        if len(parts) < 2: continue
+                        if len(parts) < 2:
+                            continue
                         field = parts[0].strip()
-                        values = parts[1].split(' -> ')
-                        if len(values) < 2: continue
+                        values = parts[1].split(' -> ', 1)
+                        if len(values) < 2:
+                            continue
                         student_changes[field] = {"old": values[0].strip(), "new": values[1].strip()}
-                
+
                 if student_changes:
                     changes_for_db.append({
                         "student_id": student_id,
@@ -174,36 +201,55 @@ def reindex_logs(log_dir):
                         "current_class": current_class,
                         "changes": student_changes
                     })
-            
+
             if changes_for_db:
                 record_changes(changes_for_db, timestamp=timestamp, file_b=filename)
                 count += 1
-                
+
         except Exception as e:
             print(f"Fehler beim Parsen von {filename}: {e}")
-            
+
     return count
+
+def _migrate_timestamps(conn):
+    """Einmalige Migration: korrigiert Timestamps im Format YYYY-MM-DD_HH-MM-SS -> YYYY-MM-DD HH:MM:SS."""
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, timestamp FROM comparisons WHERE timestamp LIKE '%_%-%-%'")
+    rows = cursor.fetchall()
+    for row in rows:
+        ts = row['timestamp']
+        if ts and re.match(r'\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}', ts):
+            try:
+                fixed = datetime.strptime(ts, "%Y-%m-%d_%H-%M-%S").strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("UPDATE comparisons SET timestamp = ? WHERE id = ?", (fixed, row['id']))
+            except ValueError:
+                pass
+    conn.commit()
+
 
 def get_dashboard_stats(field_filter=None):
     """Aggregiert Statistiken für das Dashboard."""
     conn = get_connection()
+    _migrate_timestamps(conn)
     cursor = conn.cursor()
-    
+
     # 1. Änderungen pro Monat (für Liniendiagramm)
     cursor.execute('''
-        SELECT strftime('%Y-%m', timestamp) as month, COUNT(*) as count 
+        SELECT strftime('%Y-%m', c.timestamp) as month, COUNT(*) as count
         FROM comparisons c
         JOIN changes ch ON c.id = ch.comparison_id
+        WHERE c.timestamp IS NOT NULL
         GROUP BY month ORDER BY month ASC
     ''')
-    monthly_changes = {row['month']: row['count'] for row in cursor.fetchall()}
-    
+    monthly_changes = {row['month']: row['count'] for row in cursor.fetchall() if row['month'] is not None}
+
     # 2. Häufigste Änderungsarten (Kategorien)
     cursor.execute('''
-        SELECT field, COUNT(*) as count FROM changes 
+        SELECT field, COUNT(*) as count FROM changes
+        WHERE field IS NOT NULL AND field != ''
         GROUP BY field ORDER BY count DESC LIMIT 10
     ''')
-    category_stats = {row['field']: row['count'] for row in cursor.fetchall()}
+    category_stats = {row['field']: row['count'] for row in cursor.fetchall() if row['field'] is not None}
     
     # 3. Top-Klassen nach Warnungskategorien (Hotspots)
     # Mapping der vom Frontend gesendeten Kategorien auf SQL-Logik
@@ -234,43 +280,51 @@ def get_dashboard_stats(field_filter=None):
         condition = f"({' OR '.join(warning_categories.values())})"
 
     query = f'''
-        SELECT s.last_known_class as class, COUNT(*) as count 
+        SELECT s.last_known_class as class, COUNT(*) as count
         FROM changes ch
         JOIN students s ON ch.student_id = s.id
         JOIN comparisons c ON ch.comparison_id = c.id
-        WHERE class IS NOT NULL AND class != ''
+        WHERE s.last_known_class IS NOT NULL AND s.last_known_class != ''
         AND {condition}
-        GROUP BY class ORDER BY count DESC LIMIT 5
+        GROUP BY s.last_known_class ORDER BY count DESC LIMIT 5
     '''
     cursor.execute(query)
-    hotspot_classes = {row['class']: row['count'] for row in cursor.fetchall()}
+    hotspot_classes = {row['class']: row['count'] for row in cursor.fetchall() if row['class'] is not None}
 
     # 4. Trends (Monatlich & Wöchentlich nach Feld)
     # Monatlicher Trend
     cursor.execute('''
-        SELECT strftime('%Y-%m', timestamp) as time_unit, field, COUNT(*) as count
+        SELECT strftime('%Y-%m', c.timestamp) as time_unit, ch.field, COUNT(*) as count
         FROM comparisons c JOIN changes ch ON c.id = ch.comparison_id
-        WHERE field IS NOT NULL AND field != ''
-        GROUP BY time_unit, field ORDER BY time_unit ASC
+        WHERE c.timestamp IS NOT NULL
+          AND ch.field IS NOT NULL AND ch.field != ''
+        GROUP BY time_unit, ch.field ORDER BY time_unit ASC
     ''')
     monthly_trends = {}
     for row in cursor.fetchall():
-        t, f, c = row['time_unit'], row['field'], row['count']
-        if t not in monthly_trends: monthly_trends[t] = {}
-        monthly_trends[t][f] = c
+        t, f, cnt = row['time_unit'], row['field'], row['count']
+        if t is None or f is None:
+            continue
+        if t not in monthly_trends:
+            monthly_trends[t] = {}
+        monthly_trends[t][f] = cnt
 
     # Wöchentlicher Trend
     cursor.execute('''
-        SELECT strftime('%Y-W%W', timestamp) as time_unit, field, COUNT(*) as count
+        SELECT strftime('%Y-W%W', c.timestamp) as time_unit, ch.field, COUNT(*) as count
         FROM comparisons c JOIN changes ch ON c.id = ch.comparison_id
-        WHERE field IS NOT NULL AND field != ''
-        GROUP BY time_unit, field ORDER BY time_unit ASC
+        WHERE c.timestamp IS NOT NULL
+          AND ch.field IS NOT NULL AND ch.field != ''
+        GROUP BY time_unit, ch.field ORDER BY time_unit ASC
     ''')
     weekly_trends = {}
     for row in cursor.fetchall():
-        t, f, c = row['time_unit'], row['field'], row['count']
-        if t not in weekly_trends: weekly_trends[t] = {}
-        weekly_trends[t][f] = c
+        t, f, cnt = row['time_unit'], row['field'], row['count']
+        if t is None or f is None:
+            continue
+        if t not in weekly_trends:
+            weekly_trends[t] = {}
+        weekly_trends[t][f] = cnt
     
     conn.close()
     return {

@@ -1146,7 +1146,11 @@ def reindex_history():
     safe_read_config(config, 'settings.ini')
     log_dir = config.get("Directories", "log_directory", fallback="./Logs")
     count = history_manager.reindex_logs(log_dir)
-    return jsonify({"message": f"✅ {count} Log-Dateien erfolgreich indiziert."})
+    if count == 0:
+        msg = "ℹ️ Keine neuen Log-Dateien gefunden (alle bereits importiert oder Verzeichnis leer)."
+    else:
+        msg = f"✅ {count} neue Log-Datei(en) erfolgreich in die Datenbank importiert."
+    return jsonify({"message": msg})
 
 # Route und Funktion zum Abrufen und Reinladen der Einstellungen des Einstellungs-Panels im WebEnd aus den verschiedenen .ini Dateien
 @app.route('/load-settings', methods=['GET'])
