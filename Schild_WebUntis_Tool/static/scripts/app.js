@@ -197,6 +197,17 @@ document.getElementById('btnRefreshAdminWarnings')?.addEventListener('click', fu
 
             if (data.success) {
                 window.showToast("System-Check abgeschlossen. " + data.count + " Warnungen gefunden.");
+                // Badge am Button aktualisieren
+                const badge = document.querySelector('#toggleAdminCheck .badge');
+                if (badge) {
+                    if (data.count > 0) {
+                        badge.textContent = data.count;
+                        badge.className = 'badge badge-danger';
+                    } else {
+                        badge.textContent = '✓';
+                        badge.className = 'badge badge-success';
+                    }
+                }
                 // Refresh the UI with new warnings
                 if (data.count > 0) {
                     let html = `

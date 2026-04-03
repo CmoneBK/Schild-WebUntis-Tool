@@ -445,7 +445,12 @@
                                             </select>
                                         </div>
                                         <div class="card-body p-2">
-                                            <canvas id="chart-hotspots" height="300"></canvas>
+                                            <div id="chart-hotspots-container" style="position:relative; height:300px;">
+                                                <canvas id="chart-hotspots"></canvas>
+                                            </div>
+                                            <div class="text-center mt-2">
+                                                <button id="btn-hotspot-more" class="btn btn-sm btn-outline-secondary">Mehr anzeigen</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -786,9 +791,9 @@
                             </div>
                         </div>
 
-                        <!-- Excel-Verzeichnis -->
+                        <!-- Excel-Log-Verzeichnis -->
                         <div class="form-group">
-                            <label for="xlsx_directory">𝄜 Excel-Verzeichnis:</label>
+                            <label for="xlsx_directory">𝄜 Excel-Log-Verzeichnis:</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="xlsx_directory" name="xlsx_directory"
                                     readonly>

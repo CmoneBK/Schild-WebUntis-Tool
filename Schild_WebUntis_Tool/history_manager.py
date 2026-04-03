@@ -227,7 +227,7 @@ def _migrate_timestamps(conn):
     conn.commit()
 
 
-def get_dashboard_stats(field_filter=None):
+def get_dashboard_stats(field_filter=None, hotspot_limit=5):
     """Aggregiert Statistiken für das Dashboard."""
     conn = get_connection()
     _migrate_timestamps(conn)
@@ -286,7 +286,7 @@ def get_dashboard_stats(field_filter=None):
         JOIN comparisons c ON ch.comparison_id = c.id
         WHERE s.last_known_class IS NOT NULL AND s.last_known_class != ''
         AND {condition}
-        GROUP BY s.last_known_class ORDER BY count DESC LIMIT 5
+        GROUP BY s.last_known_class ORDER BY count DESC LIMIT {int(hotspot_limit)}
     '''
     cursor.execute(query)
     hotspot_classes = {row['class']: row['count'] for row in cursor.fetchall() if row['class'] is not None}
