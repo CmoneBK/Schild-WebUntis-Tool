@@ -554,9 +554,22 @@ def compare_timeframe_imports(timeframe_hours=24):
     latest_data = read_csv(os.path.join(import_dir, latest_file))
 
     changes = []
+    new_count = 0
+    change_count = 0
+    # 1. Änderungen und neue Schüler prüfen
     for student_id, latest_student in latest_data.items():
         previous_student = previous_data.get(student_id)
+        
         if not previous_student:
+            new_count += 1
+            # Neuer Schüler - als Änderung markieren für die Historie
+            changes.append({
+                "student_id": student_id,
+                "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}",
+                "current_class": latest_student.get('Klasse', ''),
+                "changes": {"__SYSTEM__": {"old": "N/A", "new": "Neu"}},
+                "row": latest_student
+            })
             continue
 
         row_changed = False
@@ -568,6 +581,7 @@ def compare_timeframe_imports(timeframe_hours=24):
 
             if old_value != new_value:
                 row_changed = True
+                change_count += 1
                 updated_row[field] = f"{old_value} -> {new_value}"
                 change_details[field] = {"old": old_value, "new": new_value}
 
@@ -580,9 +594,25 @@ def compare_timeframe_imports(timeframe_hours=24):
                 "row": updated_row
             })
 
+    # 2. Fehlende Schüler prüfen
+    missing_count = 0
+    for student_id, previous_student in previous_data.items():
+        if student_id not in latest_data:
+            missing_count += 1
+            changes.append({
+                "student_id": student_id,
+                "name": f"{previous_student.get('Vorname', '')} {previous_student.get('Nachname', '')}",
+                "current_class": previous_student.get('Klasse', ''),
+                "changes": {"__SYSTEM__": {"old": "Existierte", "new": "Fehlt"}},
+                "row": previous_student
+            })
+
     if not changes:
         print_warning("Keine Änderungen festgestellt.")
         return
+
+    # Zusammenfassungs-Log
+    print_success(f"Vergleich abgeschlossen: {new_count} neu, {missing_count} fehlen, {change_count} Änderungen.")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_file_path = os.path.join(log_dir, f'ÄnderungsLog_{timestamp}.log')
@@ -884,7 +914,9 @@ def read_students(use_abschlussdatum=False):
         header.append('Aktiv')
         output_data_students.append(output_columns)
         print_info("Beginne mit dem Verarbeiten der Schülerdaten...")
+        line_num = 1 # Header
         for row in reader:
+            line_num += 1
             filtered_row = {k: v for k, v in row.items() if k in columns_to_filter}
 
             # Schulpflicht-Logik (umkehren von 'Ja'/'Nein')
@@ -905,11 +937,11 @@ def read_students(use_abschlussdatum=False):
                         entlassdatum = abschlussdatum
                         print_info(f"Entlassdatum für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']} auf Abschlussdatum aktualisiert.")
                 except ValueError:
-                    print_error(f"Fehler beim Konvertieren von Datumsangaben für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']}.")
+                    print_error(f"Fehler (Zeile {line_num}) beim Konvertieren von Datumsangaben für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']}.")
                     pass # Ignoriere ungültige Datumsangaben
             elif not entlassdatum and abschlussdatum and use_abschlussdatum:
                 entlassdatum = abschlussdatum
-                print_creation(f"Entlassdatum für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']} gesetzt auf Abschlussdatum.")
+                print_creation(f"Entlassdatum (Zeile {line_num}) für Schüler {filtered_row['Nachname']}, {filtered_row['Vorname']} gesetzt auf Abschlussdatum.")
 
             filtered_row['Entlassdatum'] = entlassdatum
             

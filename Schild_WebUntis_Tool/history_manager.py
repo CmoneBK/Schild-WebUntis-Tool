@@ -184,7 +184,7 @@ def reindex_logs(log_dir):
             
     return count
 
-def get_dashboard_stats():
+def get_dashboard_stats(field_filter=None):
     """Aggregiert Statistiken für das Dashboard."""
     conn = get_connection()
     cursor = conn.cursor()
@@ -205,14 +205,44 @@ def get_dashboard_stats():
     ''')
     category_stats = {row['field']: row['count'] for row in cursor.fetchall()}
     
-    # 3. Top-Klassen mit den meisten Änderungen (Fehler-Hotspots)
-    cursor.execute('''
+    # 3. Top-Klassen nach Warnungskategorien (Hotspots)
+    # Mapping der vom Frontend gesendeten Kategorien auf SQL-Logik
+    warning_categories = {
+        'Klassenwechsel': "ch.field = 'Klasse'",
+        'Ungünstig verschobene Aufnahmedaten': """
+            (ch.field = 'Aufnahmedatum' AND 
+             (substr(ch.new_value, 7, 4) || '-' || substr(ch.new_value, 4, 2) || '-' || substr(ch.new_value, 1, 2)) < 
+             (substr(ch.old_value, 7, 4) || '-' || substr(ch.old_value, 4, 2) || '-' || substr(ch.old_value, 1, 2)) AND
+             (substr(ch.new_value, 7, 4) || '-' || substr(ch.new_value, 4, 2) || '-' || substr(ch.new_value, 1, 2)) < 
+             substr(c.timestamp, 1, 10))
+        """,
+        'Ungünstig verschobene Entlassdaten': """
+            (ch.field = 'Entlassdatum' AND 
+             (substr(ch.new_value, 7, 4) || '-' || substr(ch.new_value, 4, 2) || '-' || substr(ch.new_value, 1, 2)) > 
+             (substr(ch.old_value, 7, 4) || '-' || substr(ch.old_value, 4, 2) || '-' || substr(ch.old_value, 1, 2)) AND
+             substr(c.timestamp, 1, 10) > 
+             (substr(ch.old_value, 7, 4) || '-' || substr(ch.old_value, 4, 2) || '-' || substr(ch.old_value, 1, 2)))
+        """,
+        'Neue Schüler': "ch.field = '__SYSTEM__' AND ch.new_value = 'Neu'",
+        'Fehlende Schüler': "ch.field = '__SYSTEM__' AND ch.new_value = 'Fehlt'"
+    }
+
+    if field_filter and field_filter in warning_categories:
+        condition = warning_categories[field_filter]
+    else:
+        # Standard: Alle Warnungskategorien kombiniert
+        condition = f"({' OR '.join(warning_categories.values())})"
+
+    query = f'''
         SELECT s.last_known_class as class, COUNT(*) as count 
         FROM changes ch
         JOIN students s ON ch.student_id = s.id
+        JOIN comparisons c ON ch.comparison_id = c.id
         WHERE class IS NOT NULL AND class != ''
+        AND {condition}
         GROUP BY class ORDER BY count DESC LIMIT 5
-    ''')
+    '''
+    cursor.execute(query)
     hotspot_classes = {row['class']: row['count'] for row in cursor.fetchall()}
 
     # 4. Trends (Monatlich & Wöchentlich nach Feld)
