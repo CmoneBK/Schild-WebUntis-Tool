@@ -85,7 +85,7 @@ def validate_imports():
     schild_dir = config.get('Directories', 'schildexport_directory', fallback='.')
     if schild_dir in ('.', '', None): schild_dir = os.getcwd()
     
-    schild_files = [f for f in os.listdir(schild_dir) if f.endswith('.csv')]
+    schild_files = [f for f in os.listdir(schild_dir) if f.lower().endswith('.csv')]
     if not schild_files:
         report["files"]["Schild-Export"] = {"status": "error", "message": "Keine CSV-Datei im Schild-Export Verzeichnis gefunden."}
         report["success"] = False
@@ -137,7 +137,7 @@ def validate_imports():
         report["files"]["Lehrer-Daten"] = {"status": "error", "message": f"Verzeichnis '{teachers_dir}' nicht gefunden."}
         report["success"] = False
     else:
-        teacher_files = [f for f in os.listdir(teachers_dir) if f.endswith('.csv')]
+        teacher_files = [f for f in os.listdir(teachers_dir) if f.lower().endswith('.csv')]
         if not teacher_files:
             report["files"]["Lehrer-Daten"] = {"status": "error", "message": "Keine CSV-Datei im Lehrerdatenverzeichnis gefunden."}
             report["success"] = False
@@ -165,7 +165,7 @@ def validate_imports():
         report["files"]["Klassen-Daten"] = {"status": "error", "message": f"Verzeichnis '{classes_dir}' nicht gefunden."}
         report["success"] = False
     else:
-        class_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
+        class_files = [f for f in os.listdir(classes_dir) if f.lower().endswith('.csv')]
         if not class_files:
             report["files"]["Klassen-Daten"] = {"status": "error", "message": "Keine CSV-Datei im Klassendatenverzeichnis gefunden."}
             report["success"] = False
@@ -298,7 +298,7 @@ def sync_student_classes_from_latest():
             print_warning(f"Verzeichnis {import_dir} existiert nicht.")
             return False
 
-        output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+        output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
         if not output_files:
             print_warning("Keine Importdatei zur Synchronisierung gefunden.")
             return False
@@ -365,7 +365,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
 
     # Verzeichnisse für Log- und Excel-Dateien aus der settings.ini lesen
     log_dir = config.get("Directories", "log_directory", fallback="./Logs")
-    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="./ExcelExports")
+    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelLogs")
 
     # Sicherstellen, dass die Verzeichnisse existieren
     os.makedirs(import_dir, exist_ok=True)
@@ -374,7 +374,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
 
     # Neueste zwei Dateien im Importverzeichnis finden
     print_info("Suchen der zwei neuesten Dateien im Importverzeichnis...")
-    csv_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+    csv_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if len(csv_files) < 2:
         print_warning(f"Nicht genügend Dateien im Verzeichnis {import_dir} vorhanden, um einen Vergleich durchzuführen. Abbruch der Log-Erstellung.")
         return
@@ -498,7 +498,7 @@ def compare_timeframe_imports(timeframe_hours=24):
     timeframe_hours = config.getint("ProcessingOptions", "timeframe_hours", fallback=24)
     import_dir = config.get("Directories", "import_directory", fallback="./WebUntis Importe")
     log_dir = config.get("Directories", "log_directory", fallback="./Logs")
-    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="./ExcelExports")
+    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelLogs")
     admin_email = email_config.get("Email", "admin_email", fallback=None)
 
     if not admin_email:
@@ -524,7 +524,7 @@ def compare_timeframe_imports(timeframe_hours=24):
 
     cutoff_time = datetime.now() - timedelta(hours=timeframe_hours)
     # Dateien im Zeitrahmen finden
-    csv_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+    csv_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
 
     # Dateien sortieren
     csv_files.sort(key=lambda f: os.path.getctime(os.path.join(import_dir, f)), reverse=True)
@@ -789,7 +789,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
             return (dummy_classes, {}) if return_teachers else dummy_classes
 
     # Neueste Klassen-CSV-Datei finden
-    class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
+    class_csv_files = [f for f in os.listdir(classes_dir) if f.lower().endswith('.csv')]
     if not class_csv_files:
         print_warning(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' gefunden.")
         dummy_classes = {
@@ -814,7 +814,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
         }
     else:
         # Neueste Lehrkräfte-CSV-Datei finden
-        teacher_csv_files = [f for f in os.listdir(teachers_dir) if f.endswith('.csv')]
+        teacher_csv_files = [f for f in os.listdir(teachers_dir) if f.lower().endswith('.csv')]
         if not teacher_csv_files:
             print_warning(f"Warnung: Keine Lehrkräfte-CSV-Dateien im Ordner '{teachers_dir}' gefunden.")
             teachers = {
@@ -888,7 +888,7 @@ def read_students(use_abschlussdatum=False):
     schildexport_dir = get_directory('schildexport_directory', default='.')
     if schildexport_dir in ('.', '', None):
         schildexport_dir = os.getcwd()
-    csv_files = [f for f in os.listdir(schildexport_dir) if f.endswith('.csv')]
+    csv_files = [f for f in os.listdir(schildexport_dir) if f.lower().endswith('.csv')]
 
     if not csv_files:
         print_error("Keine CSV-Dateien im aktuellen Verzeichnis gefunden.")
@@ -969,7 +969,7 @@ def create_warnings(classes_by_name, students_by_id):
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
     # Vorherige Importdatei finden
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+    output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
         print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
@@ -1033,7 +1033,7 @@ def create_new_student_warnings(classes_by_name, current_students_by_id):
     import_dir = get_directory('import_directory', './WebUntis Importe')
     
     # Alle CSV-Dateien aus dem Importverzeichnis ermitteln
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+    output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     
     # Wähle als Vergleichsdatei:
     if len(output_files) >= 1:
@@ -1088,7 +1088,7 @@ def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin
     import_dir = get_directory('import_directory', './WebUntis Importe')
     
     # Alle CSV-Dateien aus dem Importverzeichnis ermitteln
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+    output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     
     # Wähle als Vergleichsdatei:
     if len(output_files) >= 1:
@@ -1151,7 +1151,7 @@ def create_class_change_warnings(classes_by_name, students_by_id, class_change_r
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
     # Vorherige Importdatei finden
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+    output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
         print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
@@ -1242,7 +1242,7 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
     # Vorherige Importdatei finden
-    output_files = [f for f in os.listdir(import_dir) if f.endswith('.csv') and 'Fehlende' not in f]
+    output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
         print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
@@ -1393,7 +1393,7 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
         schildexport_dir = get_directory('schildexport_directory', default='.')
         if schildexport_dir in ('.', '', None):
             schildexport_dir = os.getcwd()
-        csv_files = [f for f in os.listdir(schildexport_dir) if f.endswith('.csv')]
+        csv_files = [f for f in os.listdir(schildexport_dir) if f.lower().endswith('.csv')]
 
         if not csv_files:
             print_error("Fehler: Keine CSV-Dateien im Hauptverzeichnis gefunden.")
@@ -1437,7 +1437,7 @@ def read_attest_ids_from_latest_file():
         return set()
 
     # Alle CSV-Dateien ermitteln
-    csv_files = [f for f in os.listdir(attest_dir) if f.endswith('.csv')]
+    csv_files = [f for f in os.listdir(attest_dir) if f.lower().endswith('.csv')]
     if not csv_files:
         print(Fore.YELLOW + "⚠️ Keine CSV-Dateien im Attest-Verzeichnis gefunden. Keine Attestdaten vorhanden." + Style.RESET_ALL)
         return set()
@@ -1481,7 +1481,7 @@ def read_nachteilsausgleich_ids_from_latest_file():
         print_warning(f"Nachteilsausgleich-Verzeichnis '{nad_dir}' existiert nicht. Alle = 'false'.")
         return set()
 
-    csv_files = [f for f in os.listdir(nad_dir) if f.endswith('.csv')]
+    csv_files = [f for f in os.listdir(nad_dir) if f.lower().endswith('.csv')]
     if not csv_files:
         print_warning("Keine CSV-Dateien im Nachteilsausgleich-Verzeichnis gefunden. Alle = 'false'.")
         return set()

@@ -39,11 +39,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let charts = {}; // Globale Referenz für Chart-Instanzen
 
-    async function loadDashboardData(fieldFilter = null) {
+    let currentHotspotLimit = 5;
+
+    async function loadDashboardData(fieldFilter = null, hotspotLimit = null) {
+        if (hotspotLimit !== null) currentHotspotLimit = hotspotLimit;
         try {
-            let url = "/api/history/stats";
+            let url = `/api/history/stats?hotspot_limit=${currentHotspotLimit}`;
             if (fieldFilter) {
-                url += `?field=${encodeURIComponent(fieldFilter)}`;
+                url += `&field=${encodeURIComponent(fieldFilter)}`;
             }
             const response = await fetch(url);
             const data = await response.json();
@@ -137,7 +140,18 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById('btn-trend-weekly')?.addEventListener('click', () => renderTrendChart('weekly'));
 
     document.getElementById('hotspot-filter')?.addEventListener('change', (e) => {
+        currentHotspotLimit = 5;
+        const container = document.getElementById('chart-hotspots-container');
+        if (container) container.style.height = '300px';
         loadDashboardData(e.target.value);
+    });
+
+    document.getElementById('btn-hotspot-more')?.addEventListener('click', () => {
+        const fieldFilter = document.getElementById('hotspot-filter')?.value || null;
+        const newLimit = currentHotspotLimit + 5;
+        const container = document.getElementById('chart-hotspots-container');
+        if (container) container.style.height = (300 + (newLimit - 5) * 40) + 'px';
+        loadDashboardData(fieldFilter, newLimit);
     });
 
     // Handle dashboard tab changes to correctly resize charts

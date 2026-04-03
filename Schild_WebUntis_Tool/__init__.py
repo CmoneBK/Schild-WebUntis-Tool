@@ -84,7 +84,7 @@ def print_banner():
         print(f"{Fore.CYAN}📂 Verzeichnisse:")
         print(f"   ℹ️  Import:  {get_directory('import_directory', './WebUntis Importe')}")
         print(f"   ℹ️  Logs:    {get_directory('log_directory', './Logs')}")
-        print(f"   ℹ️  Excel:   {get_directory('xlsx_directory', './ExcelExports')}")
+        print(f"   ℹ️  Excel-Logs: {get_directory('xlsx_directory', './ExcelLogs')}")
         print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}\n", flush=True)
 
 def get_directory(key, default=None):
@@ -209,7 +209,7 @@ def ensure_ini_files_exist():
     default_classes_dir = "Klassendaten"
     default_teachers_dir = "Lehrerdaten"
     default_log_dir = "Logs"
-    default_xlsx_dir = "ExcelExports"
+    default_xlsx_dir = "ExcelLogs"
     default_import_dir = "WebUntis Importe"
     default_schildexport_dir = "."
     default_class_size_dir = "ClassSizes"
@@ -392,8 +392,11 @@ client_name = Schild-WebUntis-Tool
             directory = os.path.abspath(directory)
             print_info(f"Relativer Pfad erkannt. Absoluter Pfad: {directory}")
         if not os.path.exists(directory):
-            os.makedirs(directory)
-            print_creation(f"Ordner '{directory}' wurde erstellt.")
+            try:
+                os.makedirs(directory)
+                print_creation(f"Ordner '{directory}' wurde erstellt.")
+            except (FileNotFoundError, OSError) as e:
+                print_warning(f"Verzeichnis '{directory}' konnte nicht erstellt werden (Laufwerk nicht verfügbar?): {e}")
 
 
     global admin_warnings_cache
@@ -442,6 +445,9 @@ def admin_warnings(send_email_flag=False):
                 })
 
     # Überprüfen, ob CSV-Dateien im Klassenverzeichnis vorhanden sind
+    if not os.path.exists(classes_dir):
+        print_admin_warning(f"Warnung: Klassenverzeichnis '{classes_dir}' nicht erreichbar (Laufwerk nicht verfügbar?).")
+        return admin_warnings_cache
     class_csv_files = [f for f in os.listdir(classes_dir) if f.endswith('.csv')]
     if not class_csv_files:
         print_admin_warning(f"Warnung: Keine Klassen-CSV-Dateien im Ordner '{classes_dir}' für die Erstellung von Admin-Warnungen gefunden.")
@@ -767,7 +773,7 @@ def get_history():
     config = configparser.ConfigParser()
     config.read("settings.ini", encoding='utf-8-sig')
     log_dir = config.get("Directories", "log_directory", fallback="Logs")
-    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelExports")
+    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelLogs")
 
     history_dict = {}
     
@@ -846,7 +852,7 @@ def view_xlsx(filename):
     from openpyxl import load_workbook
     config = configparser.ConfigParser()
     config.read("settings.ini", encoding='utf-8-sig')
-    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelExports")
+    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelLogs")
 
     # Pfad-Sicherheitsprüfung
     safe_filename = os.path.basename(filename)
@@ -889,12 +895,12 @@ def refresh_admin_warnings():
     admin_warnings()
     return jsonify({"success": True, "count": len(admin_warnings_cache), "warnings": admin_warnings_cache})
 
-# Route zum Herunterladen einer Excel-Log-Datei aus dem ExcelExports-Verzeichnis
+# Route zum Herunterladen einer Excel-Log-Datei aus dem ExcelLogs-Verzeichnis
 @app.route('/api/xlsx_download/<path:filename>', methods=['GET'])
 def download_xlsx(filename):
     config = configparser.ConfigParser()
     config.read("settings.ini", encoding='utf-8-sig')
-    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelExports")
+    xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelLogs")
     
     # Pfad-Sicherheitsprüfung
     safe_filename = os.path.basename(filename)
@@ -1043,7 +1049,12 @@ def check_emails_status():
 @app.route('/api/history/stats', methods=['GET'])
 def get_history_stats():
     field_filter = request.args.get('field')
-    stats = history_manager.get_dashboard_stats(field_filter=field_filter)
+    hotspot_limit = request.args.get('hotspot_limit', 5)
+    try:
+        hotspot_limit = max(1, int(hotspot_limit))
+    except (ValueError, TypeError):
+        hotspot_limit = 5
+    stats = history_manager.get_dashboard_stats(field_filter=field_filter, hotspot_limit=hotspot_limit)
     return jsonify(stats)
 
 @app.route('/api/history/classes', methods=['GET'])
@@ -1211,6 +1222,8 @@ def save_settings():
         save_to_email_settings_ini(email_settings_ini_data) #Speichern der für in die email_settings.ini gehörenden Daten
 
     print_success("Einstellungen wurden erfolgreich gespeichert.")
+    # Verzeichnisse neu prüfen/anlegen, falls Pfade geändert wurden
+    ensure_ini_files_exist()
     return jsonify({"status": "success"})
 
 
@@ -1701,7 +1714,21 @@ if __name__ == "__main__":
         print_warning(f"Hinweis zur Historie-Initialisierung: {e}")
 
     try:
-        serve(app, host=cli_args.get("host", "0.0.0.0"), port=cli_args.get("port", 5000))
+        import socket
+        host = cli_args.get("host", "0.0.0.0")
+        port = cli_args.get("port", 5000)
+        # Tatsächliche IP ermitteln
+        try:
+            display_ip = socket.gethostbyname(socket.gethostname())
+        except Exception:
+            display_ip = "127.0.0.1"
+        if host not in ("0.0.0.0", ""):
+            display_ip = host
+        print_success(f"Server gestartet – erreichbar unter http://{display_ip}:{port}")
+        # Waitress-Logger unterdrücken
+        logging.getLogger("waitress").setLevel(logging.ERROR)
+        logging.getLogger("waitress.queue").setLevel(logging.ERROR)
+        serve(app, host=host, port=port, threads=8)
     except Exception as e:
         print_error(f"Fehler beim Starten des WSGI-Servers: {e}")
 
