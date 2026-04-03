@@ -211,6 +211,23 @@ def reindex_logs(log_dir):
 
     return count
 
+def _cleanup_empty_equivalent_changes(conn):
+    """Bereinigt Änderungen, bei denen alter und neuer Wert semantisch gleichwertig zu 'leer' sind.
+    Z.B. '' -> 'Nein' oder 'Nein' -> '' werden als keine echte Änderung betrachtet."""
+    empty_equivalents = ('', 'nein', 'keine', 'keiner', 'keines', 'kein')
+    placeholders = ','.join('?' * len(empty_equivalents))
+    cursor = conn.cursor()
+    cursor.execute(f'''
+        DELETE FROM changes
+        WHERE LOWER(TRIM(old_value)) IN ({placeholders})
+          AND LOWER(TRIM(new_value)) IN ({placeholders})
+    ''', empty_equivalents + empty_equivalents)
+    deleted = cursor.rowcount
+    if deleted > 0:
+        print(f"[history_manager] {deleted} semantisch leere Änderungen aus der Datenbank bereinigt.")
+    conn.commit()
+
+
 def _migrate_timestamps(conn):
     """Einmalige Migration: korrigiert Timestamps im Format YYYY-MM-DD_HH-MM-SS -> YYYY-MM-DD HH:MM:SS."""
     cursor = conn.cursor()
@@ -231,6 +248,7 @@ def get_dashboard_stats(field_filter=None, hotspot_limit=5):
     """Aggregiert Statistiken für das Dashboard."""
     conn = get_connection()
     _migrate_timestamps(conn)
+    _cleanup_empty_equivalent_changes(conn)
     cursor = conn.cursor()
 
     # 1. Änderungen pro Monat (für Liniendiagramm)

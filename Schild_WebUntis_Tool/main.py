@@ -64,9 +64,21 @@ TEACHER_REQUIRED_COLUMNS = [
 ]
 
 CLASS_REQUIRED_COLUMNS = [
-    'Auswahl', '', 'Klasse', 'Langname', 'Alias', 'Jahrgangsstufe', 
+    'Auswahl', '', 'Klasse', 'Langname', 'Alias', 'Jahrgangsstufe',
     'Text', 'Klassenlehrkraft', 'Klassenlehrkraft', 'Abteilung', 'Von', 'Bis'
 ]
+
+# Werte die als semantisch gleichwertig zu "leer" behandelt werden sollen.
+# Wechsel zwischen diesen Werten und "" wird nicht als Änderung gewertet.
+_EMPTY_EQUIVALENTS = {'', 'nein', 'keine', 'keiner', 'keines', 'kein'}
+
+def normalize_value(value):
+    """Normalisiert einen Feldwert für den Vergleich.
+    Werte wie 'Nein', 'Keine' etc. werden wie leer behandelt."""
+    v = value.strip().replace('\u00a0', '').lower()
+    if v in _EMPTY_EQUIVALENTS:
+        return ''
+    return value.strip().replace('\u00a0', '')
 
 def validate_imports():
     """
@@ -401,13 +413,13 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
         updated_row = latest_student.copy()
         change_details = {}
         for field, new_value in latest_student.items():
-            old_value = previous_student.get(field, '').strip().replace('\u00a0', '')
-            new_value = new_value.strip().replace('\u00a0', '')
+            old_raw = previous_student.get(field, '').strip().replace('\u00a0', '')
+            new_raw = new_value.strip().replace('\u00a0', '')
 
-            if old_value != new_value:
+            if normalize_value(old_raw) != normalize_value(new_raw):
                 row_changed = True
-                updated_row[field] = f"{old_value} -> {new_value}"
-                change_details[field] = {"old": old_value, "new": new_value}
+                updated_row[field] = f"{old_raw} -> {new_raw}"
+                change_details[field] = {"old": old_raw, "new": new_raw}
 
         if row_changed:
             changes.append({
@@ -576,14 +588,14 @@ def compare_timeframe_imports(timeframe_hours=24):
         updated_row = latest_student.copy()
         change_details = {}
         for field, new_value in latest_student.items():
-            old_value = previous_student.get(field, '').strip()
-            new_value = new_value.strip()
+            old_raw = previous_student.get(field, '').strip()
+            new_raw = new_value.strip()
 
-            if old_value != new_value:
+            if normalize_value(old_raw) != normalize_value(new_raw):
                 row_changed = True
                 change_count += 1
-                updated_row[field] = f"{old_value} -> {new_value}"
-                change_details[field] = {"old": old_value, "new": new_value}
+                updated_row[field] = f"{old_raw} -> {new_raw}"
+                change_details[field] = {"old": old_raw, "new": new_raw}
 
         if row_changed:
             changes.append({
