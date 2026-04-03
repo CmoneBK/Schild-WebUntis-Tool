@@ -76,6 +76,17 @@ def print_info(message):
 def print_creation(message):
     thread_safe_print(Fore.WHITE, f"✨ {message}")
 
+def print_banner():
+    with console_lock:
+        print(f"{Fore.CYAN}{'='*60}")
+        print(f"{Fore.CYAN}🚀 {Fore.WHITE}{Style.BRIGHT}Schild-WebUntis-Tool v3.0 {Fore.CYAN}aktiviert")
+        print(f"{Fore.CYAN}{'='*60}")
+        print(f"{Fore.CYAN}📂 Verzeichnisse:")
+        print(f"   ℹ️  Import:  {get_directory('import_directory', './WebUntis Importe')}")
+        print(f"   ℹ️  Logs:    {get_directory('log_directory', './Logs')}")
+        print(f"   ℹ️  Excel:   {get_directory('xlsx_directory', './ExcelExports')}")
+        print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}\n", flush=True)
+
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
     config = configparser.ConfigParser()
@@ -594,6 +605,7 @@ def index():
         # Übergebe die Auswahl an die Run-Funktion
         try:
             # Datenverarbeitung basierend auf den Benutzereinstellungen
+            print_info("🌐 Dashboard-Aktion: Manueller Daten-Import durch Benutzer gestartet.")
             print("-" * 40)
             print_info("Starte Verarbeitung über die Weboberfläche...")
             warnings = run(
@@ -630,6 +642,7 @@ def index():
     return render_template(
         'index.html',
         warnings=warnings,
+        admin_warnings=admin_warnings_cache,
         confirmation=confirmation,
         errors=errors,
         warnings_messages=warnings_messages,
@@ -669,6 +682,7 @@ def generate_emails():
     generated_emails_cache = []  # Globaler Cache für generierte E-Mails
 
     if warnings_cache:
+        print_info("🌐 Dashboard-Aktion: E-Mail-Generierung angefordert.")
         print_info("Generiere E-Mails basierend auf den vorhandenen Warnungen...")
         # E-Mail-Einstellungen laden
         config = configparser.ConfigParser()
@@ -837,6 +851,14 @@ def view_xlsx(filename):
     # Pfad-Sicherheitsprüfung
     safe_filename = os.path.basename(filename)
     file_path = os.path.join(xlsx_dir, safe_filename)
+
+@app.route('/api/refresh_admin_warnings', methods=['POST'])
+def refresh_admin_warnings():
+    print_info("🌐 Dashboard-Aktion: Admin-Warnungen (System-Check) manuell neu gestartet.")
+    global admin_warnings_cache
+    admin_warnings_cache.clear()
+    admin_warnings()
+    return jsonify({"success": True, "count": len(admin_warnings_cache), "warnings": admin_warnings_cache})
 
     # Pfad absolut machen
     if not os.path.isabs(xlsx_dir):
@@ -1020,7 +1042,8 @@ def check_emails_status():
 
 @app.route('/api/history/stats', methods=['GET'])
 def get_history_stats():
-    stats = history_manager.get_dashboard_stats()
+    field_filter = request.args.get('field')
+    stats = history_manager.get_dashboard_stats(field_filter=field_filter)
     return jsonify(stats)
 
 @app.route('/api/history/classes', methods=['GET'])
@@ -1541,6 +1564,8 @@ def open_browser():
 cli_args = {}
 
 if __name__ == "__main__":
+    # Banner beim Start ausgeben
+    print_banner()
 
     ensure_ini_files_exist()
 
@@ -1665,6 +1690,8 @@ if __name__ == "__main__":
                 reindexed = history_manager.reindex_logs(log_dir)
                 if reindexed > 0:
                     print_success(f"✅ {reindexed} historische Log-Dateien wurden automatisch indiziert.")
+            else:
+                print_success(f"📦 Historien-Datenbank bereit ({count} Vergleiche geladen).")
         conn.close()
     except Exception as e:
         print_warning(f"Hinweis zur Historie-Initialisierung: {e}")
