@@ -248,8 +248,9 @@ def get_dashboard_stats(field_filter=None):
     # 4. Trends (Monatlich & Wöchentlich nach Feld)
     # Monatlicher Trend
     cursor.execute('''
-        SELECT strftime('%Y-%m', timestamp) as time_unit, field, COUNT(*) as count 
-        FROM comparisons c JOIN changes ch ON c.id = ch.comparison_id 
+        SELECT strftime('%Y-%m', timestamp) as time_unit, field, COUNT(*) as count
+        FROM comparisons c JOIN changes ch ON c.id = ch.comparison_id
+        WHERE field IS NOT NULL AND field != ''
         GROUP BY time_unit, field ORDER BY time_unit ASC
     ''')
     monthly_trends = {}
@@ -257,11 +258,12 @@ def get_dashboard_stats(field_filter=None):
         t, f, c = row['time_unit'], row['field'], row['count']
         if t not in monthly_trends: monthly_trends[t] = {}
         monthly_trends[t][f] = c
-        
+
     # Wöchentlicher Trend
     cursor.execute('''
-        SELECT strftime('%Y-W%W', timestamp) as time_unit, field, COUNT(*) as count 
-        FROM comparisons c JOIN changes ch ON c.id = ch.comparison_id 
+        SELECT strftime('%Y-W%W', timestamp) as time_unit, field, COUNT(*) as count
+        FROM comparisons c JOIN changes ch ON c.id = ch.comparison_id
+        WHERE field IS NOT NULL AND field != ''
         GROUP BY time_unit, field ORDER BY time_unit ASC
     ''')
     weekly_trends = {}

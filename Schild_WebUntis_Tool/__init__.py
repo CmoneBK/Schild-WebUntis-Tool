@@ -847,18 +847,9 @@ def view_xlsx(filename):
     config = configparser.ConfigParser()
     config.read("settings.ini", encoding='utf-8-sig')
     xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelExports")
-    
+
     # Pfad-Sicherheitsprüfung
     safe_filename = os.path.basename(filename)
-    file_path = os.path.join(xlsx_dir, safe_filename)
-
-@app.route('/api/refresh_admin_warnings', methods=['POST'])
-def refresh_admin_warnings():
-    print_info("🌐 Dashboard-Aktion: Admin-Warnungen (System-Check) manuell neu gestartet.")
-    global admin_warnings_cache
-    admin_warnings_cache.clear()
-    admin_warnings()
-    return jsonify({"success": True, "count": len(admin_warnings_cache), "warnings": admin_warnings_cache})
 
     # Pfad absolut machen
     if not os.path.isabs(xlsx_dir):
@@ -867,11 +858,11 @@ def refresh_admin_warnings():
 
     if not os.path.exists(file_path):
         return jsonify({"error": "Excel-Datei nicht gefunden"}), 404
-        
+
     try:
         wb = load_workbook(file_path, data_only=True)
         ws = wb.active
-        
+
         # HTML-Tabelle generieren
         html = '<div class="table-responsive"><table class="table table-sm table-bordered table-striped">'
         for row in ws.iter_rows(values_only=True):
@@ -884,10 +875,19 @@ def refresh_admin_warnings():
                 html += f'<td{style}>{cell_val}</td>'
             html += '</tr>'
         html += '</table></div>'
-        
+
         return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
     except Exception as e:
         return jsonify({"error": f"Excel konnte nicht gelesen werden: {str(e)}"}), 500
+
+
+@app.route('/api/refresh_admin_warnings', methods=['POST'])
+def refresh_admin_warnings():
+    print_info("🌐 Dashboard-Aktion: Admin-Warnungen (System-Check) manuell neu gestartet.")
+    global admin_warnings_cache
+    admin_warnings_cache.clear()
+    admin_warnings()
+    return jsonify({"success": True, "count": len(admin_warnings_cache), "warnings": admin_warnings_cache})
 
 # Route zum Herunterladen einer Excel-Log-Datei aus dem ExcelExports-Verzeichnis
 @app.route('/api/xlsx_download/<path:filename>', methods=['GET'])
