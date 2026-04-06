@@ -70,7 +70,7 @@ CLASS_REQUIRED_COLUMNS = [
 
 # Werte die als semantisch gleichwertig zu "leer" behandelt werden sollen.
 # Wechsel zwischen diesen Werten und "" wird nicht als Änderung gewertet.
-_EMPTY_EQUIVALENTS = {'', 'nein', 'keine', 'keiner', 'keines', 'kein'}
+_EMPTY_EQUIVALENTS = {'', 'nein', 'keine', 'keiner', 'keines', 'kein', 'false'}
 
 def normalize_value(value):
     """Normalisiert einen Feldwert für den Vergleich.
