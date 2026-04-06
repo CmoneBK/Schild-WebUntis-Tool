@@ -4,6 +4,31 @@ from datetime import datetime
 
 DB_PATH = 'history.db'
 
+# Werte die semantisch gleichwertig zu "leer/nicht gesetzt" sind.
+# Ein Wechsel zwischen zwei dieser Werte ist keine echte Änderung.
+_EMPTY_EQUIVALENTS = {'', 'nein', 'keine', 'keiner', 'keines', 'kein', 'false'}
+
+def _normalize(value):
+    """Gibt '' zurück wenn der Wert semantisch leer ist, sonst den bereinigten Originalwert."""
+    v = value.strip().replace('\u00a0', '').lower()
+    return '' if v in _EMPTY_EQUIVALENTS else value.strip().replace('\u00a0', '')
+
+def _is_meaningful_change(old, new):
+    """True wenn sich alter und neuer Wert nach Normalisierung unterscheiden.
+    Ein leerer neuer Wert (Spalte fehlte im Export) ist nie eine echte Änderung.
+    Beispiele:
+      'Ja' -> ''   : False  (Spalte fehlte, kein expliziter Wert)
+      'Ja' -> 'Nein': True  (echte Aufhebung)
+      ''   -> 'Ja' : True  (Erstzuweisung)
+      ''   -> 'Nein': False (beide semantisch leer)
+    """
+    if _normalize(old) == _normalize(new):
+        return False
+    # Leerer neuer Wert = Spalte fehlte im Export, keine echte Zustandsänderung
+    if new.strip().replace('\u00a0', '') == '':
+        return False
+    return True
+
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -74,8 +99,10 @@ def record_changes(changes_list, timestamp=None, file_a="N/A", file_b="N/A"):
                 ON CONFLICT(id) DO UPDATE SET name=excluded.name
             ''', (student_id, student_name))
             
-            # Einzelne Feldänderungen speichern
+            # Einzelne Feldänderungen speichern (semantisch leere Übergänge überspringen)
             for field, values in change.get('changes', {}).items():
+                if not _is_meaningful_change(values['old'], values['new']):
+                    continue
                 cursor.execute('''
                     INSERT INTO changes (comparison_id, student_id, field, old_value, new_value)
                     VALUES (?, ?, ?, ?, ?)
@@ -192,7 +219,10 @@ def reindex_logs(log_dir):
                         values = parts[1].split(' -> ', 1)
                         if len(values) < 2:
                             continue
-                        student_changes[field] = {"old": values[0].strip(), "new": values[1].strip()}
+                        old_val = values[0].strip()
+                        new_val = values[1].strip()
+                        if _is_meaningful_change(old_val, new_val):
+                            student_changes[field] = {"old": old_val, "new": new_val}
 
                 if student_changes:
                     changes_for_db.append({
@@ -213,18 +243,28 @@ def reindex_logs(log_dir):
 
 def _cleanup_empty_equivalent_changes(conn):
     """Bereinigt Änderungen, bei denen alter und neuer Wert semantisch gleichwertig zu 'leer' sind.
-    Z.B. '' -> 'Nein' oder 'Nein' -> '' werden als keine echte Änderung betrachtet."""
-    empty_equivalents = ('', 'nein', 'keine', 'keiner', 'keines', 'kein')
-    placeholders = ','.join('?' * len(empty_equivalents))
+    Z.B. '' -> 'Nein' oder 'Nein' -> '' werden als keine echte Änderung betrachtet.
+    Verwaiste comparisons (ohne verbleibende Änderungen) werden ebenfalls entfernt."""
+    equivalents = tuple(_EMPTY_EQUIVALENTS)
+    placeholders = ','.join('?' * len(equivalents))
     cursor = conn.cursor()
+    # Fall 1: Beide Werte semantisch leer (z.B. '' -> 'Nein')
+    # Fall 2: Neuer Wert ist leer (Spalte fehlte im Export, z.B. 'Ja' -> '')
     cursor.execute(f'''
         DELETE FROM changes
-        WHERE LOWER(TRIM(old_value)) IN ({placeholders})
-          AND LOWER(TRIM(new_value)) IN ({placeholders})
-    ''', empty_equivalents + empty_equivalents)
+        WHERE (LOWER(TRIM(old_value)) IN ({placeholders})
+               AND LOWER(TRIM(new_value)) IN ({placeholders}))
+           OR TRIM(new_value) = ''
+    ''', equivalents + equivalents)
     deleted = cursor.rowcount
-    if deleted > 0:
-        print(f"[history_manager] {deleted} semantisch leere Änderungen aus der Datenbank bereinigt.")
+    # Verwaiste Vergleiche entfernen (kein einziger change-Eintrag mehr vorhanden)
+    cursor.execute('''
+        DELETE FROM comparisons
+        WHERE id NOT IN (SELECT DISTINCT comparison_id FROM changes)
+    ''')
+    orphans = cursor.rowcount
+    if deleted > 0 or orphans > 0:
+        print(f"[history_manager] Bereinigung: {deleted} Pseudoänderungen, {orphans} verwaiste Vergleiche entfernt.")
     conn.commit()
 
 
