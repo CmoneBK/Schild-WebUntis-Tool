@@ -1331,18 +1331,18 @@ def get_arguments():
     print_info(f"Bereite Liste der verfügbaren Kommandozeilenargumente für das Befehl- und Verknüpfungs-Erstelltool vor...")
     # Liste der Argumente mit Beschreibungen
     arguments = [
-        {"name": "--process", "description": "Führt den Hauptprozess aus (Verarbeitung des Schild-Exports, Erstellungen von Warnungen, Erstellung der Log-Dateien)."},
-        {"name": "--generate-emails --send-emails", "description": "Generiert und sendet die Warn-E-Mails auf Grundlage der gespeicherten Einstellungen. (Davor ist --process erforderlich.)"},
-        {"name": "--send-admin-warnings", "description": "Sendet Admin-Warnungen per E-Mail an die hinterlegte Admin E-Mail-Adresse, wenn im SchildExport Klassen oder Klassenlehrkräfte vorkommen, die in den Klassen- oder Lehrkraftdaten fehlen."},
-        {"name": "--no-web", "description": "Verhindert das Öffnen des Web-Interfaces."},
-        {"name": "--send-log-email", "description": "Sendet eine tabellarische Übersicht (html) und die den Excel-Änderungslog (im Anhang) für einen definierten Zeitraum an die hinterlegte Admin E-Mail-Adresse."},
-        {"name": "--skip-admin-warnings", "description": "Überspringt die Erstellung von Admin-Warnungen. (Darf nicht mit --send admin-warnings kombiniert werden.)"},
-        {"name": "--no-log", "description": "Verhindert die Erstellung der .log Logdateien."},
-        {"name": "--no-xlsx", "description": "Verhindert die Erstellung der Excel Logdateien. (Darf nicht mit --send-log-email kombiniert werden.)"},
-        {"name": "--no-directory-change", "description": "Verhindert, dass Verzeichnisse über das WebEnd geändert werden können. Dazu wird der Tab in den Einstellungen entfernt und im BackEnd Funktionen blockiert."},
-        {"name": "--no-directory-change --enable-upload", "description": "Verhindert, dass Verzeichnisse über das WebEnd geändert werden können und ermöglicht einen Upload von Dateien in die Verzeichnisse.\n⚠️ Aus Sicherheitsgründen sollte --enable-upload niemals ohne --no-directory-change verwendet werden!⚠️"},
-        {"name": "--host", "description": "IP-Adresse, auf der der Server laufen soll (Standard: 0.0.0.0)"},
-        {"name": "--port", "description": "Port, auf dem der Server laufen soll (Standard: 5000)"},
+        {"name": "--process", "description": "Führt den Hauptprozess aus: Verarbeitung des Schild-Exports, Erstellung von Warnungen sowie .log- und Excel-Logdateien."},
+        {"name": "--generate-emails --send-emails", "description": "Generiert und sendet die Warn-E-Mails auf Grundlage der gespeicherten Einstellungen. Setzt voraus, dass --process zuvor ausgeführt wurde."},
+        {"name": "--send-admin-warnings", "description": "Führt den Admin-Check durch und sendet das Ergebnis per E-Mail an die hinterlegte Admin-E-Mail-Adresse. Meldet fehlende Klassen oder Klassenlehrkräfte in den Stammdaten."},
+        {"name": "--no-web", "description": "Verhindert das automatische Öffnen des Browsers beim Start. Der Server läuft weiterhin und ist manuell erreichbar."},
+        {"name": "--send-log-email", "description": "Vergleicht Import-Dateien im konfigurierten Zeitrahmen (timeframe_hours in settings.ini) und sendet eine tabellarische HTML-Übersicht sowie den Excel-Änderungslog als Anhang an die Admin-E-Mail-Adresse."},
+        {"name": "--skip-admin-warnings", "description": "Überspringt die Erstellung von Admin-Warnungen beim Start. Darf nicht mit --send-admin-warnings kombiniert werden."},
+        {"name": "--no-log", "description": "Verhindert die Erstellung der .log-Textdateien."},
+        {"name": "--no-xlsx", "description": "Verhindert die Erstellung der Excel-Logdateien."},
+        {"name": "--no-directory-change", "description": "Sperrt die Verzeichnisverwaltung im WebEnd: Der Einstellungs-Tab wird ausgeblendet und Änderungen an Verzeichnissen werden serverseitig blockiert."},
+        {"name": "--no-directory-change --enable-upload", "description": "Sperrt die Verzeichnisverwaltung und aktiviert zusätzlich den Datei-Upload in die konfigurierten Verzeichnisse. ⚠️ --enable-upload sollte ausschließlich zusammen mit --no-directory-change verwendet werden."},
+        {"name": "--host", "description": "IP-Adresse, auf der der Server lauscht (Standard: 0.0.0.0 = alle Interfaces)."},
+        {"name": "--port", "description": "Port, auf dem der Server lauscht (Standard: 5000)."},
     ]
     print_success(f"Liste der verfügbaren Kommandozeilenargumente für das Befehl- und Verknüpfungs-Erstelltool wurde erstellt.")
     return jsonify({"success": True, "arguments": arguments})

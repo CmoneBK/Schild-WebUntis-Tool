@@ -497,7 +497,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     print_success("Vergleich der neuesten Importdateien abgeschlossen.")
 
 from smtp import send_email
-def compare_timeframe_imports(timeframe_hours=24):
+def compare_timeframe_imports(timeframe_hours=24, no_log=False, no_xlsx=False):
     # Funktion zum Vergleichen von Importdateien innerhalb eines bestimmten Zeitrahmens und Senden von E-Mails bei Änderungen
     print_info("Starte Vergleich der Importdateien im definierten Zeitrahmen...")
 
@@ -634,16 +634,22 @@ def compare_timeframe_imports(timeframe_hours=24):
     history_manager.record_changes(changes, timestamp, previous_file, latest_file)
 
     # Log-Datei erstellen
-    print_creation(f"Erstelle Log-Datei: {log_file_path}")
-    with open(log_file_path, 'w', encoding='utf-8') as log_file:
-        for change in changes:
-            log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']})\n")
-            for field, values in change['changes'].items():
-                log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
-            log_file.write("\n")
-    print_success(".log Log-Datei erfolgreich erstellt.")
+    if not no_log:
+        print_creation(f"Erstelle Log-Datei: {log_file_path}")
+        with open(log_file_path, 'w', encoding='utf-8') as log_file:
+            for change in changes:
+                log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']})\n")
+                for field, values in change['changes'].items():
+                    log_file.write(f"  {field}: {values['old']} -> {values['new']}\n")
+                log_file.write("\n")
+        print_success(".log Log-Datei erfolgreich erstellt.")
+    else:
+        print_info("Log-Datei-Erstellung übersprungen (--no-log).")
 
     # Excel-Datei erstellen
+    if no_xlsx:
+        print_info("Excel-Datei-Erstellung übersprungen (--no-xlsx).")
+        return
     print_creation(f"Erstelle Excel-Datei: {excel_file_path}")
     wb = Workbook()
     ws = wb.active
