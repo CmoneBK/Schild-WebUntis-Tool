@@ -8,6 +8,14 @@ from openpyxl.styles import Font, PatternFill
 import colorama
 from colorama import Fore, Style, init
 import threading
+from rich.console import Console
+from rich.table import Table
+from rich import box
+
+_console = Console(highlight=False, legacy_windows=False)
+
+def _fmt_bool(v):
+    return "[green]Ja[/]" if v else "[dim]Nein[/]"
 from utils import safe_read_config
 
 # Colorama initialisieren
@@ -44,7 +52,7 @@ def print_creation(message):
 
 def print_section(title):
     """Gibt eine Abschnittsüberschrift aus – strukturelle Trennung, kein Emoji."""
-    thread_safe_print(Fore.CYAN, f"──── {title}")
+    _console.rule(title, style="cyan")
 
 # --- Validierungskonstanten ---
 SCHILD_REQUIRED_COLUMNS = [
@@ -220,34 +228,40 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
         admin_warnings_cache = []
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
     print_section("Hauptverarbeitung")
-    print_info(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
-    print_info(f"  Erstelle zweite Datei: {create_second_file}")
-    print_info(f"  Erstelle Klassengrößen-Auswertung: {create_class_size_file}")
-    print_info(f"  Attestpflicht-Spalte hinzufügen: {enable_attestpflicht_column}")
-    print_info(f"  Nachteilsausgleich-Spalte hinzufügen: {enable_nachteilsausgleich_column}")
-    print_info(f"  Ausgabedatei-Erstellung verhindern: {disable_import_file_creation}")
-    print_info(f"  Ausgabedatei-Erstellung bei Admin-Warnungen verhindern: {disable_import_file_if_admin_warning}")
-    print_info(f"  Warnung für Entlassdatum: {warn_entlassdatum}")
-    print_info(f"  Warnung für Aufnahmedatum: {warn_aufnahmedatum}")
-    print_info(f"  Warnung für Klassenwechsel: {warn_klassenwechsel}")
-    print_info(f"  Warnung für neue Schüler: {warn_new_students}")
-    print_info(f"  Warnung für Karteileichen: {warn_karteileichen}")
-    print_info(f"  Empfänger Klassenwechsel E-Mail: {class_change_recipients}")
-    print_info(f"  Log-Dateien erstellen: {'Nein' if no_log else 'Ja'}")
-    print_info(f"  Excel-Dateien erstellen: {'Nein' if no_xlsx else 'Ja'}")
 
-    warnings = []  # Liste für Entlassdatum-Warnungen
-    class_change_warnings = []  # Liste für Klassenwechsel-Warnungen
-    admission_date_warnings = []  # Liste für Aufnahmedatum-Warnungen
+    warnings = []
+    class_change_warnings = []
+    admission_date_warnings = []
     new_student_warnings = []
     karteileichen_warnings = []
-   # Konfigurationsdatei einlesen
+
+    # Konfigurationsdatei einlesen
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
-    classes_dir = config.get('Directories', 'classes_directory')
+    classes_dir  = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
-    print_info(f"  Klassendatenverzeichnis: {classes_dir}")
-    print_info(f"  Lehrerdatenverzeichnis:  {teachers_dir}")
+
+    opts = Table(box=None, show_header=False, pad_edge=False, padding=(0, 2, 0, 2))
+    opts.add_column(style="cyan dim", no_wrap=True)
+    opts.add_column()
+    opts.add_row("Abschlussdatum",               _fmt_bool(use_abschlussdatum))
+    opts.add_row("Zweite Importdatei",            _fmt_bool(create_second_file))
+    opts.add_row("Klassengrößen-Auswertung",      _fmt_bool(create_class_size_file))
+    opts.add_row("Attestpflicht-Spalte",          _fmt_bool(enable_attestpflicht_column))
+    opts.add_row("Nachteilsausgleich-Spalte",     _fmt_bool(enable_nachteilsausgleich_column))
+    opts.add_row("Importdatei unterdrücken",      _fmt_bool(disable_import_file_creation))
+    opts.add_row("Unterdrücken bei Admin-Warnung",_fmt_bool(disable_import_file_if_admin_warning))
+    opts.add_row("Warnung: Entlassdatum",         _fmt_bool(warn_entlassdatum))
+    opts.add_row("Warnung: Aufnahmedatum",        _fmt_bool(warn_aufnahmedatum))
+    opts.add_row("Warnung: Klassenwechsel",       _fmt_bool(warn_klassenwechsel))
+    opts.add_row("Warnung: Neue Schüler",         _fmt_bool(warn_new_students))
+    opts.add_row("Warnung: Karteileichen",        _fmt_bool(warn_karteileichen))
+    opts.add_row("Text-Logs",                     _fmt_bool(not no_log))
+    opts.add_row("Excel-Logs",                    _fmt_bool(not no_xlsx))
+    opts.add_row("KW E-Mail-Empfänger",           str(class_change_recipients) if class_change_recipients else "[dim]–[/]")
+    opts.add_row("Klassen-CSV",                   classes_dir)
+    opts.add_row("Lehrkräfte-CSV",                teachers_dir)
+    _console.print(opts)
 
     # Daten einlesen und verarbeiten
     classes_by_name = read_classes(classes_dir, teachers_dir)
@@ -284,6 +298,7 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     print_warnings(karteileichen_warnings)
 
     # Dateien speichern
+    print_section("Ausgabe")
     save_files(output_data_students, all_warnings, create_second_file, admin_warnings_cache, disable_import_file_creation, disable_import_file_if_admin_warning, enable_attestpflicht_column, enable_nachteilsausgleich_column)
 
     if create_class_size_file:
@@ -441,7 +456,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
 
     # Log-Datei erstellen
     if not no_log:
-        print_creation(f"Erstelle Log-Datei: {log_file_path}")
+        print_creation(f"Erstelle Text-Log-Datei: {log_file_path}")
         with open(log_file_path, 'w', encoding='utf-8') as log_file:
             for change in changes:
                 log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']}) [Klasse: {change['current_class']}]\n")
@@ -452,7 +467,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
 
     # Excel-Datei erstellen
     if not no_xlsx and changes:
-        print_creation(f"Erstelle Excel-Datei: {excel_file_path}")
+        print_creation(f"Erstelle Excel-Log-Datei: {excel_file_path}")
         wb = Workbook()
         ws = wb.active
         ws.title = "Änderungen"
@@ -632,7 +647,7 @@ def compare_timeframe_imports(timeframe_hours=24, no_log=False, no_xlsx=False):
 
     # Log-Datei erstellen
     if not no_log:
-        print_creation(f"Erstelle Log-Datei: {log_file_path}")
+        print_creation(f"Erstelle Text-Log-Datei: {log_file_path}")
         with open(log_file_path, 'w', encoding='utf-8') as log_file:
             for change in changes:
                 log_file.write(f"Schüler: {change['name']} (ID: {change['student_id']})\n")
@@ -647,7 +662,7 @@ def compare_timeframe_imports(timeframe_hours=24, no_log=False, no_xlsx=False):
     if no_xlsx:
         print_info("Excel-Datei-Erstellung übersprungen (--no-xlsx).")
         return
-    print_creation(f"Erstelle Excel-Datei: {excel_file_path}")
+    print_creation(f"Erstelle Excel-Log-Datei: {excel_file_path}")
     wb = Workbook()
     ws = wb.active
     ws.title = "Änderungen"
@@ -1304,44 +1319,56 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
     return warnings
 
 def print_warnings(warnings):
-    # Funktion zur Ausgabe der Warnungen in der Konsole
     if not warnings:
         print_info("  Keine.")
         return
+
+    table = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold cyan",
+                  show_edge=False, pad_edge=True)
+    table.add_column("Name",      style="yellow",  no_wrap=True)
+    table.add_column("Klasse",    style="cyan",     no_wrap=True)
+    table.add_column("Änderung",  style="yellow")
+    table.add_column("Lehrkraft", style="dim")
+
     for warning in warnings:
         nachname = warning.get('Nachname', '').strip()
         vorname  = warning.get('Vorname', '').strip()
         name = f"{nachname}, {vorname}" if nachname and vorname else nachname or vorname or "(Unbekannt)"
 
         if 'neues_entlassdatum' in warning:
-            klasse = warning.get('Klasse', 'N/A')
+            klasse = warning.get('Klasse', '') or ''
             detail = f"Entlassdatum {warning['altes_entlassdatum']} → {warning['neues_entlassdatum']}"
         elif 'neues_aufnahmedatum' in warning:
-            klasse = warning.get('Klasse', 'N/A')
+            klasse = warning.get('Klasse', '') or ''
             detail = f"Aufnahmedatum {warning['altes_aufnahmedatum']} → {warning['neues_aufnahmedatum']}"
         elif 'neue_klasse' in warning:
             klasse = f"{warning.get('alte_klasse', '?')} → {warning['neue_klasse']}"
             detail = "Klassenwechsel"
         else:
-            klasse = warning.get('Klasse', '')
+            klasse = warning.get('Klasse', '') or ''
             detail = warning.get('warning_message', 'Warnung')
 
-        kl1  = warning.get('Klassenlehrkraft_1', 'N/A')
-        kl1m = warning.get('Klassenlehrkraft_1_Email', '')
-        kl2  = warning.get('Klassenlehrkraft_2', '')
-        kl2m = warning.get('Klassenlehrkraft_2_Email', '')
-        lehrkraft = f"{kl1} ({kl1m})"
-        if kl2 and kl2 not in ('N/A', ''):
-            lehrkraft += f" / {kl2} ({kl2m})"
+        if klasse in ('N/A',):
+            klasse = ''
 
-        klasse_str = f" [{klasse}]" if klasse and klasse not in ('N/A', '') else ""
-        print_warning(f"  {name}{klasse_str} – {detail}")
-        print_warning(f"    Lehrkraft: {lehrkraft}")
+        kl1  = warning.get('Klassenlehrkraft_1', '') or ''
+        kl1m = warning.get('Klassenlehrkraft_1_Email', '') or ''
+        kl2  = warning.get('Klassenlehrkraft_2', '') or ''
+        kl2m = warning.get('Klassenlehrkraft_2_Email', '') or ''
+
+        lehrkraft_parts = []
+        if kl1 and kl1 != 'N/A':
+            lehrkraft_parts.append(f"{kl1}\n({kl1m})" if kl1m else kl1)
+        if kl2 and kl2 != 'N/A':
+            lehrkraft_parts.append(f"{kl2}\n({kl2m})" if kl2m else kl2)
+        lehrkraft = "\n".join(lehrkraft_parts) if lehrkraft_parts else "N/A"
+
+        table.add_row(name, klasse, detail, lehrkraft)
+
+    _console.print(table)
 
 
 def save_files(output_data_students, warnings, create_second_file, admin_warnings_cache, disable_import_file_creation=False, disable_import_file_if_admin_warning=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False):
-    # Funktion zum Speichern der Ausgabedateien
-    print_info("Speichere Ausgabedateien...")
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
     import_dir = get_directory('import_directory', './WebUntis Importe')
@@ -1395,7 +1422,7 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
     with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
         writer = csv.writer(csvfile, delimiter=';')
         writer.writerows(output_data_students)
-    print_creation(f"Importdatei gespeichert: {output_file}")
+    print_creation(f"WebUntis-Importdatei gespeichert: {output_file}")
 
     # Zweite Ausgabedatei speichern, falls gewünscht
     if create_second_file:

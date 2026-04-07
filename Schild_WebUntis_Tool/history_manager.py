@@ -2,13 +2,16 @@ import sqlite3
 import os
 from datetime import datetime
 from colorama import Fore, Style, init as colorama_init
+from rich.console import Console
 colorama_init(autoreset=True)
+
+_console = Console(highlight=False, legacy_windows=False)
 
 def _print_info(msg):    print(f"{Fore.CYAN}ℹ️  [Historie] {msg}{Style.RESET_ALL}", flush=True)
 def _print_success(msg): print(f"{Fore.GREEN}✅ [Historie] {msg}{Style.RESET_ALL}", flush=True)
 def _print_warning(msg): print(f"{Fore.YELLOW}⚠️  [Historie] {msg}{Style.RESET_ALL}", flush=True)
 def _print_error(msg):   print(f"{Fore.RED}❌ [Historie] {msg}{Style.RESET_ALL}", flush=True)
-def _print_section(title): print(f"{Fore.CYAN}──── [Historie] {title}{Style.RESET_ALL}", flush=True)
+def _print_section(title): _console.rule(f"[Historie] {title}", style="cyan")
 
 DB_PATH = 'history.db'
 

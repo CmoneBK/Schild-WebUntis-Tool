@@ -35,6 +35,12 @@ import threading  # Multithreading-Funktionen
 import werkzeug  # Werkzeug-Bibliothek für WSGI-Anwendungen (von Flask verwendet)
 import tkinter as tk  # GUI-Toolkit für die Dateiauswahl-Dialoge
 import colorama  # Ausgabe von farbigem Text in der Konsole
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+from rich import box
+
+_console = Console(highlight=False, legacy_windows=False)
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
 from flask import Flask, render_template, request, jsonify, session, send_from_directory  # Flask-Webframework
 from main import run, read_students, read_classes, compare_timeframe_imports, validate_imports  # Funktionen aus eigenen Modulen importieren
@@ -78,18 +84,26 @@ def print_creation(message):
 
 def print_section(title):
     """Gibt eine Abschnittsüberschrift aus – strukturelle Trennung, kein Emoji."""
-    thread_safe_print(Fore.CYAN, f"──── {title}")
+    _console.rule(title, style="cyan")
 
 def print_banner():
-    with console_lock:
-        print(f"{Fore.CYAN}{'='*60}")
-        print(f"{Fore.CYAN}🚀 {Fore.WHITE}{Style.BRIGHT}Schild-WebUntis-Tool v3.0 {Fore.CYAN}aktiviert")
-        print(f"{Fore.CYAN}{'='*60}")
-        print(f"{Fore.CYAN}📂 Verzeichnisse:")
-        print(f"   ℹ️  Import:  {get_directory('import_directory', './WebUntis Importe')}")
-        print(f"   ℹ️  Logs:    {get_directory('log_directory', './Logs')}")
-        print(f"   ℹ️  Excel-Logs: {get_directory('xlsx_directory', './ExcelLogs')}")
-        print(f"{Fore.CYAN}{'='*60}{Style.RESET_ALL}\n", flush=True)
+    import_dir  = get_directory('import_directory', './WebUntis Importe')
+    log_dir     = get_directory('log_directory', './Logs')
+    xlsx_dir    = get_directory('xlsx_directory', './ExcelLogs')
+
+    content = Text()
+    content.append("📂 Ausgabeverzeichnisse\n", style="bold cyan")
+    content.append(f"   WebUntis-Import: {import_dir}\n", style="white")
+    content.append(f"   Text-Logs:       {log_dir}\n", style="white")
+    content.append(f"   Excel-Logs:      {xlsx_dir}", style="white")
+
+    _console.print(Panel(
+        content,
+        title="[bold cyan]🚀 Schild-WebUntis-Tool v3.0[/]",
+        border_style="cyan",
+        padding=(0, 1),
+    ))
+    _console.print("")
 
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
