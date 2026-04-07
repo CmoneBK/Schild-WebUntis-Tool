@@ -1,6 +1,14 @@
 import sqlite3
 import os
 from datetime import datetime
+from colorama import Fore, Style, init as colorama_init
+colorama_init(autoreset=True)
+
+def _print_info(msg):    print(f"{Fore.CYAN}ℹ️  [Historie] {msg}{Style.RESET_ALL}", flush=True)
+def _print_success(msg): print(f"{Fore.GREEN}✅ [Historie] {msg}{Style.RESET_ALL}", flush=True)
+def _print_warning(msg): print(f"{Fore.YELLOW}⚠️  [Historie] {msg}{Style.RESET_ALL}", flush=True)
+def _print_error(msg):   print(f"{Fore.RED}❌ [Historie] {msg}{Style.RESET_ALL}", flush=True)
+def _print_section(title): print(f"{Fore.CYAN}──── [Historie] {title}{Style.RESET_ALL}", flush=True)
 
 DB_PATH = 'history.db'
 
@@ -79,45 +87,47 @@ def record_changes(changes_list, timestamp=None, file_a="N/A", file_b="N/A"):
     """Speichert eine Liste von Änderungen in der Datenbank."""
     if not timestamp:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
     conn = get_connection()
     cursor = conn.cursor()
-    
+
     try:
-        # Vergleich registrieren
-        cursor.execute('INSERT INTO comparisons (timestamp, file_a, file_b) VALUES (?, ?, ?)', 
+        cursor.execute('INSERT INTO comparisons (timestamp, file_a, file_b) VALUES (?, ?, ?)',
                        (timestamp, file_a, file_b))
         comp_id = cursor.lastrowid
-        
+
+        stored_count = 0
+        skipped_count = 0
         for change in changes_list:
             student_id = change.get('student_id')
             student_name = change.get('name')
-            
-            # Student aktualisieren oder anlegen
+
             cursor.execute('''
                 INSERT INTO students (id, name) VALUES (?, ?)
                 ON CONFLICT(id) DO UPDATE SET name=excluded.name
             ''', (student_id, student_name))
-            
-            # Einzelne Feldänderungen speichern (semantisch leere Übergänge überspringen)
+
             for field, values in change.get('changes', {}).items():
                 if not _is_meaningful_change(values['old'], values['new']):
+                    skipped_count += 1
                     continue
                 cursor.execute('''
                     INSERT INTO changes (comparison_id, student_id, field, old_value, new_value)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (comp_id, student_id, field, values['old'], values['new']))
-            
-            # Unabhängig von einer Änderung im Feld 'Klasse', die last_known_class aktualisieren
+                stored_count += 1
+
             current_class = change.get('current_class')
             if current_class:
-                cursor.execute('UPDATE students SET last_known_class = ? WHERE id = ?', 
+                cursor.execute('UPDATE students SET last_known_class = ? WHERE id = ?',
                                (current_class, student_id))
-        
+
         conn.commit()
+        _print_info(f"{len(changes_list)} Schüler verarbeitet – {stored_count} Änderungen gespeichert"
+                    + (f", {skipped_count} semantisch leer übersprungen" if skipped_count else "") + ".")
     except Exception as e:
         if conn: conn.rollback()
-        print(f"Fehler beim Speichern der Historie: {e}")
+        _print_error(f"Fehler beim Speichern der Historie: {e}")
     finally:
         if conn: conn.close()
 
@@ -142,9 +152,10 @@ def bulk_update_students(student_list):
             ON CONFLICT(id) DO UPDATE SET name=excluded.name, last_known_class=excluded.last_known_class
         ''', [(s['id'], s['name'], s['class']) for s in student_list])
         conn.commit()
+        _print_success(f"Klassendaten synchronisiert: {len(student_list)} Schüler aktualisiert.")
     except Exception as e:
         conn.rollback()
-        print(f"Fehler beim Bulk-Update: {e}")
+        _print_error(f"Fehler beim Bulk-Update der Schülerdaten: {e}")
     finally:
         conn.close()
 
@@ -153,10 +164,11 @@ def reindex_logs(log_dir):
     """Parst vorhandene .log Dateien im Verzeichnis und importiert sie in die DB.
     Überspringt Dateien, die bereits in der DB erfasst sind (Duplikat-Schutz per file_b).
     """
+    _print_section("Log-Reindex")
     if not os.path.exists(log_dir):
+        _print_warning(f"  Log-Verzeichnis '{log_dir}' nicht gefunden. Reindex abgebrochen.")
         return 0
 
-    # Bereits importierte Log-Dateinamen laden (Duplikat-Schutz)
     conn = get_connection()
     already_imported = set(
         row[0] for row in conn.execute("SELECT file_b FROM comparisons WHERE file_b IS NOT NULL").fetchall()
@@ -166,6 +178,7 @@ def reindex_logs(log_dir):
     log_files = sorted(
         [f for f in os.listdir(log_dir) if f.endswith('.log') and 'nderungsLog' in f]
     )
+    _print_info(f"  {len(log_files)} Log-Datei(en) gefunden, {len(already_imported)} bereits importiert.")
     count = 0
 
     for filename in log_files:
@@ -233,12 +246,16 @@ def reindex_logs(log_dir):
                     })
 
             if changes_for_db:
+                _print_info(f"  Importiere '{filename}' ({len(changes_for_db)} betroffene Schüler)...")
                 record_changes(changes_for_db, timestamp=timestamp, file_b=filename)
                 count += 1
+            else:
+                _print_info(f"  Übersprungen: '{filename}' – keine relevanten Änderungen.")
 
         except Exception as e:
-            print(f"Fehler beim Parsen von {filename}: {e}")
+            _print_error(f"  Fehler beim Parsen von '{filename}': {e}")
 
+    _print_success(f"Reindex abgeschlossen: {count} neue Log-Datei(en) importiert.")
     return count
 
 def _cleanup_empty_equivalent_changes(conn):
@@ -264,7 +281,7 @@ def _cleanup_empty_equivalent_changes(conn):
     ''')
     orphans = cursor.rowcount
     if deleted > 0 or orphans > 0:
-        print(f"[history_manager] Bereinigung: {deleted} Pseudoänderungen, {orphans} verwaiste Vergleiche entfernt.")
+        _print_info(f"DB-Bereinigung: {deleted} Pseudoänderungen und {orphans} verwaiste Vergleiche entfernt.")
     conn.commit()
 
 
