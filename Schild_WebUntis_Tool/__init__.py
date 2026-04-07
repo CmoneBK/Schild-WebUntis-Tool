@@ -39,6 +39,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 from rich import box
+from rich.table import Table
 
 _console = Console(highlight=False, legacy_windows=False)
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
@@ -510,6 +511,24 @@ def admin_warnings(send_email_flag=False):
 @app.route('/test')
 def test_route(): return 'TEST OK', 200
 
+_PANEL_LABELS = {
+    'settingsPanel':   'Einstellungspanel',
+    'emailEditor':     'E-Mail-Editor',
+    'shortcutCreator': 'Shortcut-Tool',
+    'uploadArea':      'Datei-Upload',
+    'historyPanel':    'Historie',
+    'warningsPanel':   'Warnungen',
+    'dashboardPanel':  'Dashboard',
+    'adminPanel':      'Admin-Check',
+}
+
+@app.route('/api/panel_opened', methods=['POST'])
+def panel_opened():
+    panel_key = request.json.get('panel', '') if request.json else ''
+    label = _PANEL_LABELS.get(panel_key, panel_key)
+    print_info(f"🌐 Weboberfläche: {label} geöffnet.")
+    return jsonify({"status": "ok"})
+
 @app.route('/test_api', methods=['POST'])
 def test_api():
     from webuntis_api import WebUntisClient
@@ -531,6 +550,9 @@ def index():
     confirmation = None  # Variable für Bestätigungsnachricht
     errors = []  # Liste für Fehlermeldungen
     warnings_messages = []  # Liste für nicht-blockierende Warnungen
+
+    if request.method == 'GET':
+        print_info("🌐 Weboberfläche: Hauptbereich geöffnet.")
 
     # Zugriff auf die globalen CLI-Argumente
     global cli_args
@@ -831,6 +853,7 @@ def get_log_content(filename):
     
     # Path-Traversal Protection
     safe_filename = os.path.basename(filename)
+    print_info(f"📄 Historie: Text-Log wird angezeigt – {safe_filename}")
     file_path = os.path.join(log_dir, safe_filename)
 
     if not os.path.exists(file_path):
@@ -859,6 +882,7 @@ def view_xlsx(filename):
 
     # Pfad-Sicherheitsprüfung
     safe_filename = os.path.basename(filename)
+    print_info(f"📊 Historie: Excel-Log wird angezeigt – {safe_filename}")
 
     # Pfad absolut machen
     if not os.path.isabs(xlsx_dir):
@@ -907,6 +931,7 @@ def download_xlsx(filename):
     
     # Pfad-Sicherheitsprüfung
     safe_filename = os.path.basename(filename)
+    print_info(f"⬇️  Historie: Excel-Log wird heruntergeladen – {safe_filename}")
     # Sicherstellen, dass das Verzeichnis absolut ist, falls nötig
     if not os.path.isabs(xlsx_dir):
         xlsx_dir = os.path.abspath(xlsx_dir)
@@ -1055,6 +1080,7 @@ def get_history_classes():
 
 @app.route('/api/history/class_stats/<class_name>', methods=['GET'])
 def get_class_stats(class_name):
+    print_info(f"🏫 Dashboard: Klassendetails abgerufen – {class_name}")
     stats = history_manager.get_class_analytics(class_name)
     return jsonify(stats)
 
@@ -1070,7 +1096,10 @@ def export_history_excel():
     
     if not export_type or not identifier:
         return jsonify({"error": "Missing parameters"}), 400
-        
+
+    type_label = "Schüler" if export_type == 'student' else "Klasse"
+    print_info(f"⬇️  Dashboard: Historienexport ({type_label}) wird erstellt – {identifier}")
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Historie"
@@ -1136,6 +1165,7 @@ def search_history():
     query = request.args.get('q', '')
     if len(query) < 2:
         return jsonify([])
+    print_info(f"🔍 Dashboard: Schüleranalyse – Suche nach '{query}'")
     results = history_manager.search_student_history(query)
     return jsonify(results)
 
@@ -1182,9 +1212,17 @@ def load_settings():
 
 # Route und Funktion zum Speichern der geänderten Einstellungen aus dem Einstellungs-Panel im WebEnd in die verschiedenen .ini Dateien. 
 # Hier wird zunächst sortiert, welche Daten in welche Datei gehören.
+_SECTION_LABELS = {
+    'ProcessingOptions': 'Verarbeitungsoptionen',
+    'Directories':       'Verzeichnisse',
+    'Email':             'E-Mail-Einstellungen',
+    'OAuth':             'OAuth-Konfiguration',
+    'Templates':         'E-Mail-Vorlagen',
+    'Settings':          'Allgemeine Einstellungen',
+}
+
 @app.route('/save-settings', methods=['POST'])
 def save_settings():
-    print_info("Speichere Einstellungen in 'settings.ini' und 'email_settings.ini'...")
     settings = request.json.get('settings', {})
     settings_ini_data = {}
     email_settings_ini_data = {}
@@ -1206,16 +1244,24 @@ def save_settings():
     # If directory change is disabled, remove the Directories section or ignore changes to directories
     if cli_args.get("no_directory_change", False):
         if 'Directories' in settings_ini_data:
-            print_info("Directory changing is disabled via command-line argument. Ignoring changes to directories.")
             del settings_ini_data['Directories']
 
     # Einstellungen speichern
     if settings_ini_data:
-        save_to_settings_ini(settings_ini_data) #Speichern der für in die settings.ini gehörenden Daten
+        save_to_settings_ini(settings_ini_data)
     if email_settings_ini_data:
-        save_to_email_settings_ini(email_settings_ini_data) #Speichern der für in die email_settings.ini gehörenden Daten
+        save_to_email_settings_ini(email_settings_ini_data)
 
-    print_success("Einstellungen wurden erfolgreich gespeichert.")
+    # Zusammenfassung als rich Panel ausgeben
+    all_saved = {**settings_ini_data, **email_settings_ini_data}
+    summary = Table(box=None, show_header=False, pad_edge=False, padding=(0, 2, 0, 0))
+    summary.add_column(style="cyan dim", no_wrap=True)
+    summary.add_column(style="white")
+    for section, values in all_saved.items():
+        label = _SECTION_LABELS.get(section, section)
+        summary.add_row(label, f"{len(values)} Feld(er)")
+    _console.print(Panel(summary, title="[bold cyan]Einstellungen gespeichert[/]", border_style="cyan", padding=(0, 1)))
+
     # Verzeichnisse neu prüfen/anlegen, falls Pfade geändert wurden
     ensure_ini_files_exist()
     return jsonify({"status": "success"})
@@ -1223,47 +1269,31 @@ def save_settings():
 
 # Funktion zum Speichern der Einstellungen in die Datei 'settings.ini'
 def save_to_settings_ini(settings):
-    print_info("Speichere Einstellungen in 'settings.ini'...")
     config = configparser.ConfigParser()
     safe_read_config(config, "settings.ini")
     for section, values in settings.items():
         if not config.has_section(section):
             config.add_section(section)
-            print_info(f"Abschnitt '{section}' hinzugefügt.")
         for key, value in values.items():
-            # Ersetze Backslashes durch Forward Slashes für Pfade
             if "directory" in key:
                 value = os.path.normpath(value)
-                print_info(f"Pfad normalisiert für '{key}': {value}")
             config.set(section, key, str(value))
-            print_info(f"Einstellung gesetzt: [{section}] {key} = {value}")
     with open("settings.ini", "w", encoding="utf-8-sig") as configfile:
         config.write(configfile)
-    print_success("Einstellungen wurden erfolgreich in 'settings.ini' gespeichert.")
 
 # Funktion zum Speichern der E-Mail-Einstellungen in 'email_settings.ini'
 def save_to_email_settings_ini(settings):
-    print_info("Speichere E-Mail-Einstellungen in 'email_settings.ini'...")
     config = configparser.ConfigParser()
     safe_read_config(config, "email_settings.ini")
-    # Bestehende Abschnitte beibehalten
     existing_sections = config.sections()
-    # Aktualisiere nur die bereitgestellten Abschnitte
     for section, values in settings.items():
-        print_info(f"Aktualisiere Abschnitt '{section}'...")
         if section in existing_sections:
             for key, value in values.items():
                 config.set(section, key, str(value))
-                print_info(f"Einstellung aktualisiert: [{section}] {key} = {value}")
         else:
-            print_info(f"Füge neuen Abschnitt '{section}' hinzu...")
             config[section] = values
-            for key, value in values.items():
-                print_info(f"Einstellung hinzugefügt: [{section}] {key} = {value}")
-    # Einstellungen in die Datei schreiben
     with open("email_settings.ini", "w", encoding="utf-8-sig") as configfile:
         config.write(configfile)
-    print_success("E-Mail-Einstellungen wurden erfolgreich in 'email_settings.ini' gespeichert.")
 
 
 # Route und Funktion für den Durchsuchen-Button zur Angabe und Speicherung vollständiger absoluter Verzeichnispfade

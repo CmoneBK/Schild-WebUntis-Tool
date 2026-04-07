@@ -405,6 +405,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 console.log("Set display to:", panel.style.display);
 
                 if (isHidden) {
+                    // Panel-Öffnung an Server melden
+                    fetch('/api/panel_opened', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ panel: panelKey })
+                    }).catch(() => {});
+
                     if (panelKey === "settingsPanel") {
                         activateFirstTab();
                     } else if (panelKey === "historyPanel") {

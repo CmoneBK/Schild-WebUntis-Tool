@@ -50,9 +50,10 @@ def print_info(message):
 def print_creation(message):
     thread_safe_print(Fore.WHITE, f"✨ {message}")
 
-def print_section(title):
+def print_section(title, count=None):
     """Gibt eine Abschnittsüberschrift aus – strukturelle Trennung, kein Emoji."""
-    _console.rule(title, style="cyan")
+    label = f"{title} ({count})" if count is not None else title
+    _console.rule(label, style="cyan")
 
 # --- Validierungskonstanten ---
 SCHILD_REQUIRED_COLUMNS = [
@@ -286,15 +287,15 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     all_warnings = warnings + class_change_warnings + admission_date_warnings + new_student_warnings + karteileichen_warnings
 
     # Separate Konsolenausgabe der verschiedenen Warnungen
-    print_section("Entlassdatum-Warnungen")
+    print_section("Entlassdatum-Warnungen",   len(warnings))
     print_warnings(warnings)
-    print_section("Klassenwechsel-Warnungen")
+    print_section("Klassenwechsel-Warnungen",  len(class_change_warnings))
     print_warnings(class_change_warnings)
-    print_section("Aufnahmedatum-Warnungen")
+    print_section("Aufnahmedatum-Warnungen",   len(admission_date_warnings))
     print_warnings(admission_date_warnings)
-    print_section("Neue-Schüler-Warnungen")
+    print_section("Neue-Schüler-Warnungen",    len(new_student_warnings))
     print_warnings(new_student_warnings)
-    print_section("Karteileichen-Warnungen")
+    print_section("Karteileichen-Warnungen",   len(karteileichen_warnings))
     print_warnings(karteileichen_warnings)
 
     # Dateien speichern
@@ -993,8 +994,6 @@ def read_students(use_abschlussdatum=False):
     return output_data_students, students_by_id
 
 def create_warnings(classes_by_name, students_by_id):
-    # Funktion zum Erstellen von Warnungen bei Änderungen des Entlassdatums
-    print_info("Erstelle Entlassdatum-Warnungen...")
     warnings = []
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
@@ -1002,7 +1001,6 @@ def create_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"  Referenzdatei: '{newest_output_file}'")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -1051,12 +1049,10 @@ def create_warnings(classes_by_name, students_by_id):
                         print_error(f"Ungültiges Datum für Schüler {row['Nachname']}, {row['Vorname']}. Warnung nicht erstellt.")
     else:
         print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
-    print_info(f"  {len(warnings)} Entlassdatum-Warnungen erkannt.")
     return warnings
 
 
 def create_new_student_warnings(classes_by_name, current_students_by_id):
-    print_info("Erstelle Warnungen für neue Schüler...")
     warnings = []
     import_dir = get_directory('import_directory', './WebUntis Importe')
     
@@ -1072,7 +1068,6 @@ def create_new_student_warnings(classes_by_name, current_students_by_id):
         print_warning("Keine Importdatei gefunden.")
         return warnings
 
-    print_info(f"  Referenzdatei: '{previous_file}'")
     
     # Lese die Vergleichsdatei ein und sammle alle Schüler-IDs (normalisiert)
     previous_students = {}
@@ -1105,11 +1100,9 @@ def create_new_student_warnings(classes_by_name, current_students_by_id):
                 'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
                 'new_student': True
             })
-    print_info(f"  {len(warnings)} Neue-Schüler-Warnungen erkannt.")
     return warnings
 
 def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin_cache=None):
-    print_info("Erstelle Warnungen für Karteileichen (gelöschte Schüler)...")
     warnings = []
     import_dir = get_directory('import_directory', './WebUntis Importe')
     
@@ -1125,7 +1118,6 @@ def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin
         print_warning("Keine vorherige Importdatei gefunden zum Vergleich für Karteileichen.")
         return warnings
 
-    print_info(f"  Referenzdatei: '{previous_file}'")
     
     previous_students_names = []
     try:
@@ -1163,7 +1155,6 @@ def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin
             'Details': f"Folgende {len(warnings)} Schüler wurden in den neuen importierten Daten deklassiert / gelöscht: {names_str}. Verbleib prüfen."
         })
 
-    print_info(f"  {len(warnings)} Karteileichen-Warnungen erkannt.")
     return warnings
 
 
@@ -1171,7 +1162,6 @@ def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin
 
 def create_class_change_warnings(classes_by_name, students_by_id, class_change_recipients="old"):
     # Funktion zum Erstellen von Warnungen bei Klassenwechseln
-    print_info("Erstelle Klassenwechsel-Warnungen...")
     warnings = []
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
@@ -1179,7 +1169,6 @@ def create_class_change_warnings(classes_by_name, students_by_id, class_change_r
     output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"  Referenzdatei: '{newest_output_file}'")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -1253,14 +1242,12 @@ def create_class_change_warnings(classes_by_name, students_by_id, class_change_r
                         })
     else:
         print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
-    print_info(f"  {len(warnings)} Klassenwechsel-Warnungen erkannt.")
     return warnings
     print_info(f"Anzahl der erstellten Klassenwechsel-Warnungen: {len(warnings)}")
     return warnings
 
 def create_admission_date_warnings(classes_by_name, students_by_id):
     # Funktion zum Erstellen von Warnungen bei Änderungen des Aufnahmedatums
-    print_info("Erstelle Aufnahmedatum-Warnungen...")
     warnings = []
     import_dir = get_directory('import_directory', './WebUntis Importe')
 
@@ -1268,7 +1255,6 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"  Referenzdatei: '{newest_output_file}'")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -1315,7 +1301,6 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
                         print_error(f"Ungültiges Datum für Schüler {row['Nachname']}, {row['Vorname']}. Warnung nicht erstellt.")
     else:
         print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
-    print_info(f"  {len(warnings)} Aufnahmedatum-Warnungen erkannt.")
     return warnings
 
 def print_warnings(warnings):
