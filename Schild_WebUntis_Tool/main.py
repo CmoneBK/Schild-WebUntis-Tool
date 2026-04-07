@@ -42,6 +42,10 @@ def print_info(message):
 def print_creation(message):
     thread_safe_print(Fore.WHITE, f"✨ {message}")
 
+def print_section(title):
+    """Gibt eine Abschnittsüberschrift aus – strukturelle Trennung, kein Emoji."""
+    thread_safe_print(Fore.CYAN, f"──── {title}")
+
 # --- Validierungskonstanten ---
 SCHILD_REQUIRED_COLUMNS = [
     'Interne ID-Nummer', 'Nachname', 'Vorname', 'Klasse', 'Klassenlehrer', 
@@ -215,7 +219,7 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     if admin_warnings_cache is None:
         admin_warnings_cache = []
     # Hauptfunktion zur Verarbeitung der Daten und Generierung von Warnungen
-    print_info("Starte Hauptverarbeitung...")
+    print_section("Hauptverarbeitung")
     print_info(f"  Verwende Abschlussdatum: {use_abschlussdatum}")
     print_info(f"  Erstelle zweite Datei: {create_second_file}")
     print_info(f"  Erstelle Klassengrößen-Auswertung: {create_class_size_file}")
@@ -238,16 +242,14 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     new_student_warnings = []
     karteileichen_warnings = []
    # Konfigurationsdatei einlesen
-    print_info("Lese 'settings.ini' Konfigurationsdatei ein...")
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
-    print_info(f"Klassendatenverzeichnis: {classes_dir}")
-    print_info(f"Lehrerdatenverzeichnis: {teachers_dir}")
+    print_info(f"  Klassendatenverzeichnis: {classes_dir}")
+    print_info(f"  Lehrerdatenverzeichnis:  {teachers_dir}")
 
     # Daten einlesen und verarbeiten
-    print_info("Lese Klassen- und Schülerdaten ein...")
     classes_by_name = read_classes(classes_dir, teachers_dir)
     output_data_students, students_by_id = read_students(use_abschlussdatum)
 
@@ -270,15 +272,15 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     all_warnings = warnings + class_change_warnings + admission_date_warnings + new_student_warnings + karteileichen_warnings
 
     # Separate Konsolenausgabe der verschiedenen Warnungen
-    print_warning("==================== ENTLASSDATUM WARNUNGEN ====================")
+    print_section("Entlassdatum-Warnungen")
     print_warnings(warnings)
-    print_warning("==================== KLASSENWECHSEL WARNUNGEN ==================")
+    print_section("Klassenwechsel-Warnungen")
     print_warnings(class_change_warnings)
-    print_warning("==================== AUFNAHMEDATUM WARNUNGEN ===================")
+    print_section("Aufnahmedatum-Warnungen")
     print_warnings(admission_date_warnings)
-    print_warning("==================== Neue SCHÜLER WARNUNGEN ===================")
+    print_section("Neue-Schüler-Warnungen")
     print_warnings(new_student_warnings)
-    print_warning("==================== KARTEILEICHEN WARNUNGEN ===================")
+    print_section("Karteileichen-Warnungen")
     print_warnings(karteileichen_warnings)
 
     # Dateien speichern
@@ -288,7 +290,6 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
      create_class_sizes_file(students_by_id)
 
     # Vergleiche die letzten beiden Dateien
-    print_info("Initialisiere Log-Erstellung")
     compare_latest_imports(no_log=no_log, no_xlsx=no_xlsx)
 
     print_success("Hauptverarbeitung abgeschlossen.")
@@ -331,7 +332,6 @@ def sync_student_classes_from_latest():
         # 3. Bulk Update in history_manager
         if student_list:
             history_manager.bulk_update_students(student_list)
-            print_success(f"{len(student_list)} Schüler erfolgreich mit der Historie synchronisiert.")
             return True
     except Exception as e:
         print_error(f"Fehler bei der Klassen-Synchronisierung: {e}")
@@ -340,7 +340,6 @@ def sync_student_classes_from_latest():
 
 def read_csv(file_path):
     # Funktion zum Einlesen einer CSV-Datei und Rückgabe eines Dictionaries mit den Daten
-    print_info(f"Lese CSV-Datei: {file_path}")
     data = {}
     try:
         with open(file_path, 'r', encoding='utf-8-sig', newline='') as csvfile:
@@ -348,10 +347,9 @@ def read_csv(file_path):
             for row in reader:
                 # Entfernt unsichtbare Zeichen und Leerzeichen
                 cleaned_row = {key: value.strip().replace('\u00a0', '') for key, value in row.items()}
-                student_id = cleaned_row.get('Interne ID-Nummer')  # oder anderer eindeutiger Schlüssel
+                student_id = cleaned_row.get('Interne ID-Nummer')
                 if student_id:
                     data[student_id] = cleaned_row
-        print_info(f"CSV-Datei erfolgreich eingelesen. Anzahl Datensätze: {len(data)}")
     except Exception as e:
         print_error(f"Fehler beim Lesen der Datei {file_path}: {e}")
     return data
@@ -359,7 +357,7 @@ def read_csv(file_path):
 
 def compare_latest_imports(no_log=False, no_xlsx=False):
     # Funktion zum Vergleichen der neuesten Importdateien und Erfassen von Änderungen
-    print_info("Prüfe Einstellungen zu gewünschten Log-Dateien...")
+    print_section("Log-Erstellung")
     # Überspringen der Erstellung je nach Flags
     if no_log:
         print_info("Log-Datei-Erstellung wurde deaktiviert.")
@@ -385,7 +383,6 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     os.makedirs(xlsx_dir, exist_ok=True)
 
     # Neueste zwei Dateien im Importverzeichnis finden
-    print_info("Suchen der zwei neuesten Dateien im Importverzeichnis...")
     csv_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if len(csv_files) < 2:
         print_warning(f"Nicht genügend Dateien im Verzeichnis {import_dir} vorhanden, um einen Vergleich durchzuführen. Abbruch der Log-Erstellung.")
@@ -396,7 +393,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     latest_file = csv_files[0]
     previous_file = csv_files[1]
 
-    print_info(f"Vergleiche Dateien:\n {previous_file} und\n {latest_file}")
+    print_info(f"  Vergleiche: '{previous_file}' → '{latest_file}'")
 
     # Dateien einlesen
     previous_data = read_csv(os.path.join(import_dir, previous_file))
@@ -499,7 +496,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
 from smtp import send_email
 def compare_timeframe_imports(timeframe_hours=24, no_log=False, no_xlsx=False):
     # Funktion zum Vergleichen von Importdateien innerhalb eines bestimmten Zeitrahmens und Senden von E-Mails bei Änderungen
-    print_info("Starte Vergleich der Importdateien im definierten Zeitrahmen...")
+    print_section("Zeitrahmen-Vergleich")
 
     # Verzeichnisse und Einstellungen
     config = configparser.ConfigParser()
@@ -560,7 +557,7 @@ def compare_timeframe_imports(timeframe_hours=24, no_log=False, no_xlsx=False):
         print_warning(f"Keine Dateien gefunden, die älter als {timeframe_hours} Stunden sind.")
         return
 
-    print_info(f"Vergleiche Dateien:\n {previous_file} und\n {latest_file}")
+    print_info(f"  Vergleiche: '{previous_file}' → '{latest_file}'")
 
     previous_data = read_csv(os.path.join(import_dir, previous_file)) if previous_file else {}
     latest_data = read_csv(os.path.join(import_dir, latest_file))
@@ -990,7 +987,7 @@ def create_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
+        print_info(f"  Referenzdatei: '{newest_output_file}'")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -1035,13 +1032,11 @@ def create_warnings(classes_by_name, students_by_id):
                                     "und es gibt einen nicht dokumentierten Zeitraum."
                                 )
                             })
-                            print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Entlassdatum verschoben.")
                     except ValueError:
                         print_error(f"Ungültiges Datum für Schüler {row['Nachname']}, {row['Vorname']}. Warnung nicht erstellt.")
-                        pass  # Ignoriere ungültige Datumsangaben
     else:
         print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
-    print_info(f"Anzahl der erstellten Entlassdatum-Warnungen: {len(warnings)}")
+    print_info(f"  {len(warnings)} Entlassdatum-Warnungen erkannt.")
     return warnings
 
 
@@ -1062,7 +1057,7 @@ def create_new_student_warnings(classes_by_name, current_students_by_id):
         print_warning("Keine Importdatei gefunden.")
         return warnings
 
-    print_info(f"Vergleiche mit Vergleichsdatei für neue Schüler:\n {previous_file}")
+    print_info(f"  Referenzdatei: '{previous_file}'")
     
     # Lese die Vergleichsdatei ein und sammle alle Schüler-IDs (normalisiert)
     previous_students = {}
@@ -1095,9 +1090,7 @@ def create_new_student_warnings(classes_by_name, current_students_by_id):
                 'Klassenlehrkraft_2_Email': klassen_info.get('Klassenlehrkraft_2_Email', 'N/A'),
                 'new_student': True
             })
-            print_info(f"Warnung erstellt für neuen Schüler {student.get('Nachname', '')}, {student.get('Vorname', '')}.")
-    
-    print_info(f"Anzahl der erstellten Warnungen für neue Schüler: {len(warnings)}")
+    print_info(f"  {len(warnings)} Neue-Schüler-Warnungen erkannt.")
     return warnings
 
 def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin_cache=None):
@@ -1117,7 +1110,7 @@ def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin
         print_warning("Keine vorherige Importdatei gefunden zum Vergleich für Karteileichen.")
         return warnings
 
-    print_info(f"Vergleiche mit vorheriger Importdatei für gelöschte Schüler:\n {previous_file}")
+    print_info(f"  Referenzdatei: '{previous_file}'")
     
     previous_students_names = []
     try:
@@ -1144,7 +1137,6 @@ def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin
                         'karteileiche': True
                     })
                     previous_students_names.append(f"{vorname} {nachname} ({row.get('Klasse', 'N/A')})")
-                    print_info(f"Warnung erstellt für fehlenden Schüler {nachname}, {vorname}.")
     except Exception as e:
         print_error(f"Fehler beim Einlesen der Vergleichsdatei für Karteileichen: {e}")
         return warnings
@@ -1156,7 +1148,7 @@ def create_karteileichen_warnings(classes_by_name, current_students_by_id, admin
             'Details': f"Folgende {len(warnings)} Schüler wurden in den neuen importierten Daten deklassiert / gelöscht: {names_str}. Verbleib prüfen."
         })
 
-    print_info(f"Anzahl der erstellten Karteileichen-Warnungen: {len(warnings)}")
+    print_info(f"  {len(warnings)} Karteileichen-Warnungen erkannt.")
     return warnings
 
 
@@ -1172,7 +1164,7 @@ def create_class_change_warnings(classes_by_name, students_by_id, class_change_r
     output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
+        print_info(f"  Referenzdatei: '{newest_output_file}'")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -1244,11 +1236,9 @@ def create_class_change_warnings(classes_by_name, students_by_id, class_change_r
                             'Status': students_by_id[interne_id].get('Status_Text', 'Unbekannt'),
                             'warning_message': "Klassenwechsel muss im Digitalen Klassenbuch manuell korrigiert werden, da die Änderung im System ab dem aktuellen Tag gilt."
                         })
-                        print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Klassenwechsel von {previous_class} zu {new_class}.")
     else:
         print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
-    
-    print_info(f"Anzahl der erstellten Klassenwechsel-Warnungen: {len(warnings)}")
+    print_info(f"  {len(warnings)} Klassenwechsel-Warnungen erkannt.")
     return warnings
     print_info(f"Anzahl der erstellten Klassenwechsel-Warnungen: {len(warnings)}")
     return warnings
@@ -1263,7 +1253,7 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
     output_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if output_files:
         newest_output_file = max(output_files, key=lambda f: os.path.getctime(os.path.join(import_dir, f)))
-        print_info(f"Vergleiche mit vorheriger Importdatei:\n {newest_output_file}")
+        print_info(f"  Referenzdatei: '{newest_output_file}'")
         with open(os.path.join(import_dir, newest_output_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
@@ -1306,40 +1296,47 @@ def create_admission_date_warnings(classes_by_name, students_by_id):
                                     "und es gibt einen nicht dokumentierten Zeitraum."
                                 )
                             })
-                            print_info(f"Warnung erstellt für Schüler {row['Nachname']}, {row['Vorname']}: Aufnahmedatum geändert.")
                     except ValueError:
                         print_error(f"Ungültiges Datum für Schüler {row['Nachname']}, {row['Vorname']}. Warnung nicht erstellt.")
-                        pass  # Ignoriere ungültige Datumsangaben
     else:
         print_warning("Keine vorherige Importdatei zum Vergleich gefunden.")
-    print_info(f"Anzahl der erstellten Aufnahmedatum-Warnungen: {len(warnings)}")
+    print_info(f"  {len(warnings)} Aufnahmedatum-Warnungen erkannt.")
     return warnings
 
 def print_warnings(warnings):
     # Funktion zur Ausgabe der Warnungen in der Konsole
+    if not warnings:
+        print_info("  Keine.")
+        return
     for warning in warnings:
-        print_warning("===================== WARNUNG =====================")
-        print_warning(f"Nachname: {warning['Nachname']}")
-        print_warning(f"Vorname: {warning['Vorname']}")
-        if 'neues_aufnahmedatum' in warning:
-            print_warning(f"Klasse: {warning.get('Klasse', 'N/A')}")
-            print_warning(f"Neues Aufnahmedatum: {warning['neues_aufnahmedatum']}")
-            print_warning(f"Altes Aufnahmedatum: {warning['altes_aufnahmedatum']}")
+        nachname = warning.get('Nachname', '').strip()
+        vorname  = warning.get('Vorname', '').strip()
+        name = f"{nachname}, {vorname}" if nachname and vorname else nachname or vorname or "(Unbekannt)"
+
         if 'neues_entlassdatum' in warning:
-            print_warning(f"Klasse: {warning.get('Klasse', 'N/A')}")
-            print_warning(f"Neues Entlassdatum: {warning['neues_entlassdatum']}")
-            print_warning(f"Altes Entlassdatum: {warning['altes_entlassdatum']}")
-        if 'neue_klasse' in warning:
-            print_warning(f"Alte Klasse: {warning['alte_klasse']}")
-            print_warning(f"Neue Klasse: {warning['neue_klasse']}")
-        # Einheitliche Ausgabe der Warnungsnachricht
-        if 'warning_message' in warning:
-            print_warning(f"Warnung: {warning['warning_message']}")
-        print_warning(f"Klassenlehrkraft 1: {warning['Klassenlehrkraft_1']}")
-        print_warning(f"Klassenlehrkraft 1 E-Mail: {warning['Klassenlehrkraft_1_Email']}")
-        print_warning(f"Klassenlehrkraft 2: {warning['Klassenlehrkraft_2']}")
-        print_warning(f"Klassenlehrkraft 2 E-Mail: {warning['Klassenlehrkraft_2_Email']}")
-        print_warning("====================================================")
+            klasse = warning.get('Klasse', 'N/A')
+            detail = f"Entlassdatum {warning['altes_entlassdatum']} → {warning['neues_entlassdatum']}"
+        elif 'neues_aufnahmedatum' in warning:
+            klasse = warning.get('Klasse', 'N/A')
+            detail = f"Aufnahmedatum {warning['altes_aufnahmedatum']} → {warning['neues_aufnahmedatum']}"
+        elif 'neue_klasse' in warning:
+            klasse = f"{warning.get('alte_klasse', '?')} → {warning['neue_klasse']}"
+            detail = "Klassenwechsel"
+        else:
+            klasse = warning.get('Klasse', '')
+            detail = warning.get('warning_message', 'Warnung')
+
+        kl1  = warning.get('Klassenlehrkraft_1', 'N/A')
+        kl1m = warning.get('Klassenlehrkraft_1_Email', '')
+        kl2  = warning.get('Klassenlehrkraft_2', '')
+        kl2m = warning.get('Klassenlehrkraft_2_Email', '')
+        lehrkraft = f"{kl1} ({kl1m})"
+        if kl2 and kl2 not in ('N/A', ''):
+            lehrkraft += f" / {kl2} ({kl2m})"
+
+        klasse_str = f" [{klasse}]" if klasse and klasse not in ('N/A', '') else ""
+        print_warning(f"  {name}{klasse_str} – {detail}")
+        print_warning(f"    Lehrkraft: {lehrkraft}")
 
 
 def save_files(output_data_students, warnings, create_second_file, admin_warnings_cache, disable_import_file_creation=False, disable_import_file_if_admin_warning=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False):
@@ -1384,7 +1381,6 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
 
     # Sicherstellen, dass das Importverzeichnis existiert
     os.makedirs(import_dir, exist_ok=True)
-    print_info(f"Importverzeichnis '{import_dir}' ist vorhanden oder wurde erstellt.")
 
     # Hauptausgabedatei speichern    
     # 1) Prüfen, ob der Nutzer generell keine Datei möchte („Nur hier verarbeiten“)
@@ -1399,7 +1395,7 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
     with open(output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
         writer = csv.writer(csvfile, delimiter=';')
         writer.writerows(output_data_students)
-    print_creation(f"Hauptausgabedatei (Neue WebUntis-Import_Datei) gespeichert:\n {output_file}")
+    print_creation(f"Importdatei gespeichert: {output_file}")
 
     # Zweite Ausgabedatei speichern, falls gewünscht
     if create_second_file:
@@ -1451,13 +1447,12 @@ def read_attest_ids_from_latest_file():
     attest_dir = config.get('Directories', 'attest_file_directory', fallback='./AttestpflichtDaten')
 
     if not os.path.exists(attest_dir):
-        print(Fore.YELLOW + f"⚠️ Attest-Verzeichnis '{attest_dir}' existiert nicht. Keine Attestdaten vorhanden." + Style.RESET_ALL)
+        print_warning(f"Attest-Verzeichnis '{attest_dir}' existiert nicht. Keine Attestdaten vorhanden.")
         return set()
 
-    # Alle CSV-Dateien ermitteln
     csv_files = [f for f in os.listdir(attest_dir) if f.lower().endswith('.csv')]
     if not csv_files:
-        print(Fore.YELLOW + "⚠️ Keine CSV-Dateien im Attest-Verzeichnis gefunden. Keine Attestdaten vorhanden." + Style.RESET_ALL)
+        print_warning("Keine CSV-Dateien im Attest-Verzeichnis gefunden. Keine Attestdaten vorhanden.")
         return set()
 
     # Neueste CSV-Datei bestimmen
@@ -1473,7 +1468,7 @@ def read_attest_ids(attest_file_path):
     Beispielhafte Spalte: 'Interne ID-Nummer'
     """
     ids = set()
-    print(Fore.CYAN + f"ℹ️ Lese Attestpflicht-Datei: {attest_file_path}" + Style.RESET_ALL)
+    print_info(f"Lese Attestpflicht-Datei: {attest_file_path}")
     try:
         with open(attest_file_path, 'r', encoding='utf-8-sig', newline='') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
@@ -1482,8 +1477,8 @@ def read_attest_ids(attest_file_path):
                 if sid:
                     ids.add(sid)
     except Exception as e:
-        print(Fore.RED + f"❌ Fehler beim Lesen der Attestpflicht-Datei {attest_file_path}: {e}" + Style.RESET_ALL)
-    print(Fore.CYAN + f"ℹ️ Attestpflicht-Datei eingelesen. Anzahl IDs: {len(ids)}" + Style.RESET_ALL)
+        print_error(f"Fehler beim Lesen der Attestpflicht-Datei '{attest_file_path}': {e}")
+    print_info(f"Attestpflicht-Datei eingelesen – {len(ids)} betroffene Schüler-IDs.")
     return ids
 
 def read_nachteilsausgleich_ids_from_latest_file():

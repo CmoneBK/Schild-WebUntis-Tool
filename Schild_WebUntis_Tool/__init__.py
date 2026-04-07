@@ -76,6 +76,10 @@ def print_info(message):
 def print_creation(message):
     thread_safe_print(Fore.WHITE, f"✨ {message}")
 
+def print_section(title):
+    """Gibt eine Abschnittsüberschrift aus – strukturelle Trennung, kein Emoji."""
+    thread_safe_print(Fore.CYAN, f"──── {title}")
+
 def print_banner():
     with console_lock:
         print(f"{Fore.CYAN}{'='*60}")
@@ -145,19 +149,6 @@ def process_data(no_log=False, no_xlsx=False):
     else:
         class_change_recipients = config.get('ProcessingOptions', 'class_change_recipients', fallback='old')
     
-    # Aktuelle Einstellungen in der Konsole ausgeben
-    print_info("Beginne Verarbeitung mit folgenden Optionen:...")
-    print_info(f"use_abschlussdatum: {use_abschlussdatum}")
-    print_info(f"create_second_file: {create_second_file}")
-    print_info(f"create_class_size_file: {create_class_size_file}")
-    print_info(f"enable_attestpflicht_column: { enable_attestpflicht_column}")
-    print_info(f"warn_entlassdatum: {warn_entlassdatum}")
-    print_info(f"warn_aufnahmedatum: {warn_aufnahmedatum}")
-    print_info(f"warn_klassenwechsel: {warn_klassenwechsel}")
-    print_info(f"class_change_recipients: {class_change_recipients}")
-    print_info(f"warn_new_students: {warn_new_students}")
-    print_info(f"warn_karteileichen: {warn_karteileichen}")
-
     # Datenverarbeitung starten
     all_warnings = run(                         #Hier wird die def_run aus der main.py mit den erfassten Einstellungen abgerufen und ausgeführt.
         use_abschlussdatum=use_abschlussdatum,
@@ -384,19 +375,18 @@ client_name = Schild-WebUntis-Tool
         "nachteilsausgleich_file_directory": default_nachteilsausgleich_file_directory,
     }
 
+    print_section("Verzeichnisse")
     for key, default_path in directories.items():
         directory = config.get("Directories", key, fallback=default_path, raw=True)
         directory = os.path.normpath(directory)
-        print_info(f"Verwende Verzeichnis für '{key}': {directory}")
         if not os.path.isabs(directory):
             directory = os.path.abspath(directory)
-            print_info(f"Relativer Pfad erkannt. Absoluter Pfad: {directory}")
         if not os.path.exists(directory):
             try:
                 os.makedirs(directory)
-                print_creation(f"Ordner '{directory}' wurde erstellt.")
+                print_creation(f"  Erstellt: '{directory}'")
             except (FileNotFoundError, OSError) as e:
-                print_warning(f"Verzeichnis '{directory}' konnte nicht erstellt werden (Laufwerk nicht verfügbar?): {e}")
+                print_warning(f"  Nicht erreichbar: '{directory}' – {e}")
 
 
     global admin_warnings_cache
@@ -471,10 +461,10 @@ def admin_warnings(send_email_flag=False):
 
     # Admin-Warnungen in der Konsole ausgeben
     if admin_warnings_cache:
-        print_admin_warning("Admin-Warnungen:")
+        print_section("Admin-Warnungen")
         for warning in admin_warnings_cache:
-            print_admin_warning(f"Typ: {warning['Typ']}, Details: {warning['Details']}")
-        print_warningtext("Für die korrekte Funktion Warn-Funktionalität sollten Sie Ihre Klassen- und Lehrerdaten aktualisieren.")
+            print_admin_warning(f"  {warning['Typ']}: {warning['Details']}")
+        print_warningtext("Klassen- und Lehrerdaten sollten aktualisiert werden.")
     else:
         print_success("Keine Admin-Warnungen gefunden.")
 
@@ -612,8 +602,7 @@ def index():
         try:
             # Datenverarbeitung basierend auf den Benutzereinstellungen
             print_info("🌐 Dashboard-Aktion: Manueller Daten-Import durch Benutzer gestartet.")
-            print("-" * 40)
-            print_info("Starte Verarbeitung über die Weboberfläche...")
+            print_section("Verarbeitung via Weboberfläche")
             warnings = run(
                 use_abschlussdatum=use_abschlussdatum,
                 create_second_file=create_second_file,
@@ -642,7 +631,7 @@ def index():
         except Exception as e:
             errors.append(f"Fehler während der Verarbeitung: {str(e)}")
             print_error(f"Fehler während der Verarbeitung über die Weboberfläche: {str(e)}")
-        print("-" * 40)
+        print_info("=" * 50)
 
     # Seite mit aktuellen Checkbox-Zuständen, Warnungen, Fehlern und Bestätigung rendern
     return render_template(
@@ -915,15 +904,9 @@ def download_xlsx(filename):
 # Route und Funktion zum Abruf der E-Mail Inhalte des Vorlagen-Email-Editors im WebEnd. 
 @app.route('/get_templates', methods=['GET'])
 def get_templates():
-    print_info("Lade bzw. Aktualisiere die Inhalte der Weboberfläche:")
-    # Lädt die E-Mail-Vorlagen aus der Konfigurationsdatei
-    print_info("Lade E-Mail-Vorlagen aus 'email_settings.ini' für den E-Mail-Vorlagen Editor...")
     config = configparser.ConfigParser()
     try:
-        # E-Mail-Vorlagen laden
         config.read('email_settings.ini', encoding='utf-8-sig')
-
-        # Rückgabeobjekt vorbereiten
         templates = {
             "subject_entlassdatum": config.get("Templates", "subject_entlassdatum", fallback=""),
             "body_entlassdatum": config.get("Templates", "body_entlassdatum", fallback=""),
@@ -936,15 +919,9 @@ def get_templates():
             "subject_karteileiche": config.get("Templates", "subject_karteileiche", fallback=""),
             "body_karteileiche": config.get("Templates", "body_karteileiche", fallback="")
         }
-
-        # Erfolg erst melden, wenn sicher ist, dass alles funktioniert hat
-        print_success("E-Mail-Vorlagen erfolgreich in den E-Mail-Vorlagen Editor geladen.")
         return jsonify(templates)
-
     except Exception as e:
-        # Fehlerfall behandeln und Fehler ausgeben
-        error_message = f"Fehler beim Laden der E-Mail-Vorlagen: {str(e)}"
-        print_error(error_message)
+        print_error(f"Fehler beim Laden der E-Mail-Vorlagen: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # Route und Funktion zum Speichern der Inhalte des Vorlagen-Email-Editors im WebEnd. 
@@ -1130,11 +1107,14 @@ def export_history_excel():
 
 @app.route('/api/history/sync', methods=['POST'])
 def sync_history_classes():
+    print_info("🌐 Dashboard-Aktion: Klassendaten-Synchronisierung mit aktuellen Schülerdaten gestartet.")
     import main
     success = main.sync_student_classes_from_latest()
     if success:
+        print_success("Klassendaten-Synchronisierung abgeschlossen.")
         return jsonify({"success": True, "message": "Synchronisierung erfolgreich abgeschlossen."})
     else:
+        print_warning("Klassendaten-Synchronisierung fehlgeschlagen oder keine Quelldaten gefunden.")
         return jsonify({"success": False, "message": "Synchronisierung fehlgeschlagen oder keine Quelldaten gefunden."}), 500
 
 @app.route('/api/history/search', methods=['GET'])
@@ -1147,7 +1127,9 @@ def search_history():
 
 @app.route('/api/history/reset', methods=['POST'])
 def reset_history():
+    print_warning("🌐 Dashboard-Aktion: Historie-Datenbank wird vollständig zurückgesetzt!")
     history_manager.clear_history()
+    print_success("Historie-Datenbank erfolgreich zurückgesetzt.")
     return jsonify({"message": "✅ Historie erfolgreich zurückgesetzt."})
 
 @app.route('/api/history/reindex', methods=['POST'])
@@ -1166,7 +1148,6 @@ def reindex_history():
 # Route und Funktion zum Abrufen und Reinladen der Einstellungen des Einstellungs-Panels im WebEnd aus den verschiedenen .ini Dateien
 @app.route('/load-settings', methods=['GET'])
 def load_settings():
-    print_info("Lade Einstellungen aus 'settings.ini' und 'email_settings.ini' für das Einstellungen-Panel...")
     settings = {}
     # settings.ini laden
     config = configparser.ConfigParser()
@@ -1183,7 +1164,6 @@ def load_settings():
         if section not in settings:
             settings[section] = {}
         settings[section].update({key: email_config.get(section, key, fallback="") for key in email_config[section]})
-    print_success("Einstellungen für das Einstellungs-Panel erfolgreich geladen bzw. aktualisiert.")
     return jsonify(settings)
 
 # Route und Funktion zum Speichern der geänderten Einstellungen aus dem Einstellungs-Panel im WebEnd in die verschiedenen .ini Dateien. 
@@ -1327,8 +1307,6 @@ def select_directory():
 # Route und Funktion zum Abrufen der verfügbaren Kommandozeilenargumente mit ihren Beschreibungen, um die Argumente für den Befehl- und Verknüpfungsersteller bereitzustellen
 @app.route('/get-arguments', methods=['GET'])
 def get_arguments():
-
-    print_info(f"Bereite Liste der verfügbaren Kommandozeilenargumente für das Befehl- und Verknüpfungs-Erstelltool vor...")
     # Liste der Argumente mit Beschreibungen
     arguments = [
         {"name": "--process", "description": "Führt den Hauptprozess aus: Verarbeitung des Schild-Exports, Erstellung von Warnungen sowie .log- und Excel-Logdateien."},
@@ -1344,36 +1322,23 @@ def get_arguments():
         {"name": "--host", "description": "IP-Adresse, auf der der Server lauscht (Standard: 0.0.0.0 = alle Interfaces)."},
         {"name": "--port", "description": "Port, auf dem der Server lauscht (Standard: 5000)."},
     ]
-    print_success(f"Liste der verfügbaren Kommandozeilenargumente für das Befehl- und Verknüpfungs-Erstelltool wurde erstellt.")
     return jsonify({"success": True, "arguments": arguments})
 
 # Route und Funktion zum Abrufen des Pfads der ausführbaren Datei
 @app.route('/get-executable-path', methods=['GET'])
 def get_executable_path():
-    print_info(f"Bestimme den Pfad der ausführbaren Datei für das Befehl- und Verknüpfungs-Erstelltool...")
-    # Bestimmen des Pfads der ausführbaren Datei
     if getattr(sys, 'frozen', False):
-        # Wenn die Anwendung eingefroren ist (in eine .exe kompiliert mit PyInstaller)
         exe_path = sys.executable
-        print_info(f"Pfad der ausführbaren Datei: {exe_path}")
     else:
-        # Wenn die Anwendung in einer Standard-Python-Umgebung läuft
         exe_path = os.path.abspath(sys.argv[0])
-        print_info(f"Anwendung läuft in der Python-Umgebung. Pfad der ausführbaren Datei: {exe_path}")
     return jsonify({"exePath": exe_path})
 
 # Route und Funktion zum Erstellen einer Desktop-Verknüpfung für die Anwendung mit den angegebenen Argumenten
 @app.route('/create-shortcut', methods=['POST'])
 def create_shortcut():
-    print_info("Erstelle Desktop-Verknüpfung...")
     data = request.json
     exe_path = data.get('exePath')
     args = data.get('args', '')
-
-    # Empfangenen Pfad und Argumente ausgeben
-    print_info(f"Empfangener exe_path: {exe_path}")
-    print_info(f"Empfangene Argumente: {args}")
-    print_info(f"Existiert exe_path? {os.path.exists(exe_path)}")
 
     if not exe_path or not os.path.exists(exe_path):
         error_message = f"Pfad der ausführbaren Datei nicht gefunden: {exe_path}"
@@ -1383,17 +1348,10 @@ def create_shortcut():
     try:
         # COM-Bibliothek initialisieren
         import pythoncom
-        pythoncom.CoInitialize()  # Initialize COM
-        print_info("COM-Bibliothek initialisiert.")
-        
-        # Desktop-Pfad abrufen
+        pythoncom.CoInitialize()
         import winshell
         desktop = winshell.desktop()
-        print_info(f"Desktop-Pfad: {desktop}")
-
-        # Pfad für die Verknüpfung festlegen
         shortcut_path = os.path.join(desktop, "Schild-WebUntis-Tool.lnk")
-        print_info(f"Verknüpfungspfad: {shortcut_path}")
 
         # Verknüpfung erstellen
         with winshell.shortcut(shortcut_path) as shortcut:
