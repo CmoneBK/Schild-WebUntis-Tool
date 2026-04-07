@@ -12,6 +12,11 @@ import time
 import threading
 import colorama
 from colorama import Fore, Style, init
+from rich.console import Console
+from rich.panel import Panel
+from rich.text import Text
+
+_console = Console(highlight=False, legacy_windows=False)
 
 # Colorama initialisieren
 init(autoreset=True)
@@ -122,8 +127,8 @@ def send_email(subject, body, to_addresses, attachment_path=None):
         raise e
 
 def log_sent_email(subject, body, to_addresses):
-    print_creation("Gesendete E-Mail:")
-    print_creation(f"Empfänger: {', '.join(to_addresses)}")
-    print_creation(f"Betreff: {subject}")
-    print_creation("Inhalt:")
-    print_creation(html2text.html2text(body))
+    content = Text()
+    content.append(f"An:      {', '.join(to_addresses)}\n", style="white")
+    content.append(f"Betreff: {subject}\n\n", style="white")
+    content.append(html2text.html2text(body).strip(), style="dim")
+    _console.print(Panel(content, title="[white]✉ Gesendete E-Mail[/]", border_style="white", padding=(0, 1)))
