@@ -44,7 +44,7 @@ from rich.table import Table
 _console = Console(highlight=False, legacy_windows=False)
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
 from flask import Flask, render_template, request, jsonify, session, send_from_directory  # Flask-Webframework
-from main import run, read_students, read_classes, compare_timeframe_imports, validate_imports  # Funktionen aus eigenen Modulen importieren
+from main import run, read_students, read_classes, compare_timeframe_imports, validate_imports, create_info_notifications, INFO_MAIL_AVAILABLE_FIELDS  # Funktionen aus eigenen Modulen importieren
 from smtp import send_email  # Funktion zum Versenden von E-Mails aus eigenem Modul
 from waitress import serve  # WSGI-Server zum Bereitstellen der Flask-Anwendung
 from tkinter import filedialog  # Datei- und Verzeichnisauswahl-Dialoge
@@ -133,9 +133,11 @@ app.secret_key = secrets.token_hex(24) # Generierung eines zufälligen Secret Ke
 global warnings_cache, generated_emails_cache, admin_warnings_cache
 
 # Globale Caches für Warnungen und generierte E-Mails
-warnings_cache = []  # Cache für Warnungen
-generated_emails_cache = []  # Cache für generierte E-Mails
+warnings_cache = []             # Cache für Warn-E-Mails
+generated_emails_cache = []     # Cache für generierte Warn-E-Mails
 admin_warnings_cache = []
+info_changes_cache = []         # Rohe Feldänderungen aus dem letzten Lauf (für Info-Mails)
+generated_info_mails_cache = [] # Cache für generierte Info-Mails
 
 # Start der Datenverarbeitung über das Kommandozeilen-Argument --process (nicht WebEnd-Button) heraus.
 def process_data(no_log=False, no_xlsx=False):
@@ -165,7 +167,7 @@ def process_data(no_log=False, no_xlsx=False):
         class_change_recipients = config.get('ProcessingOptions', 'class_change_recipients', fallback='old')
     
     # Datenverarbeitung starten
-    all_warnings = run(                         #Hier wird die def_run aus der main.py mit den erfassten Einstellungen abgerufen und ausgeführt.
+    all_warnings, _ = run(                      #Hier wird die def_run aus der main.py mit den erfassten Einstellungen abgerufen und ausgeführt.
         use_abschlussdatum=use_abschlussdatum,
         create_second_file=create_second_file,
         enable_attestpflicht_column=enable_attestpflicht_column,
@@ -206,6 +208,10 @@ DEFAULT_TEMPLATES = {
     "karteileiche": {
         "subject": "Webuntis-Hinweis: Schüler fehlt/gelöscht $Vorname $Nachname",
         "body": "<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>Der Schüler/die Schülerin <strong>$Vorname $Nachname</strong> (Klasse <strong>$Klasse</strong>) taucht in den von SchILD importierten Daten (aktives Schuljahr) nicht mehr auf.</p><p>Dies wird dazu führen, dass seine Daten, darunter auch sein Entlassdatum, sein Status (inkl. von Aktiv nach Abschluss/Abgang) nicht mehr aktualisiert werden. Sofern das in Ordnung ist, ist keine weitere Aktion erforderlich. Falls nicht, prüfen Sie bitte den Verbleib des Schülers.</p><p>Mit freundlichen Grüßen,</p><p>Das WebUntis Team</p>"
+    },
+    "info_notification": {
+        "subject": "WebUntis-Änderungsinfo: $Vorname $Nachname ($Klasse)",
+        "body": "<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>die folgenden Daten von <strong>$Vorname $Nachname</strong> (Klasse: <strong>$Klasse</strong>) wurden in der aktuellen WebUntis-Importdatei aktualisiert und werden mit dem nächsten Import wirksam:</p>$aenderungen_html<p>&nbsp;</p><p><strong>Hinweis:</strong> Es ist nicht möglich, auf diese E-Mail zu antworten.</p><p>Mit freundlichen Grüßen,<br>Das WebUntis Team</p>"
     }
 }
 
@@ -248,6 +254,9 @@ enable_attestpflicht_column = False
 enable_nachteilsausgleich_column = False
 disable_import_file_creation = False
 disable_import_file_if_admin_warning = False
+
+[InfoMailOptions]
+selected_fields =
 
 [mail]
 # Empfänger nur bei Klassenwechsel-Warnungen
@@ -293,6 +302,8 @@ subject_new_student = {DEFAULT_TEMPLATES['new_student']['subject']}
 body_new_student = {DEFAULT_TEMPLATES['new_student']['body']}
 subject_karteileiche = {DEFAULT_TEMPLATES['karteileiche']['subject']}
 body_karteileiche = {DEFAULT_TEMPLATES['karteileiche']['body']}
+subject_info_notification = {DEFAULT_TEMPLATES['info_notification']['subject']}
+body_info_notification = {DEFAULT_TEMPLATES['info_notification']['body']}
 [WebUntisAPI]
 use_api = False
 server_url = https://neptun.webuntis.com/WebUntis/jsonrpc.do
@@ -343,7 +354,7 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             
             # Ensure other templates are also present (Silent Update)
-            for t_type in ['entlassdatum', 'aufnahmedatum', 'klassenwechsel', 'new_student']:
+            for t_type in ['entlassdatum', 'aufnahmedatum', 'klassenwechsel', 'new_student', 'info_notification']:
                 if not config.has_option('Templates', f'subject_{t_type}'):
                     config.set('Templates', f'subject_{t_type}', DEFAULT_TEMPLATES[t_type]['subject'])
                     updated = True
@@ -520,6 +531,7 @@ _PANEL_LABELS = {
     'warningsPanel':   'Warnungen',
     'dashboardPanel':  'Dashboard',
     'adminPanel':      'Admin-Check',
+    'infoMailPanel':   'Info-Mails',
 }
 
 @app.route('/api/panel_opened', methods=['POST'])
@@ -639,7 +651,7 @@ def index():
             # Datenverarbeitung basierend auf den Benutzereinstellungen
             print_info("🌐 Dashboard-Aktion: Manueller Daten-Import durch Benutzer gestartet.")
             print_section("Verarbeitung via Weboberfläche")
-            warnings = run(
+            warnings, info_changes = run(
                 use_abschlussdatum=use_abschlussdatum,
                 create_second_file=create_second_file,
                 warn_entlassdatum=warn_entlassdatum,
@@ -650,7 +662,7 @@ def index():
                 class_change_recipients=class_change_recipients,
                 no_log=no_log,
                 no_xlsx=no_xlsx,
-                create_class_size_file=create_class_size_file, 
+                create_class_size_file=create_class_size_file,
                 enable_attestpflicht_column=enable_attestpflicht_column,
                 enable_nachteilsausgleich_column=enable_nachteilsausgleich_column,
                 disable_import_file_creation=disable_import_file_creation,
@@ -659,7 +671,9 @@ def index():
             )
             for w in warnings:
                 w['status'] = 'offen'
-            warnings_cache = warnings  # Speichert Warnungen zur späteren Nutzung
+            warnings_cache = warnings
+            global info_changes_cache
+            info_changes_cache = info_changes or []
 
             # Setzt eine Bestätigungsnachricht nach erfolgreicher Ausführung
             confirmation = "Verarbeitung erfolgreich abgeschlossen."
@@ -700,7 +714,9 @@ def index():
         body_karteileiche=body_karteileiche,
         no_directory_change=cli_args.get("no_directory_change", False),
         enable_upload=cli_args.get("enable_upload", False),
-        initial_validation=validate_imports()
+        initial_validation=validate_imports(),
+        info_mail_fields=INFO_MAIL_AVAILABLE_FIELDS,
+        info_changes_count=len(info_changes_cache),
     )
 
 
@@ -956,7 +972,9 @@ def get_templates():
             "subject_new_student": config.get("Templates", "subject_new_student", fallback=""),
             "body_new_student": config.get("Templates", "body_new_student", fallback=""),
             "subject_karteileiche": config.get("Templates", "subject_karteileiche", fallback=""),
-            "body_karteileiche": config.get("Templates", "body_karteileiche", fallback="")
+            "body_karteileiche": config.get("Templates", "body_karteileiche", fallback=""),
+            "subject_info_notification": config.get("Templates", "subject_info_notification", fallback=""),
+            "body_info_notification": config.get("Templates", "body_info_notification", fallback=""),
         }
         return jsonify(templates)
     except Exception as e:
@@ -984,6 +1002,8 @@ def update_templates():
         email_config['Templates']['body_new_student'] = request.form.get('body_new_student', '')
         email_config['Templates']['subject_karteileiche'] = request.form.get('subject_karteileiche', '')
         email_config['Templates']['body_karteileiche'] = request.form.get('body_karteileiche', '')
+        email_config['Templates']['subject_info_notification'] = request.form.get('subject_info_notification', '')
+        email_config['Templates']['body_info_notification'] = request.form.get('body_info_notification', '')
 
         # Änderungen in die Datei schreiben
         with open('email_settings.ini', 'w', encoding='utf-8-sig') as configfile:
@@ -1047,6 +1067,121 @@ def send_emails():
 def get_warnings():
     global warnings_cache
     return jsonify(warnings_cache)
+
+# API-Route zum Abrufen der rohen Feldänderungen für Info-Mails
+@app.route('/api/info_changes', methods=['GET'])
+def get_info_changes():
+    global info_changes_cache
+    # Liefert vereinfachte Übersicht (ohne interne row-Daten)
+    result = [
+        {
+            "student_id":    c["student_id"],
+            "name":          c["name"],
+            "current_class": c["current_class"],
+            "changes":       c["changes"],
+        }
+        for c in info_changes_cache
+    ]
+    return jsonify(result)
+
+# Route zum Laden/Speichern der Info-Mail Feldauswahl in settings.ini
+@app.route('/api/info_mail_fields', methods=['GET'])
+def get_info_mail_fields():
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    raw = config.get('InfoMailOptions', 'selected_fields', fallback='')
+    fields = [f.strip() for f in raw.split(',') if f.strip()]
+    return jsonify({"selected_fields": fields})
+
+@app.route('/api/info_mail_fields', methods=['POST'])
+def save_info_mail_fields():
+    data = request.json or {}
+    fields = data.get('selected_fields', [])
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if 'InfoMailOptions' not in config:
+        config['InfoMailOptions'] = {}
+    config['InfoMailOptions']['selected_fields'] = ', '.join(fields)
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+    return jsonify({"status": "ok"})
+
+# Route zum Generieren von Info-Mails aus den Feldänderungen des letzten Laufs
+@app.route('/generate_info_mails', methods=['POST'])
+def generate_info_mails():
+    global info_changes_cache, generated_info_mails_cache
+    generated_info_mails_cache = []
+
+    data = request.json or {}
+    selected_fields = [f.strip() for f in data.get('selected_fields', []) if f.strip()]
+
+    if not info_changes_cache:
+        return jsonify({"message": "ℹ️ Keine Änderungsdaten verfügbar. Bitte zuerst eine Verarbeitung durchführen."})
+    if not selected_fields:
+        return jsonify({"message": "⚠️ Keine Felder ausgewählt. Bitte mindestens ein Feld wählen."})
+
+    print_info(f"🌐 Dashboard-Aktion: Info-Mails werden generiert (Felder: {', '.join(selected_fields)}).")
+    notifications = create_info_notifications(info_changes_cache, selected_fields)
+
+    if not notifications:
+        return jsonify({"message": "ℹ️ Keine Feldänderungen für die gewählten Felder gefunden."})
+
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'email_settings.ini')
+    subject_tpl = config.get("Templates", "subject_info_notification", fallback=DEFAULT_TEMPLATES['info_notification']['subject'])
+    body_tpl    = config.get("Templates", "body_info_notification",    fallback=DEFAULT_TEMPLATES['info_notification']['body'])
+
+    for i, n in enumerate(notifications):
+        try:
+            subject = Template(subject_tpl).substitute(**n)
+            body    = Template(body_tpl).substitute(**n)
+        except KeyError as e:
+            return jsonify({"message": f"⚠️ Fehlender Platzhalter {e} in der Info-Mail-Vorlage."}), 400
+
+        recipients = [n.get('Klassenlehrkraft_1_Email', 'N/A'), n.get('Klassenlehrkraft_2_Email', 'N/A')]
+        generated_info_mails_cache.append({
+            'subject':            subject,
+            'body':               body,
+            'to':                 recipients,
+            'notification_index': i,
+            'student':            f"{n['Vorname']} {n['Nachname']}",
+            'klasse':             n['Klasse'],
+            'felder':             n['aenderungen_felder'],
+        })
+
+    print_success(f"{len(generated_info_mails_cache)} Info-Mail(s) generiert.")
+    return jsonify({
+        "message": f"✅ {len(generated_info_mails_cache)} Info-Mail(s) erfolgreich generiert.",
+        "count":   len(generated_info_mails_cache),
+        "emails":  generated_info_mails_cache,
+    })
+
+# Route zum Versenden der generierten Info-Mails
+@app.route('/send_info_mails', methods=['POST'])
+def send_info_mails():
+    global generated_info_mails_cache
+    if not generated_info_mails_cache:
+        return jsonify({"message": "⚠️ Keine generierten Info-Mails zum Senden vorhanden."})
+
+    import time
+    print_info("Sende Info-Mails...")
+    sent, skipped = 0, 0
+    for email in generated_info_mails_cache:
+        actual_recipients = [r for r in email['to'] if r and r.lower() != 'n/a']
+        if not actual_recipients:
+            print_warning(f"Überspringe Info-Mail für '{email['subject']}': keine gültigen Empfänger.")
+            skipped += 1
+            continue
+        try:
+            send_email(subject=email['subject'], body=email['body'], to_addresses=actual_recipients)
+            print_success(f"✅ Info-Mail an {actual_recipients} gesendet.")
+            sent += 1
+            time.sleep(2)
+        except Exception as e:
+            print_error(f"❌ Fehler beim Senden der Info-Mail an {actual_recipients}: {str(e)}")
+
+    print_success(f"Info-Mails abgeschlossen: {sent} gesendet, {skipped} übersprungen.")
+    return jsonify({"message": f"📧 Info-Mails verarbeitet: {sent} gesendet, {skipped} übersprungen."})
 
 # API-Route zum Durchführen eines Vorab-Checks der Import-Dateien
 @app.route('/api/validate_imports', methods=['GET'])
@@ -1219,6 +1354,7 @@ _SECTION_LABELS = {
     'OAuth':             'OAuth-Konfiguration',
     'Templates':         'E-Mail-Vorlagen',
     'Settings':          'Allgemeine Einstellungen',
+    'InfoMailOptions':   'Info-Mail-Optionen',
 }
 
 @app.route('/save-settings', methods=['POST'])

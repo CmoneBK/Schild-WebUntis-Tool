@@ -305,11 +305,77 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     if create_class_size_file:
      create_class_sizes_file(students_by_id)
 
-    # Vergleiche die letzten beiden Dateien
-    compare_latest_imports(no_log=no_log, no_xlsx=no_xlsx)
+    # Vergleiche die letzten beiden Dateien und erfasse Feldänderungen für Info-Mails
+    info_changes = compare_latest_imports(no_log=no_log, no_xlsx=no_xlsx) or []
 
     print_success("Hauptverarbeitung abgeschlossen.")
-    return all_warnings
+    return all_warnings, info_changes
+
+INFO_MAIL_AVAILABLE_FIELDS = [
+    'Vorname', 'Nachname', 'Geschlecht', 'Geburtsdatum',
+    'Entlassdatum', 'Aufnahmedatum', 'vorauss. Abschlussdatum',
+    'Schulpflicht', 'Volljährig', 'Aktiv',
+    'Attestpflicht', 'Nachteilsausgleich',
+]
+
+def create_info_notifications(changes, selected_fields):
+    """Erstellt Info-Mail-Objekte für Schüler mit Änderungen in den gewählten Feldern."""
+    if not changes or not selected_fields:
+        return []
+
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    classes_dir  = config.get('Directories', 'classes_directory', fallback='Klassendaten')
+    teachers_dir = config.get('Directories', 'teachers_directory', fallback='Lehrerdaten')
+    classes_by_name = read_classes(classes_dir, teachers_dir)
+
+    notifications = []
+    for change in changes:
+        relevant = {k: v for k, v in change['changes'].items() if k in selected_fields}
+        if not relevant:
+            continue
+
+        current_class = change['current_class']
+        class_info    = classes_by_name.get(current_class, {})
+        student       = change.get('current_student', {})
+        vorname  = student.get('Vorname',  '') or change['name'].split(' ', 1)[0]
+        nachname = student.get('Nachname', '') or (change['name'].split(' ', 1)[1] if ' ' in change['name'] else '')
+
+        rows = ''.join(
+            f'<tr>'
+            f'<td style="padding:4px 8px;border:1px solid #ccc"><strong>{field}</strong></td>'
+            f'<td style="padding:4px 8px;border:1px solid #ccc;color:#c00">{vals["old"]}</td>'
+            f'<td style="padding:4px 8px;text-align:center">&#8594;</td>'
+            f'<td style="padding:4px 8px;border:1px solid #ccc;color:#060">{vals["new"]}</td>'
+            f'</tr>'
+            for field, vals in relevant.items()
+        )
+        aenderungen_html = (
+            '<table style="border-collapse:collapse;width:100%">'
+            '<thead><tr>'
+            '<th style="padding:4px 8px;border:1px solid #ccc;background:#f0f0f0">Feld</th>'
+            '<th style="padding:4px 8px;border:1px solid #ccc;background:#f0f0f0">Alt</th>'
+            '<th style="padding:4px 8px;background:#f0f0f0"></th>'
+            '<th style="padding:4px 8px;border:1px solid #ccc;background:#f0f0f0">Neu</th>'
+            f'</tr></thead><tbody>{rows}</tbody></table>'
+        )
+
+        notifications.append({
+            'Vorname':               vorname,
+            'Nachname':              nachname,
+            'Klasse':                current_class,
+            'aenderungen_html':      aenderungen_html,
+            'aenderungen_text':      '\n'.join(f'{k}: {v["old"]} -> {v["new"]}' for k, v in relevant.items()),
+            'aenderungen_felder':    ', '.join(relevant.keys()),
+            'Klassenlehrkraft_1':       class_info.get('Klassenlehrkraft_1',       'N/A'),
+            'Klassenlehrkraft_1_Email': class_info.get('Klassenlehrkraft_1_Email', 'N/A'),
+            'Klassenlehrkraft_2':       class_info.get('Klassenlehrkraft_2',       'N/A'),
+            'Klassenlehrkraft_2_Email': class_info.get('Klassenlehrkraft_2_Email', 'N/A'),
+            'info_notification': True,
+            'status': 'offen',
+        })
+
+    return notifications
 
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
@@ -382,7 +448,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     # Abbruch, wenn sowohl no_log als auch no_xlsx aktiviert sind
     if no_log and no_xlsx:
         print_warning("Vergleich abgebrochen: Sowohl Log- als auch Excel-Datei-Erstellung wurden deaktiviert.")
-        return
+        return []
 
     # Verzeichnisse definieren
     import_dir = get_directory('import_directory', './WebUntis Importe')
@@ -402,7 +468,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
     csv_files = [f for f in os.listdir(import_dir) if f.lower().endswith('.csv') and 'Fehlende' not in f]
     if len(csv_files) < 2:
         print_warning(f"Nicht genügend Dateien im Verzeichnis {import_dir} vorhanden, um einen Vergleich durchzuführen. Abbruch der Log-Erstellung.")
-        return
+        return []
 
     # Nach Erstellungszeit sortieren und die letzten beiden Dateien auswählen
     csv_files.sort(key=lambda f: os.path.getctime(os.path.join(import_dir, f)), reverse=True)
@@ -440,12 +506,13 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
                 "name": f"{latest_student.get('Vorname', '')} {latest_student.get('Nachname', '')}",
                 "current_class": latest_student.get('Klasse', ''),
                 "changes": change_details,
-                "row": updated_row
+                "row": updated_row,
+                "current_student": latest_student.copy(),
             })
     if not changes:
         print_warning("Keine Änderungen zwischen den Dateien festgestellt. Abbruch der Log-Erstellung.")
         print_warningtext("Prüfen Sie, ob Sie die selbe Schild-Export Datei zwei mal verarbeitet haben.")
-        return
+        return []
 
     # Datum und Uhrzeit für Dateinamen
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -508,6 +575,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
         wb.save(excel_file_path)
         print_success("Excel-Log-Datei erfolgreich erstellt.")
     print_success("Vergleich der neuesten Importdateien abgeschlossen.")
+    return changes
 
 from smtp import send_email
 def compare_timeframe_imports(timeframe_hours=24, no_log=False, no_xlsx=False):

@@ -216,21 +216,31 @@
                     <div class="col-12">
                         <h6 class="text-muted mb-3">📊 Analyse & Übersicht</h6>
                     </div>
-                    <div class="col-md-4 mb-2">
+                    <div class="col-md-3 mb-2">
                         <button id="toggleDashboard" class="btn btn-primary w-100 shadow-sm">
                             <div class="d-flex align-items-center justify-content-center">
                                 <span class="mr-2">📈</span> Dashboard & Analyse
                             </div>
                         </button>
                     </div>
-                    <div class="col-md-4 mb-2">
+                    <div class="col-md-3 mb-2">
                         <button id="toggleWarnings" class="btn btn-warning w-100 shadow-sm">
                             <div class="d-flex align-items-center justify-content-center">
                                 <span class="mr-2">⚠️</span> Warnungen
                             </div>
                         </button>
                     </div>
-                    <div class="col-md-4 mb-2">
+                    <div class="col-md-3 mb-2">
+                        <button id="toggleInfoMails" class="btn btn-info w-100 shadow-sm">
+                            <div class="d-flex align-items-center justify-content-center">
+                                <span class="mr-2">ℹ️</span> Info-Mails
+                                {% if info_changes_count > 0 %}
+                                <span class="badge badge-light ml-1">{{ info_changes_count }}</span>
+                                {% endif %}
+                            </div>
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
                         <button id="toggleHistory" class="btn btn-dark w-100 shadow-sm">
                             <div class="d-flex align-items-center justify-content-center">
                                 <span class="mr-2">📜</span> Historie
@@ -629,6 +639,59 @@
                     {% else %}
                     <p>Keine detaillierten Warnungen vorhanden.</p>
                     {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Info-Mail Panel -->
+        <div id="infoMailPanel" class="mt-4" style="display: none;">
+            <div class="card shadow border-info">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <span>ℹ️ Info-Mails (Feldänderungen benachrichtigen)</span>
+                    <div class="btn-group">
+                        <button id="btnGenerateInfoMails" type="button" class="btn btn-light btn-sm">✍ Generieren</button>
+                        <button id="btnSendInfoMails" type="button" class="btn btn-success btn-sm ml-1">📨 Senden</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="font-weight-bold mb-2">Felder auswählen, über deren Änderungen Lehrkräfte informiert werden:</label>
+                        <div class="row" id="infoMailFieldCheckboxes">
+                            {% for field in info_mail_fields %}
+                            <div class="col-md-3 mb-1">
+                                <div class="form-check">
+                                    <input class="form-check-input info-mail-field" type="checkbox"
+                                           id="imf_{{ field|replace(' ', '_')|replace('.', '') }}"
+                                           value="{{ field }}">
+                                    <label class="form-check-label" for="imf_{{ field|replace(' ', '_')|replace('.', '') }}">
+                                        {{ field }}
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div id="infoMailStatus" class="alert alert-secondary py-1 mb-2" style="font-size:0.9rem;">
+                        {% if info_changes_count > 0 %}
+                            <strong>{{ info_changes_count }}</strong> Schüler mit Feldänderungen verfügbar. Felder auswählen und „Generieren" klicken.
+                        {% else %}
+                            Noch keine Änderungsdaten – bitte zuerst eine Verarbeitung durchführen.
+                        {% endif %}
+                    </div>
+                    <div id="infoMailTableContainer" style="display:none;">
+                        <table class="table table-sm table-striped" id="infoMailTable">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Schüler</th>
+                                    <th>Klasse</th>
+                                    <th>Geänderte Felder</th>
+                                    <th>Klassenlehrkraft 1</th>
+                                    <th>Klassenlehrkraft 2</th>
+                                </tr>
+                            </thead>
+                            <tbody id="infoMailTableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1085,6 +1148,10 @@
                         aria-controls="karteileiche" aria-selected="false">🧟 Karteileichen</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" id="info-notification-tab" data-toggle="tab" href="#info-notification" role="tab"
+                        aria-controls="info-notification" aria-selected="false">ℹ️ Info-Mail</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" id="email-info-tab" data-toggle="tab" href="#email-info" role="tab"
                         aria-controls="email-info" aria-selected="false">🗝️ℹ️Schlüssel-Info</a>
                 </li>
@@ -1188,6 +1255,25 @@
                         </div>
                     </form>
                 </div>
+                <!-- Info-Mail Vorlage -->
+                <div class="tab-pane fade" id="info-notification" role="tabpanel" aria-labelledby="info-notification-tab">
+                    <form id="infoNotificationForm">
+                        <div class="form-group">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="mb-0" for="subjectInfoNotification">📋 Betreff:</label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetTemplate('info_notification')">🔄 Standard-Vorlage laden</button>
+                            </div>
+                            <input type="text" class="form-control" id="subjectInfoNotification" name="subject_info_notification" placeholder="Betreff der Info-Mail">
+                        </div>
+                        <div class="form-group">
+                            <label class="mb-0">📜 Nachricht:</label>
+                            <p class="text-muted small mb-1">Verfügbare Platzhalter: <code>$Vorname</code>, <code>$Nachname</code>, <code>$Klasse</code>, <code>$Klassenlehrkraft_1</code>, <code>$Klassenlehrkraft_1_Email</code>, <code>$Klassenlehrkraft_2</code>, <code>$Klassenlehrkraft_2_Email</code>, <code>$aenderungen_html</code> (HTML-Tabelle), <code>$aenderungen_text</code> (Plaintext), <code>$aenderungen_felder</code> (Feldnamen)</p>
+                            <div id="editorBodyInfoNotification" class="quill-editor"></div>
+                            <textarea id="bodyInfoNotification" name="body_info_notification" class="form-control d-none"></textarea>
+                        </div>
+                    </form>
+                </div>
+
                 <!-- Schlüssel-Info -->
                 <div class="tab-pane fade" id="email-info" role="tabpanel" aria-labelledby="email-info-tab">
                     <h5>Verfügbare Schlüssel</h5>
