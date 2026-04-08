@@ -2,26 +2,28 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Main DOMContentLoaded fired");
     // Unified Panel Configuration
     const panels = {
-        settingsPanel: document.getElementById("settingsPanel"),
-        emailEditor: document.getElementById("emailEditor"),
+        settingsPanel:  document.getElementById("settingsPanel"),
+        emailEditor:    document.getElementById("emailEditor"),
         shortcutCreator: document.getElementById("shortcutCreator"),
-        uploadArea: document.getElementById("uploadArea"),
-        historyPanel: document.getElementById("historyPanel"),
-        warningsPanel: document.getElementById("warningsPanel"),
+        uploadArea:     document.getElementById("uploadArea"),
+        historyPanel:   document.getElementById("historyPanel"),
+        warningsPanel:  document.getElementById("warningsPanel"),
         dashboardPanel: document.getElementById("dashboardPanel"),
-        adminPanel: document.getElementById("adminPanel"),
+        adminPanel:     document.getElementById("adminPanel"),
+        infoMailPanel:  document.getElementById("infoMailPanel"),
     };
     console.log("Panels:", panels);
 
     const toggleButtons = {
-        toggleSettingsButton: document.getElementById("toggle-settings"),
-        toggleEditorButton: document.getElementById("toggleEditor"),
-        toggleShortcutButton: document.getElementById("toggleShortcutCreator"),
-        toggleUploadButton: document.getElementById("toggleUploadArea"),
-        toggleHistoryButton: document.getElementById("toggleHistory"),
-        toggleWarningsButton: document.getElementById("toggleWarnings"),
-        toggleDashboardButton: document.getElementById("toggleDashboard"),
+        toggleSettingsButton:   document.getElementById("toggle-settings"),
+        toggleEditorButton:     document.getElementById("toggleEditor"),
+        toggleShortcutButton:   document.getElementById("toggleShortcutCreator"),
+        toggleUploadButton:     document.getElementById("toggleUploadArea"),
+        toggleHistoryButton:    document.getElementById("toggleHistory"),
+        toggleWarningsButton:   document.getElementById("toggleWarnings"),
+        toggleDashboardButton:  document.getElementById("toggleDashboard"),
         toggleAdminCheckButton: document.getElementById("toggleAdminCheck"),
+        toggleInfoMailsButton:  document.getElementById("toggleInfoMails"),
     };
 
     const settingsTabs = document.querySelectorAll("#settingsPanel .nav-link");
@@ -462,6 +464,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (toggleButtons.toggleWarningsButton) {
         toggleButtons.toggleWarningsButton.addEventListener("click", () => togglePanel("warningsPanel"));
     }
+    if (toggleButtons.toggleInfoMailsButton) {
+        toggleButtons.toggleInfoMailsButton.addEventListener("click", () => {
+            togglePanel("infoMailPanel");
+            if (panels.infoMailPanel && panels.infoMailPanel.style.display === "block") {
+                loadInfoMailFieldsFromStorage();
+            }
+        });
+    }
 
     // Ensure all panels are initially hidden
     Object.values(panels).forEach((panel) => { if (panel) panel.style.display = "none"; });
@@ -472,4 +482,97 @@ document.addEventListener("DOMContentLoaded", function () {
         togglePanel("warningsPanel");
         warningsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    // ── Info-Mail Logik ──────────────────────────────────────────
+
+    async function loadInfoMailFieldsFromStorage() {
+        try {
+            const res = await fetch('/api/info_mail_fields');
+            const data = await res.json();
+            const saved = data.selected_fields || [];
+            document.querySelectorAll('.info-mail-field').forEach(cb => {
+                cb.checked = saved.includes(cb.value);
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    async function saveInfoMailFieldsToStorage() {
+        const selected = Array.from(document.querySelectorAll('.info-mail-field:checked')).map(cb => cb.value);
+        try {
+            await fetch('/api/info_mail_fields', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ selected_fields: selected }),
+            });
+        } catch (e) { /* ignore */ }
+        return selected;
+    }
+
+    // Feldauswahl beim Öffnen vom Server laden
+    loadInfoMailFieldsFromStorage();
+
+    // Feldauswahl bei Änderung serverseitig speichern
+    document.querySelectorAll('.info-mail-field').forEach(cb => {
+        cb.addEventListener('change', saveInfoMailFieldsToStorage);
+    });
+
+    // Info-Mails generieren
+    document.getElementById('btnGenerateInfoMails')?.addEventListener('click', async () => {
+        const selected = await saveInfoMailFieldsToStorage();
+        if (selected.length === 0) {
+            alert('Bitte mindestens ein Feld auswählen.');
+            return;
+        }
+        const btn = document.getElementById('btnGenerateInfoMails');
+        btn.disabled = true;
+        btn.textContent = '⌛ Generiere…';
+        try {
+            const res = await fetch('/generate_info_mails', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ selected_fields: selected }),
+            });
+            const data = await res.json();
+            document.getElementById('infoMailStatus').textContent = data.message;
+            document.getElementById('infoMailStatus').className = 'alert py-1 mb-2 ' +
+                (data.count > 0 ? 'alert-success' : 'alert-warning');
+
+            if (data.emails && data.emails.length > 0) {
+                const tbody = document.getElementById('infoMailTableBody');
+                tbody.innerHTML = data.emails.map(e =>
+                    `<tr>
+                        <td>${e.student}</td>
+                        <td>${e.klasse}</td>
+                        <td>${e.felder}</td>
+                        <td colspan="2">${e.to.filter(r => r && r.toLowerCase() !== 'n/a').join(', ') || '<span class="text-muted">–</span>'}</td>
+                    </tr>`
+                ).join('');
+                document.getElementById('infoMailTableContainer').style.display = 'block';
+            }
+        } catch (err) {
+            alert('Fehler beim Generieren der Info-Mails: ' + err);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '✍ Generieren';
+        }
+    });
+
+    // Info-Mails senden
+    document.getElementById('btnSendInfoMails')?.addEventListener('click', async () => {
+        if (!confirm('Alle generierten Info-Mails jetzt senden?')) return;
+        const btn = document.getElementById('btnSendInfoMails');
+        btn.disabled = true;
+        btn.textContent = '⌛ Sende…';
+        try {
+            const res = await fetch('/send_info_mails', { method: 'POST' });
+            const data = await res.json();
+            document.getElementById('infoMailStatus').textContent = data.message;
+            document.getElementById('infoMailStatus').className = 'alert py-1 mb-2 alert-info';
+        } catch (err) {
+            alert('Fehler beim Senden der Info-Mails: ' + err);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '📨 Senden';
+        }
+    });
 });

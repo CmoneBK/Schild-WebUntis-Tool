@@ -22,14 +22,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const editorBodyKlassenwechsel = new Quill('#editorBodyKlassenwechsel', quillOptions);
     const editorBodyNewStudent = new Quill('#editorBodyNewStudent', quillOptions);
     const editorBodyKarteileiche = new Quill('#editorBodyKarteileiche', quillOptions);
+    const editorBodyInfoNotification = new Quill('#editorBodyInfoNotification', quillOptions);
 
     // Store editors in a global map for access
     window.editors = {
-        'entlassdatum': editorBodyEntlassdatum,
-        'aufnahmedatum': editorBodyAufnahmedatum,
-        'klassenwechsel': editorBodyKlassenwechsel,
-        'new_student': editorBodyNewStudent,
-        'karteileiche': editorBodyKarteileiche
+        'entlassdatum':       editorBodyEntlassdatum,
+        'aufnahmedatum':      editorBodyAufnahmedatum,
+        'klassenwechsel':     editorBodyKlassenwechsel,
+        'new_student':        editorBodyNewStudent,
+        'karteileiche':       editorBodyKarteileiche,
+        'info_notification':  editorBodyInfoNotification,
     };
 
     // Toast Notification System
@@ -63,11 +65,12 @@ document.addEventListener("DOMContentLoaded", function () {
             const data = await response.json();
             if (data.subject && data.body) {
                 const subjectInputId = {
-                    'entlassdatum': 'subjectEntlassdatum',
-                    'aufnahmedatum': 'subjectAufnahmedatum',
-                    'klassenwechsel': 'subjectKlassenwechsel',
-                    'new_student': 'subjectNewStudent',
-                    'karteileiche': 'subjectKarteileiche'
+                    'entlassdatum':      'subjectEntlassdatum',
+                    'aufnahmedatum':     'subjectAufnahmedatum',
+                    'klassenwechsel':    'subjectKlassenwechsel',
+                    'new_student':       'subjectNewStudent',
+                    'karteileiche':      'subjectKarteileiche',
+                    'info_notification': 'subjectInfoNotification',
                 }[type];
                 document.getElementById(subjectInputId).value = data.subject || "";
                 window.editors[type].root.innerHTML = textToHtml(data.body || "");
@@ -89,6 +92,7 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("subjectKlassenwechsel").value = data.subject_klassenwechsel || "";
             document.getElementById("subjectNewStudent").value = data.subject_new_student || "";
             document.getElementById("subjectKarteileiche").value = data.subject_karteileiche || "";
+            document.getElementById("subjectInfoNotification").value = data.subject_info_notification || "";
 
             // Populate body fields in Quill editors with auto-conversion
             editorBodyEntlassdatum.root.innerHTML = textToHtml(data.body_entlassdatum || "");
@@ -96,6 +100,7 @@ document.addEventListener("DOMContentLoaded", function () {
             editorBodyKlassenwechsel.root.innerHTML = textToHtml(data.body_klassenwechsel || "");
             editorBodyNewStudent.root.innerHTML = textToHtml(data.body_new_student || "");
             editorBodyKarteileiche.root.innerHTML = textToHtml(data.body_karteileiche || "");
+            editorBodyInfoNotification.root.innerHTML = textToHtml(data.body_info_notification || "");
 
             // Show/Hide class change hint based on initial value
             const classChangeSelect = document.getElementById("class_change_recipients");
@@ -120,6 +125,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById('bodyKlassenwechsel').value = editorBodyKlassenwechsel.root.innerHTML;
         document.getElementById('bodyNewStudent').value = editorBodyNewStudent.root.innerHTML;
         document.getElementById('bodyKarteileiche').value = editorBodyKarteileiche.root.innerHTML;
+        document.getElementById('bodyInfoNotification').value = editorBodyInfoNotification.root.innerHTML;
 
         const formData = new FormData();
         formData.append("subject_entlassdatum", document.getElementById("subjectEntlassdatum").value);
@@ -132,6 +138,8 @@ document.addEventListener("DOMContentLoaded", function () {
         formData.append("body_new_student", document.getElementById("bodyNewStudent").value);
         formData.append("subject_karteileiche", document.getElementById("subjectKarteileiche").value);
         formData.append("body_karteileiche", document.getElementById("bodyKarteileiche").value);
+        formData.append("subject_info_notification", document.getElementById("subjectInfoNotification").value);
+        formData.append("body_info_notification", document.getElementById("bodyInfoNotification").value);
 
         fetch("/update_templates", {
             method: "POST",
