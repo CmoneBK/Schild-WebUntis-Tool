@@ -167,28 +167,28 @@ document.addEventListener("DOMContentLoaded", function () {
         try {
             const response = await fetch("/api/history/classes");
             const classes = await response.json();
-            const datalist = document.getElementById("class-datalist");
+            const select = document.getElementById("dashboard-class-input");
 
-            datalist.innerHTML = '';
+            // Platzhalter-Option behalten, Rest neu befüllen
+            select.innerHTML = '<option value="">Klasse wählen...</option>';
             classes.forEach(cls => {
                 const opt = document.createElement("option");
                 opt.value = cls;
-                datalist.appendChild(opt);
+                opt.textContent = cls;
+                select.appendChild(opt);
             });
 
-            // Speichere die Liste für Validierung
             window.availableClasses = classes;
         } catch (err) {
             console.error("Fehler beim Laden der Klassenliste:", err);
         }
     }
 
-    document.getElementById("dashboard-class-input").addEventListener("input", function() {
+    document.getElementById("dashboard-class-input").addEventListener("change", function() {
         const className = this.value;
-        // Prüfen ob es eine gültige Klasse aus der Liste ist
-        if (window.availableClasses && window.availableClasses.includes(className)) {
+        if (className) {
             loadClassStats(className);
-        } else if (!className) {
+        } else {
             document.getElementById("class-stats-placeholder").style.display = "block";
             document.getElementById("class-stats-content").style.display = "none";
         }
