@@ -66,6 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     "class_size_directory": "form-directories",
                     "attest_file_directory": "form-directories",
                     "nachteilsausgleich_file_directory": "form-directories",
+                    "nachteilsausgleich_excel_directory": "form-directories",
                     // ProcessingOptions
                     "use_abschlussdatum": "form-processing",
                     "create_second_file": "form-processing",
@@ -144,6 +145,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "class_size_directory": "Directories",
             "attest_file_directory": "Directories",
             "nachteilsausgleich_file_directory": "Directories",
+            "nachteilsausgleich_excel_directory": "Directories",
             // ProcessingOptions
             "use_abschlussdatum": "ProcessingOptions",
             "create_second_file": "ProcessingOptions",
@@ -239,6 +241,7 @@ const labels = {
     class_size_directory: "Verzeichnis für eine separat generierte Klassengrößendatei zur Verwendung durch Stundenplaner und Vertretungsteam",
     attest_file_directory: "Verzeichnis für eine ImportDatei, die nur die Schüler mit Attestpflicht enthält zur Verwendung Attestpflicht-Spalte",
     nachteilsausgleich_file_directory: "Verzeichnis für eine ImportDatei, die nur die Schüler mit Nachteilsausgleich enthält zur Verwendung Nachteilsausgleich-Spalte",
+    nachteilsausgleich_excel_directory: "Verzeichnis, in dem die Excel-Arbeitsdatei für Sonderpädagogen (Nachteilsausgleichdetails) gespeichert wird.",
     smtp_server: "SMTP-Server-Adresse für den E-Mail-Versand.",
     smtp_port: "Port des SMTP-Servers (z. B. 587 für STARTTLS).",
     smtp_user: "Benutzername für den SMTP-Server.",
