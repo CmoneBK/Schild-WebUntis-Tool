@@ -767,8 +767,9 @@
                     aria-labelledby="directories-tab">
                     <form id="form-directories">
 
-                        <!-- Überschrift für Import-Verzeichnisse -->
-                        <h5 class="mb-3">Import-Verzeichnisse</h5>
+                        <!-- Überschrift für Quelldaten-Verzeichnisse -->
+                        <h5 class="mb-1">Quelldaten-Verzeichnisse</h5>
+                        <p class="text-muted small mb-3">Verzeichnisse, aus denen das Tool Daten liest – Schild-Exporte, Klassen- und Lehrerdaten sowie Zusatzdateien für Attestpflicht und Nachteilsausgleich.</p>
 
                         <!-- Klassendatenverzeichnis -->
                         <div class="form-group">
@@ -835,6 +836,13 @@
                             </div>
                         </div>
 
+                        <!-- Trennlinie Arbeitsverzeichnisse -->
+                        <hr class="my-4">
+
+                        <!-- Überschrift für Arbeitsverzeichnisse -->
+                        <h5 class="mb-1">Arbeitsverzeichnisse</h5>
+                        <p class="text-muted small mb-3">Bidirektionale Verzeichnisse – das Tool schreibt Dateien hinein, externe Nutzer ergänzen sie, das Tool liest sie zurück.</p>
+
                         <!-- Nachteilsausgleich-Arbeitsdatei-Verzeichnis -->
                         <div class="form-group">
                             <label for="nachteilsausgleich_excel_directory">📋 Nachteilsausgleich-Arbeitsdatei-Verzeichnis:
@@ -847,15 +855,15 @@
                                         data-directory-input="nachteilsausgleich_excel_directory">Durchsuchen</button>
                                 </div>
                             </div>
-                            <small class="form-text text-muted">Speicherort der Excel-Arbeitsdatei für Sonderpädagogen (Nachteilsausgleichdetails).</small>
+                            <small class="form-text text-muted">Excel-Arbeitsdatei für Sonderpädagogen: Das Tool befüllt die Datei automatisch, Sonderpädagogen ergänzen die Nachteilsausgleichdetails, das Tool liest sie beim Info-Mail-Versand zurück.</small>
                         </div>
 
-
-                        <!-- Trennlinie zwischen den beiden Bereichen -->
+                        <!-- Trennlinie Export-Verzeichnisse -->
                         <hr class="my-4">
 
-                        <!-- Überschrift für Export-Verzeichnisse -->
-                        <h5 class="mb-3">Export-Verzeichnisse</h5>
+                        <!-- Überschrift für Ausgabedateien-Verzeichnisse -->
+                        <h5 class="mb-1">Ausgabedateien-Verzeichnisse</h5>
+                        <p class="text-muted small mb-3">Verzeichnisse, in die das Tool Dateien schreibt – Logs, Excel-Auswertungen und fertige WebUntis-Importdateien.</p>
 
                         <!-- Logverzeichnis -->
                         <div class="form-group">
