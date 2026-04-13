@@ -3,8 +3,8 @@ import csv
 import history_manager
 import configparser
 from datetime import datetime, timedelta
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 import colorama
 from colorama import Fore, Style, init
 import threading
@@ -268,6 +268,9 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     classes_by_name = read_classes(classes_dir, teachers_dir)
     output_data_students, students_by_id = read_students(use_abschlussdatum)
 
+    # Nachteilsausgleich-Arbeitsdatei aktualisieren
+    update_nachteilsausgleich_excel(students_by_id)
+
     # Historische Klassen-Zuordnung synchronisieren
     sync_student_classes_from_latest()
 
@@ -329,6 +332,11 @@ def create_info_notifications(changes, selected_fields):
     teachers_dir = config.get('Directories', 'teachers_directory', fallback='Lehrerdaten')
     classes_by_name = read_classes(classes_dir, teachers_dir)
 
+    # Sonderpädagogen-Details nur laden wenn Nachteilsausgleich-Feld ausgewählt
+    nachteil_details_map = {}
+    if 'Nachteilsausgleich' in selected_fields:
+        nachteil_details_map = read_nachteilsausgleich_details_by_id()
+
     notifications = []
     for change in changes:
         relevant = {k: v for k, v in change['changes'].items() if k in selected_fields}
@@ -336,10 +344,11 @@ def create_info_notifications(changes, selected_fields):
             continue
 
         current_class = change['current_class']
-        class_info    = classes_by_name.get(current_class, {})
+        class_info    = classes_by_name.get(current_class.strip().lower(), {})
         student       = change.get('current_student', {})
         vorname  = student.get('Vorname',  '') or change['name'].split(' ', 1)[0]
         nachname = student.get('Nachname', '') or (change['name'].split(' ', 1)[1] if ' ' in change['name'] else '')
+        student_id = change.get('student_id', student.get('Interne ID-Nummer', ''))
 
         rows = ''.join(
             f'<tr>'
@@ -360,6 +369,16 @@ def create_info_notifications(changes, selected_fields):
             f'</tr></thead><tbody>{rows}</tbody></table>'
         )
 
+        # Nachteilsausgleich-Details aus der Sonderpädagogen-Arbeitsdatei
+        nachteil_details_text = nachteil_details_map.get(student_id, '')
+        if nachteil_details_text:
+            nachteilsausgleich_details = (
+                '<p><strong>Nachteilsausgleichdetails (Sonderpädagogik):</strong></p>'
+                f'<p style="background:#fff8e1;padding:8px;border-left:3px solid #f0a500">{nachteil_details_text}</p>'
+            )
+        else:
+            nachteilsausgleich_details = ''
+
         notifications.append({
             'Vorname':               vorname,
             'Nachname':              nachname,
@@ -367,6 +386,7 @@ def create_info_notifications(changes, selected_fields):
             'aenderungen_html':      aenderungen_html,
             'aenderungen_text':      '\n'.join(f'{k}: {v["old"]} -> {v["new"]}' for k, v in relevant.items()),
             'aenderungen_felder':    ', '.join(relevant.keys()),
+            'nachteilsausgleich_details': nachteilsausgleich_details,
             'Klassenlehrkraft_1':       class_info.get('Klassenlehrkraft_1',       'N/A'),
             'Klassenlehrkraft_1_Email': class_info.get('Klassenlehrkraft_1_Email', 'N/A'),
             'Klassenlehrkraft_2':       class_info.get('Klassenlehrkraft_2',       'N/A'),
@@ -1603,6 +1623,117 @@ def read_nachteilsausgleich_ids(file_path):
         print_error(f"Fehler beim Lesen Nachteilsausgleich-Datei: {e}")
     print_info(f"Nachteilsausgleich-Datei eingelesen. Anzahl IDs: {len(ids)}")
     return ids
+
+
+def _normalize_excel_id(raw):
+    """Konvertiert einen Excel-Zellwert (str/int/float) zuverlässig zur ID-Zeichenkette."""
+    if raw is None:
+        return ''
+    if isinstance(raw, float) and raw.is_integer():
+        return str(int(raw))
+    return str(raw).strip()
+
+
+def update_nachteilsausgleich_excel(students_by_id):
+    """
+    Erstellt oder aktualisiert die Nachteilsausgleich-Arbeitsdatei (Excel).
+    Bestehende Sonderpädagogen-Einträge in 'Nachteilsausgleichdetails' werden beibehalten.
+    """
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    excel_dir = config.get('Directories', 'nachteilsausgleich_excel_directory', fallback='./NachteilsausgleichExcel')
+    if not excel_dir:
+        return
+
+    os.makedirs(excel_dir, exist_ok=True)
+    excel_path = os.path.join(excel_dir, 'Nachteilsausgleich_Arbeitsdatei.xlsx')
+
+    # Bestehende Sonderpädagogen-Details lesen (nach ID, damit sie erhalten bleiben)
+    details_by_id = {}
+    if os.path.exists(excel_path):
+        try:
+            wb_old = load_workbook(excel_path, read_only=True)
+            ws_old = wb_old.active
+            headers_old = [cell.value for cell in next(ws_old.iter_rows(min_row=1, max_row=1))]
+            id_idx  = headers_old.index('Interne ID-Nummer')      if 'Interne ID-Nummer'       in headers_old else None
+            det_idx = headers_old.index('Nachteilsausgleichdetails') if 'Nachteilsausgleichdetails' in headers_old else None
+            if id_idx is not None and det_idx is not None:
+                for row in ws_old.iter_rows(min_row=2, values_only=True):
+                    sid     = _normalize_excel_id(row[id_idx])
+                    details = str(row[det_idx]).strip() if row[det_idx] else ''
+                    if sid:
+                        details_by_id[sid] = details
+            wb_old.close()
+        except Exception as e:
+            print_warning(f"Konnte bestehende Nachteilsausgleich-Arbeitsdatei nicht lesen: {e}")
+
+    # Aktuelle Nachteilsausgleich-IDs (WebUntis-Status)
+    nachteil_ids = read_nachteilsausgleich_ids_from_latest_file()
+
+    # Neue Excel aufbauen
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Nachteilsausgleich"
+
+    headers = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Nachteilsausgleich in WebUntis aktiv', 'Nachteilsausgleichdetails']
+    ws.append(headers)
+
+    header_fill_normal  = PatternFill("solid", fgColor="D9E1F2")
+    header_fill_editable = PatternFill("solid", fgColor="FFE08A")
+    for i, cell in enumerate(ws[1], 1):
+        cell.font = Font(bold=True)
+        cell.fill = header_fill_editable if i == 5 else header_fill_normal
+        cell.alignment = Alignment(wrap_text=True)
+
+    sorted_students = sorted(students_by_id.values(), key=lambda s: (s.get('Nachname', ''), s.get('Vorname', '')))
+    for student in sorted_students:
+        sid      = student.get('Interne ID-Nummer', '')
+        nachname = student.get('Nachname', '')
+        vorname  = student.get('Vorname', '')
+        na_aktiv = 'Ja' if sid in nachteil_ids else 'Nein'
+        details  = details_by_id.get(sid, '')
+        ws.append([sid, nachname, vorname, na_aktiv, details])
+
+    ws.column_dimensions['A'].width = 20
+    ws.column_dimensions['B'].width = 25
+    ws.column_dimensions['C'].width = 20
+    ws.column_dimensions['D'].width = 32
+    ws.column_dimensions['E'].width = 55
+
+    wb.save(excel_path)
+    print_creation(f"Nachteilsausgleich-Arbeitsdatei aktualisiert: {excel_path}")
+
+
+def read_nachteilsausgleich_details_by_id():
+    """
+    Liest die 'Nachteilsausgleichdetails'-Spalte aus der Arbeitsdatei.
+    Gibt ein Dict {interne_id: details_text} zurück (nur nicht-leere Einträge).
+    """
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    excel_dir  = config.get('Directories', 'nachteilsausgleich_excel_directory', fallback='./NachteilsausgleichExcel')
+    excel_path = os.path.join(excel_dir, 'Nachteilsausgleich_Arbeitsdatei.xlsx')
+
+    details_by_id = {}
+    if not os.path.exists(excel_path):
+        return details_by_id
+    try:
+        wb = load_workbook(excel_path, read_only=True)
+        ws = wb.active
+        headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+        id_idx  = headers.index('Interne ID-Nummer')        if 'Interne ID-Nummer'       in headers else None
+        det_idx = headers.index('Nachteilsausgleichdetails') if 'Nachteilsausgleichdetails' in headers else None
+        if id_idx is not None and det_idx is not None:
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                sid     = _normalize_excel_id(row[id_idx])
+                details = str(row[det_idx]).strip() if row[det_idx] else ''
+                if sid and details:
+                    details_by_id[sid] = details
+        wb.close()
+    except Exception as e:
+        print_warning(f"Fehler beim Lesen der Nachteilsausgleich-Details: {e}")
+    return details_by_id
+
 
 from collections import defaultdict
 

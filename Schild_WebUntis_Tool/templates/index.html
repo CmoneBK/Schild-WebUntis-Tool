@@ -835,6 +835,21 @@
                             </div>
                         </div>
 
+                        <!-- Nachteilsausgleich-Arbeitsdatei-Verzeichnis -->
+                        <div class="form-group">
+                            <label for="nachteilsausgleich_excel_directory">📋 Nachteilsausgleich-Arbeitsdatei-Verzeichnis:
+                            </label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="nachteilsausgleich_excel_directory"
+                                    name="nachteilsausgleich_excel_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="nachteilsausgleich_excel_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Speicherort der Excel-Arbeitsdatei für Sonderpädagogen (Nachteilsausgleichdetails).</small>
+                        </div>
+
 
                         <!-- Trennlinie zwischen den beiden Bereichen -->
                         <hr class="my-4">
@@ -1267,7 +1282,7 @@
                         </div>
                         <div class="form-group">
                             <label class="mb-0">📜 Nachricht:</label>
-                            <p class="text-muted small mb-1">Verfügbare Platzhalter: <code>$Vorname</code>, <code>$Nachname</code>, <code>$Klasse</code>, <code>$Klassenlehrkraft_1</code>, <code>$Klassenlehrkraft_1_Email</code>, <code>$Klassenlehrkraft_2</code>, <code>$Klassenlehrkraft_2_Email</code>, <code>$aenderungen_html</code> (HTML-Tabelle), <code>$aenderungen_text</code> (Plaintext), <code>$aenderungen_felder</code> (Feldnamen)</p>
+                            <p class="text-muted small mb-1">Verfügbare Platzhalter: <code>$Vorname</code>, <code>$Nachname</code>, <code>$Klasse</code>, <code>$Klassenlehrkraft_1</code>, <code>$Klassenlehrkraft_1_Email</code>, <code>$Klassenlehrkraft_2</code>, <code>$Klassenlehrkraft_2_Email</code>, <code>$aenderungen_html</code> (HTML-Tabelle), <code>$aenderungen_text</code> (Plaintext), <code>$aenderungen_felder</code> (Feldnamen), <code>$nachteilsausgleich_details</code> (Nachteilsausgleich-Details aus Excel, nur bei Nachteilsausgleich-Änderungen)</p>
                             <div id="editorBodyInfoNotification" class="quill-editor"></div>
                             <textarea id="bodyInfoNotification" name="body_info_notification" class="form-control d-none"></textarea>
                         </div>
@@ -1357,6 +1372,24 @@
                             <tr>
                                 <td>$neue_klasse</td>
                                 <td>Neue Klasse des Schülers/der Schülerin</td>
+                            </tr>
+                            <!-- Info-Mail -->
+                            <tr>
+                                <td rowspan="4">Info-Mail</td>
+                                <td>$aenderungen_html</td>
+                                <td>HTML-Tabelle der Feldänderungen (z.B. Nachteilsausgleich, Attestpflicht)</td>
+                            </tr>
+                            <tr>
+                                <td>$aenderungen_text</td>
+                                <td>Plaintext-Darstellung der Feldänderungen</td>
+                            </tr>
+                            <tr>
+                                <td>$aenderungen_felder</td>
+                                <td>Kommagetrennte Liste der geänderten Feldnamen</td>
+                            </tr>
+                            <tr>
+                                <td>$nachteilsausgleich_details</td>
+                                <td>Detailangaben aus der Nachteilsausgleich-Excel-Datei (nur befüllt, wenn das Nachteilsausgleich-Feld geändert wurde und ein Eintrag in der Excel-Datei vorhanden ist)</td>
                             </tr>
                         </tbody>
                     </table>
