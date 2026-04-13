@@ -211,7 +211,7 @@ DEFAULT_TEMPLATES = {
     },
     "info_notification": {
         "subject": "WebUntis-Änderungsinfo: $Vorname $Nachname ($Klasse)",
-        "body": "<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>die folgenden Daten von <strong>$Vorname $Nachname</strong> (Klasse: <strong>$Klasse</strong>) wurden in der aktuellen WebUntis-Importdatei aktualisiert und werden mit dem nächsten Import wirksam:</p>$aenderungen_html<p>&nbsp;</p><p><strong>Hinweis:</strong> Es ist nicht möglich, auf diese E-Mail zu antworten.</p><p>Mit freundlichen Grüßen,<br>Das WebUntis Team</p>"
+        "body": "<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>die folgenden Daten von <strong>$Vorname $Nachname</strong> (Klasse: <strong>$Klasse</strong>) wurden in der aktuellen WebUntis-Importdatei aktualisiert und werden mit dem nächsten Import wirksam:</p>$aenderungen_html$nachteilsausgleich_details<p>&nbsp;</p><p><strong>Hinweis:</strong> Es ist nicht möglich, auf diese E-Mail zu antworten.</p><p>Mit freundlichen Grüßen,<br>Das WebUntis Team</p>"
     }
 }
 
@@ -227,6 +227,7 @@ def ensure_ini_files_exist():
     default_class_size_dir = "ClassSizes"
     default_attest_file_directory ="AttestpflichtDaten"
     default_nachteilsausgleich_file_directory ="NachteilsausgleichDaten"
+    default_nachteilsausgleich_excel_directory ="NachteilsausgleichExcel"
 
     # Standard-Inhalt für settings.ini vorbereiten
     settings_ini_content = f"""[Directories]
@@ -239,6 +240,7 @@ schildexport_directory = {default_schildexport_dir}
 class_size_directory = {default_class_size_dir}
 attest_file_directory = {default_attest_file_directory}
 nachteilsausgleich_file_directory = {default_nachteilsausgleich_file_directory}
+nachteilsausgleich_excel_directory = {default_nachteilsausgleich_excel_directory}
 
 [ProcessingOptions]
 use_abschlussdatum = False
@@ -328,7 +330,12 @@ client_name = Schild-WebUntis-Tool
             if not config.has_option('ProcessingOptions', 'warn_karteileichen'):
                 config.set('ProcessingOptions', 'warn_karteileichen', 'False')
                 updated = True
-            
+
+            # Directories
+            if not config.has_option('Directories', 'nachteilsausgleich_excel_directory'):
+                config.set('Directories', 'nachteilsausgleich_excel_directory', default_nachteilsausgleich_excel_directory)
+                updated = True
+
             if updated:
                 with open("settings.ini", "w", encoding="utf-8-sig") as configfile:
                     config.write(configfile)
@@ -368,6 +375,13 @@ client_name = Schild-WebUntis-Tool
                 if "$lehrkraefte_tabelle" not in current_body:
                     config.set('Templates', 'body_klassenwechsel', DEFAULT_TEMPLATES['klassenwechsel']['body'])
                     updated = True
+
+            # Spezielles Update für Info-Notification (Nachteilsausgleich-Details Platzhalter)
+            if config.has_option('Templates', 'body_info_notification'):
+                current_body = config.get('Templates', 'body_info_notification')
+                if "$nachteilsausgleich_details" not in current_body:
+                    config.set('Templates', 'body_info_notification', DEFAULT_TEMPLATES['info_notification']['body'])
+                    updated = True
             
             if not config.has_section('WebUntisAPI'):
                 config.add_section('WebUntisAPI')
@@ -399,6 +413,7 @@ client_name = Schild-WebUntis-Tool
         "import_directory": default_import_dir,
         "attest_file_directory": default_attest_file_directory,
         "nachteilsausgleich_file_directory": default_nachteilsausgleich_file_directory,
+        "nachteilsausgleich_excel_directory": default_nachteilsausgleich_excel_directory,
     }
 
     print_section("Verzeichnisse")

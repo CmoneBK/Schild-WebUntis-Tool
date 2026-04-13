@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     'info_notification': 'subjectInfoNotification',
                 }[type];
                 document.getElementById(subjectInputId).value = data.subject || "";
-                window.editors[type].root.innerHTML = textToHtml(data.body || "");
+                window.editors[type].clipboard.dangerouslyPasteHTML(textToHtml(data.body || ""));
                 window.showToast("Standard-Vorlage geladen.");
             }
         } catch (err) {
@@ -95,12 +95,14 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("subjectInfoNotification").value = data.subject_info_notification || "";
 
             // Populate body fields in Quill editors with auto-conversion
-            editorBodyEntlassdatum.root.innerHTML = textToHtml(data.body_entlassdatum || "");
-            editorBodyAufnahmedatum.root.innerHTML = textToHtml(data.body_aufnahmedatum || "");
-            editorBodyKlassenwechsel.root.innerHTML = textToHtml(data.body_klassenwechsel || "");
-            editorBodyNewStudent.root.innerHTML = textToHtml(data.body_new_student || "");
-            editorBodyKarteileiche.root.innerHTML = textToHtml(data.body_karteileiche || "");
-            editorBodyInfoNotification.root.innerHTML = textToHtml(data.body_info_notification || "");
+            // Use dangerouslyPasteHTML so Quill's internal delta state is updated correctly,
+            // even when the editor container is inside a hidden panel.
+            editorBodyEntlassdatum.clipboard.dangerouslyPasteHTML(textToHtml(data.body_entlassdatum || ""));
+            editorBodyAufnahmedatum.clipboard.dangerouslyPasteHTML(textToHtml(data.body_aufnahmedatum || ""));
+            editorBodyKlassenwechsel.clipboard.dangerouslyPasteHTML(textToHtml(data.body_klassenwechsel || ""));
+            editorBodyNewStudent.clipboard.dangerouslyPasteHTML(textToHtml(data.body_new_student || ""));
+            editorBodyKarteileiche.clipboard.dangerouslyPasteHTML(textToHtml(data.body_karteileiche || ""));
+            editorBodyInfoNotification.clipboard.dangerouslyPasteHTML(textToHtml(data.body_info_notification || ""));
 
             // Show/Hide class change hint based on initial value
             const classChangeSelect = document.getElementById("class_change_recipients");
