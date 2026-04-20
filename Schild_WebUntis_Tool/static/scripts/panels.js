@@ -539,14 +539,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (data.emails && data.emails.length > 0) {
                 const tbody = document.getElementById('infoMailTableBody');
-                tbody.innerHTML = data.emails.map(e =>
-                    `<tr>
+                tbody.innerHTML = data.emails.map((e, i) => {
+                    const isNachteilsMail = e.felder.split(',').map(f => f.trim()).includes('Nachteilsausgleich');
+                    const infoBtn = (isNachteilsMail && e.nachteilsausgleich_details)
+                        ? `<button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 ml-1 info-mail-details-btn"
+                               title="Nachteilsausgleich-Details anzeigen"
+                               data-details="${encodeURIComponent(e.nachteilsausgleich_details)}"
+                               data-student="${e.student}">ℹ️</button>`
+                        : '';
+                    const felderCell = isNachteilsMail && e.nachteilsausgleich_details
+                        ? e.felder.replace('Nachteilsausgleich', `Nachteilsausgleich${infoBtn}`)
+                        : e.felder;
+                    return `<tr>
+                        <td><input type="checkbox" class="info-mail-select" data-index="${i}" checked></td>
                         <td>${e.student}</td>
                         <td>${e.klasse}</td>
-                        <td>${e.felder}</td>
+                        <td>${felderCell}</td>
                         <td colspan="2">${e.to.filter(r => r && r.toLowerCase() !== 'n/a').join(', ') || '<span class="text-muted">–</span>'}</td>
-                    </tr>`
-                ).join('');
+                    </tr>`;
+                }).join('');
+                // Alle-auswählen zurücksetzen
+                const selectAll = document.getElementById('selectAllInfoMails');
+                if (selectAll) selectAll.checked = true;
                 document.getElementById('infoMailTableContainer').style.display = 'block';
             }
         } catch (err) {
@@ -557,14 +571,56 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Alle-auswählen Checkbox
+    document.getElementById('selectAllInfoMails')?.addEventListener('change', function () {
+        document.querySelectorAll('.info-mail-select').forEach(cb => cb.checked = this.checked);
+    });
+
+    // Indeterminate-State aktualisieren wenn Einzel-Checkbox geändert wird
+    document.getElementById('infoMailTableBody')?.addEventListener('change', function (e) {
+        if (!e.target.classList.contains('info-mail-select')) return;
+        const all = document.querySelectorAll('.info-mail-select');
+        const checked = document.querySelectorAll('.info-mail-select:checked');
+        const selectAll = document.getElementById('selectAllInfoMails');
+        if (selectAll) {
+            selectAll.checked = checked.length === all.length;
+            selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+        }
+    });
+
+    // Nachteilsausgleich-Details Modal öffnen
+    document.getElementById('infoMailTableBody')?.addEventListener('click', function (e) {
+        const btn = e.target.closest('.info-mail-details-btn');
+        if (!btn) return;
+        const details = decodeURIComponent(btn.dataset.details);
+        const student = btn.dataset.student;
+        document.getElementById('nachteilsausgleichDetailsModalLabel').textContent = `📋 Nachteilsausgleich-Details: ${student}`;
+        document.getElementById('nachteilsausgleichDetailsModalBody').innerHTML = details;
+        $('#nachteilsausgleichDetailsModal').modal('show');
+    });
+
     // Info-Mails senden
     document.getElementById('btnSendInfoMails')?.addEventListener('click', async () => {
-        if (!confirm('Alle generierten Info-Mails jetzt senden?')) return;
+        const selectedIndices = Array.from(document.querySelectorAll('.info-mail-select:checked'))
+            .map(cb => parseInt(cb.dataset.index));
+        if (selectedIndices.length === 0) {
+            alert('Keine Mails ausgewählt. Bitte mindestens eine Mail per Checkbox markieren.');
+            return;
+        }
+        const total = document.querySelectorAll('.info-mail-select').length;
+        const confirmMsg = selectedIndices.length === total
+            ? `Alle ${total} generierten Info-Mails jetzt senden?`
+            : `${selectedIndices.length} von ${total} Info-Mails senden (${total - selectedIndices.length} abgewählt)?`;
+        if (!confirm(confirmMsg)) return;
         const btn = document.getElementById('btnSendInfoMails');
         btn.disabled = true;
         btn.textContent = '⌛ Sende…';
         try {
-            const res = await fetch('/send_info_mails', { method: 'POST' });
+            const res = await fetch('/send_info_mails', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ indices: selectedIndices }),
+            });
             const data = await res.json();
             document.getElementById('infoMailStatus').textContent = data.message;
             document.getElementById('infoMailStatus').className = 'alert py-1 mb-2 alert-info';

@@ -1155,13 +1155,14 @@ def generate_info_mails():
 
         recipients = [n.get('Klassenlehrkraft_1_Email', 'N/A'), n.get('Klassenlehrkraft_2_Email', 'N/A')]
         generated_info_mails_cache.append({
-            'subject':            subject,
-            'body':               body,
-            'to':                 recipients,
-            'notification_index': i,
-            'student':            f"{n['Vorname']} {n['Nachname']}",
-            'klasse':             n['Klasse'],
-            'felder':             n['aenderungen_felder'],
+            'subject':                    subject,
+            'body':                       body,
+            'to':                         recipients,
+            'notification_index':         i,
+            'student':                    f"{n['Vorname']} {n['Nachname']}",
+            'klasse':                     n['Klasse'],
+            'felder':                     n['aenderungen_felder'],
+            'nachteilsausgleich_details': n.get('nachteilsausgleich_details', ''),
         })
 
     print_success(f"{len(generated_info_mails_cache)} Info-Mail(s) generiert.")
@@ -1178,10 +1179,17 @@ def send_info_mails():
     if not generated_info_mails_cache:
         return jsonify({"message": "⚠️ Keine generierten Info-Mails zum Senden vorhanden."})
 
+    data = request.json or {}
+    indices = data.get('indices', None)
+    if indices is not None:
+        emails_to_send = [generated_info_mails_cache[i] for i in indices if 0 <= i < len(generated_info_mails_cache)]
+    else:
+        emails_to_send = generated_info_mails_cache
+
     import time
-    print_info("Sende Info-Mails...")
+    print_info(f"Sende Info-Mails ({len(emails_to_send)} von {len(generated_info_mails_cache)})...")
     sent, skipped = 0, 0
-    for email in generated_info_mails_cache:
+    for email in emails_to_send:
         actual_recipients = [r for r in email['to'] if r and r.lower() != 'n/a']
         if not actual_recipients:
             print_warning(f"Überspringe Info-Mail für '{email['subject']}': keine gültigen Empfänger.")
