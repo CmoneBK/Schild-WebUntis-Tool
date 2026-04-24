@@ -73,6 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     "create_class_size_file": "form-processing",
                     "enable_attestpflicht_column": "form-processing",
                     "enable_nachteilsausgleich_column": "form-processing",
+                    "treat_status_6_as_active": "form-processing",
                     "disable_import_file_creation": "form-processing",
                     "disable_import_file_if_admin_warning": "form-processing",
                     // Warnings
@@ -159,6 +160,7 @@ document.addEventListener("DOMContentLoaded", function () {
             "timeframe_hours": "ProcessingOptions",
             "enable_attestpflicht_column": "ProcessingOptions",
             "enable_nachteilsausgleich_column": "ProcessingOptions",
+            "treat_status_6_as_active": "ProcessingOptions",
             "disable_import_file_creation": "ProcessingOptions",
             "disable_import_file_if_admin_warning": "ProcessingOptions",
             // Email settings
@@ -224,6 +226,7 @@ const labels = {
     use_abschlussdatum: "...falls dieses früher liegt oder kein Entlassdatum existiert",
     enable_attestpflicht_column: "Analysiert Daten aus dem Attestpflicht-Datei-Verzeichnis für eine zusätzliche Ja/Nein Spalte",
     enable_nachteilsausgleich_column: "Analysiert Daten aus dem Nachteilsausgleich-Datei-Verzeichnis für eine zusätzliche Ja/Nein Spalte",
+    treat_status_6_as_active: "Schild-Status 6 entspricht externen Schülern. Wenn aktiviert, werden sie wie reguläre aktive Schüler behandelt (Klassengrößen, keine Karteileichen-Meldung).",
     create_second_file: "Abgänger und Abschlüsse ohne...",
     create_class_size_file: "Nützlich für Stundenplaner und das Vertretungsteam",
     warn_entlassdatum: "Von der (Stand jetzt) Vergangneheit auf dem Zeitstrahl nach rechts (generiert Dokumentationslücke)",

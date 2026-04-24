@@ -56,6 +56,17 @@ def print_section(title, count=None):
     _console.rule(label, style="cyan")
 
 # --- Validierungskonstanten ---
+# Schild-Statuswerte, die als "aktiv" gewertet werden.
+#   '2' = regulär aktiver Schüler (immer aktiv)
+#   '6' = Extern (externe Schüler — optional als aktiv behandelt, konfigurierbar
+#         über ProcessingOptions.treat_status_6_as_active)
+def get_active_schild_status():
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    treat_6_as_active = config.getboolean('ProcessingOptions', 'treat_status_6_as_active', fallback=True)
+    return {'2', '6'} if treat_6_as_active else {'2'}
+
+
 SCHILD_REQUIRED_COLUMNS = [
     'Interne ID-Nummer', 'Nachname', 'Vorname', 'Klasse', 'Klassenlehrer', 
     'Geburtsdatum', 'Geschlecht', 'vorauss. Abschlussdatum', 'Aufnahmedatum', 
@@ -1006,6 +1017,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
 def read_students(use_abschlussdatum=False):
     # Funktion zum Einlesen der Schülerdaten aus der neuesten CSV-Datei im aktuellen Verzeichnis
     print_info("Lese Schülerdaten ein...")
+    active_statuses = get_active_schild_status()
     import_dir = get_directory('import_directory', './WebUntis Importe')
     # Überprüfen, ob das Importverzeichnis existiert, falls nicht, erstellen
     if not os.path.exists(import_dir):
@@ -1074,7 +1086,7 @@ def read_students(use_abschlussdatum=False):
             filtered_row['Entlassdatum'] = entlassdatum
             
             # Schüler als aktiv markieren basierend auf dem Status
-            filtered_row['Aktiv'] = 'Ja' if row['Status'] == '2' else 'Nein'
+            filtered_row['Aktiv'] = 'Ja' if row['Status'] in active_statuses else 'Nein'
 
             # Klassenlehrer verarbeiten
             if 'Klassenlehrer' in reader.fieldnames:
@@ -1531,7 +1543,7 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
         with open(newest_file, 'r', newline='', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile, delimiter=';')
             for row in reader:
-                if row['Status'] != '2' and not row.get('Entlassdatum'):
+                if row['Status'] not in get_active_schild_status() and not row.get('Entlassdatum'):
                     filtered_row = {k: v for k, v in row.items() if k in second_output_columns}
                     second_output_data.append([filtered_row.get(col, '') for col in second_output_columns])
         if second_output_data:
@@ -1773,7 +1785,7 @@ def create_class_sizes_file(students_by_id):
     """
     Erzeugt eine CSV mit den Spalten:
       Klasse, Schüler (männlich), Schüler (weiblich), Schüler (divers), Schüler (gesamt)
-    und berücksichtigt nur Schüler mit Status == '2' (also Aktiv == 'Ja').
+    und berücksichtigt nur aktive Schüler (Status laut get_active_schild_status(), also Aktiv == 'Ja').
     Die Datei wird in das class_size_directory aus den settings.ini abgelegt.
     """
     print_info("Erstelle Klassengrößen-Auswertung...")

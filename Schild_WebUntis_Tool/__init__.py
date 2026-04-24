@@ -256,6 +256,7 @@ enable_attestpflicht_column = False
 enable_nachteilsausgleich_column = False
 disable_import_file_creation = False
 disable_import_file_if_admin_warning = False
+treat_status_6_as_active = True
 
 [InfoMailOptions]
 selected_fields =
@@ -329,6 +330,9 @@ client_name = Schild-WebUntis-Tool
             # ProcessingOptions
             if not config.has_option('ProcessingOptions', 'warn_karteileichen'):
                 config.set('ProcessingOptions', 'warn_karteileichen', 'False')
+                updated = True
+            if not config.has_option('ProcessingOptions', 'treat_status_6_as_active'):
+                config.set('ProcessingOptions', 'treat_status_6_as_active', 'True')
                 updated = True
 
             # Directories
