@@ -334,11 +334,30 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 - **Klassengrößen Auswertung:** Es wurde die Option zur Generirung eines zusätzlichen Auswertungsdokuments zu den Klassengrößen/stärken hinzugefügt. Diese Datei kann so mit jedem Import generiert und Interessierten (Vertretungsteam, Stundenplaner) zur Verfügung gestellt werden.
 </details>
 
-### Update 2.9.5
+<details>
+<summary><b>Update 2.9.5</b></summary>
+
 - **Neu - Optionale Warnungen für aus dem Schild-Export verschwundene Schüler:** Das dürfte bei dem Filter: "Aktuelles Schuljahr - Aktive, Abgänger und Abschlüsse" im Grund nie auftreten (außer vielleicht ganz zum Schluss beim Hochschulen)
 - **Verbessert - Klassenwechsel Email-Versand an alle Klassenlehrer (statt nur die der alten Klasse):** Email Versand der Warnemails über Klassenwechsel wahlweise an die Klassenlehrkräfte der alten Klasse, der neuen Klasse, oder Beide.
 - **Neu - Importdatei Erstellung unterbinden:** Option zum Verhindern der Erstellung der WebUntis-Importdatei wenn zum Beispiel Admin Warnungen existieren. Das ist sehr wichtig für vollautomatisierte Nutzung dieses Tools
 - **Neu - Historie:** Man kann jetzt die Logs und Excel Logs vergangener Importe direkt im Webend einsehen.
-- **Verbessert - Warnungen als Menüpunkt:** Warnungen werden im Webend jetzt in einem Menüpunkt dargestellt der sich automatisch öffnet wenn welche erscheinen. 
-  
+- **Verbessert - Warnungen als Menüpunkt:** Warnungen werden im Webend jetzt in einem Menüpunkt dargestellt der sich automatisch öffnet wenn welche erscheinen.
+
 Außerdem wurden einige seltenere Bugs gefixt und die Robustheit des Programms erhöht.
+</details>
+
+### Update 3.0
+- **Neu - Dashboard mit Historien-Auswertung:** Eigene persistente Datenbank zur Auswertung vergangener Importe. Statistiken, Trends und Klassen-Hotspots werden direkt im Webend mit Diagrammen dargestellt. Klassen lassen sich einzeln über die Zeit nachvollziehen, und der gesamte Verlauf kann als Excel exportiert werden.
+- **Neu - Info-Mails bei Feldänderungen:** Lehrkräfte können automatisch über Änderungen an WebUntis-relevanten Schülerfeldern (z.B. Nachteilsausgleich, Attestpflicht, Telefonnummer) informiert werden. Die zu überwachenden Felder sind frei wählbar und werden geräteübergreifend in der `settings.ini` gespeichert. Vor dem Versand erscheint eine Vorschau-Tabelle, in der einzelne Mails per Checkbox abgewählt werden können.
+- **Neu - Nachteilsausgleich-Arbeitsdatei für Sonderpädagogen:** Eine Excel-Datei wird automatisch mit allen Schülern befüllt und enthält fünf Detailspalten (Zeitlich, Technisch, Räumlich, Personell, Sonstige Vereinbarungen) zur freien Bearbeitung durch Sonderpädagogen. Die Inhalte werden in den Info-Mails bei Nachteilsausgleich-Änderungen mitversendet und sind in der Mail-Vorschau über einen Info-Button direkt einsehbar. Vorhandene Einträge bleiben bei jedem neuen Import erhalten.
+- **Neu - Vorab-Validierung der Importdateien:** Mit einem Klick werden Schild-, Lehrer- und Klassendateien auf fehlende Pflichtspalten, falsche Trennzeichen und leere Verzeichnisse geprüft, bevor die eigentliche Verarbeitung startet.
+- **Neu - Zeitraum-Vergleich:** Statt nur den direkten Vorgänger zu vergleichen, kann der aktuelle Import gegen einen Stand vor einer frei wählbaren Anzahl von Stunden geprüft werden — nützlich z.B. nach mehreren Test-Importen am selben Tag.
+- **Neu - Schild-Status 6 (Extern) konfigurierbar:** Externe Schüler (Schild-Status 6) können wahlweise als „aktiv" behandelt werden, sodass sie in Klassengrößen einfließen und nicht als Karteileichen gemeldet werden.
+- **Neu - Drei Verzeichniskategorien:** Die Einstellungen unterscheiden jetzt zwischen Quelldaten-, Arbeits- und Ausgabedateien-Verzeichnissen mit jeweils erklärenden Beschreibungen.
+- **Verbessert - WYSIWYG-Email-Editor:** Mail-Vorlagen werden in einem komfortablen Quill-Editor mit Formatierungsmöglichkeiten bearbeitet. Alle Platzhalter sind im neuen Schlüssel-Info-Tab dokumentiert.
+- **Verbessert - Auto-Patcher für Konfigurationsdateien:** Bestehende `settings.ini` und `email_settings.ini` werden bei Updates automatisch um neue Optionen ergänzt — ohne manuelles Nachpflegen.
+- **Verbessert - Modulare Architektur:** Das Webend wurde in einzelne JS-Module aufgeteilt (Dashboard, Settings, Panels, Email-Editor, Upload), was zukünftige Erweiterungen deutlich erleichtert.
+- **Bug Fix - Klassenlehrkräfte in Mails:** In bestimmten Konstellationen waren Klassenlehrkräfte fälschlich als „N/A" markiert — durch eine fehlerhafte Schlüsselnormalisierung. Dies wurde behoben.
+- **Bug Fix - Excel-ID-Behandlung:** Numerische Schüler-IDs wurden nach dem Speichern in Excel teilweise als Float interpretiert (z.B. `12345.0`), was zu Fehlzuordnungen führen konnte. IDs werden jetzt sauber normalisiert.
+
+Außerdem wurden zahlreiche kleinere Verbesserungen, Bug Fixes und Robustheitsmaßnahmen umgesetzt.
