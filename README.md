@@ -9,25 +9,31 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
 
 ## Funktionen
       
-<details><summary><b>🔄Datenumwandlung:</b> Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.</summary>Daten wie Schulpflicht müssen boolsch (Nein->Ja,Ja->Nein) umgekehrt werden damit sie passen. Beim Status wird bei Schild eine 2, 7, 8 ausgegeben, was in WebUntis auch boolschen Werten (Aktiv, Inaktiv, Inaktiv) enspricht. Solche Umwandlungen können grade bei größeren Schulen und täglichem Import mühsam sein. Jetzt nicht mehr.</details>
+<details><summary><b>🔄Datenumwandlung:</b> Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.</summary>Daten wie Schulpflicht müssen boolsch (Nein->Ja,Ja->Nein) umgekehrt werden damit sie passen. Beim Status wird bei Schild eine 2, 6, 7, 8 ausgegeben, was in WebUntis auch boolschen Werten entspricht. Externe Schüler (Status 6) sind dabei optional als „aktiv" zu behandeln. Solche Umwandlungen können grade bei größeren Schulen und täglichem Import mühsam sein. Jetzt nicht mehr.</details>
 <details><summary><b>⚠️Warnungen für Klassenlehrkräfte:</b> Generiert (auf Wunsch) Warnungen:</summary>
 Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schild zu ungünstigen Eingaben kommen die aber noch ungünstigere Konsequenzen haben. Hier werden Warnungen erstellt:
-      
+
   - für Entlassdaten, die in die Zukunft verschoben werden und zu einem nicht dokumentierten Zeitraum führen.
   - für Aufnahmedaten, die in die Vergangenheit verschoben werden und Dokumentationslücken verursachen.
   - für Klassenwechsel, die eine manuelle Nachbearbeitung in WebUntis erfordern.
   - für neue Schüler, die ggf. ein aktualisieren von Schülergruppen erforderlich  machen.
+  - für aus dem Schild-Export verschwundene Schüler ("Karteileichen").
     </details>
-<details><summary><b>📩E-Mail-Benachrichtigungen:</b> E-Mails für Klassenlehrkräfte</summary>Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen.</details>
+<details><summary><b>📩E-Mail-Benachrichtigungen:</b> E-Mails für Klassenlehrkräfte</summary>Automatisches Generieren und Versenden von (anpassbaren) E-Mails an Klassenlehrkräfte mit detaillierten Informationen zu den Warnungen. Bei Klassenwechseln können wahlweise alte, neue oder beide Klassenlehrkräfte adressiert werden.</details>
+<details><summary><b>ℹ️Info-Mails bei Feldänderungen:</b> Lehrkräfte aktiv über Änderungen informieren</summary>Frei wählbare Schülerfelder (z.B. Nachteilsausgleich, Attestpflicht, Telefonnummer) werden auf Änderungen überwacht. Bei Änderungen werden automatisch Info-Mails an die zuständigen Klassenlehrkräfte generiert. Vor dem Versand zeigt eine Vorschau-Tabelle alle Mails an — einzelne lassen sich per Checkbox abwählen. Die Feldauswahl wird geräteübergreifend in der `settings.ini` gespeichert.</details>
+<details><summary><b>📊Dashboard mit Historien-Auswertung:</b> Statistiken und Trends auf einen Blick</summary>Eine eigene persistente Historien-Datenbank protokolliert alle Importe und Änderungen. Im Dashboard werden Statistiken, Klassen-Hotspots und Verlaufstrends mit Diagrammen dargestellt. Einzelne Klassen lassen sich über die Zeit nachvollziehen, und die gesamte Historie kann als Excel exportiert werden.</details>
+<details><summary><b>🔍Vorab-Validierung der Importdateien:</b> Probleme erkennen, bevor sie zum Problem werden</summary>Auf Knopfdruck werden Schild-, Lehrer- und Klassendateien auf fehlende Pflichtspalten, falsche Trennzeichen und leere Verzeichnisse geprüft — bevor die eigentliche Verarbeitung gestartet wird.</details>
 <details><summary><b>📢Admin Warnungen:</b> Wenn Ihre Daten durch Veralterung inkonsistent werden bekommen Sie Meldungen bevor was schiefgeht.</summary>Der Nutzer erhält per Konsole (optional Mail) Meldungen, wenn in den Schild-Daten (plötzlich) Klassen oder Klassenlehrkräfte vorkommen die in den bereitgestellten Klassen- und Lehrkräftedaten noch fehlen.</details>
 <details><summary><b>🔃📜Änderungs-Log-Dateien:</b> Alle Dateiumwandlugnen werden protokolliert und bei Bedarf an Sie versendet.</summary>Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten. Bei Angabe einer E-Mail Adresse ist auch ein Versand an diese möglich.</details>
-<details><summary><b>#️⃣Kommandozeilen-Modus:</b> Einer Voll-Automatisierung steht nichts im Weg.</summary>Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-mail.</details>
-<details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von zu geneirenden Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen sowie Ändern aller Einstellungen und Verzeichnisse direkt über den Browser.</details>
-<details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen.</details>
-</details>
+<details><summary><b>#️⃣Kommandozeilen-Modus:</b> Einer Voll-Automatisierung steht nichts im Weg.</summary>Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-Mail oder den Zeitraum-Vergleich für die Windows-Aufgabenplanung.</details>
+<details><summary><b>🖥️Benutzerfreundliches Web-Interface:</b> Siehe Screenshots weiter unten</summary>Auswahl von zu generierenden Warnungen, Generieren von Berichten, Senden von E-Mails und Editieren der E-Mail Vorlagen (mit komfortablem WYSIWYG-Editor) sowie Ändern aller Einstellungen und Verzeichnisse direkt über den Browser. Mit Dark Mode.</details>
+<details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen. Bestehende Konfigurationsdateien werden bei Updates automatisch um neue Optionen ergänzt (Auto-Patcher) — ohne manuelles Nachpflegen.</details>
 <details><summary><b>🔐Sicherheit und internetunabhänige Verarbeitung:</b> Internetverbindung nur für Mail-Versand und visuelle Darstellung erforderlich</summary>Das Tool verarbeitet Daten unabhängig vom Internet. Eine Verbindung ist bei Nutzung des Kommandozeilenmodus ausschließlich für den Mail-Versand erforderlich. Im Browser-Frontend wird lediglich lesend auf externe visuelle Online Ressourchen zugegriffen. Es werden keinerlei Daten versendet. </details>
-<details><summary><b>➕Zusatzfunktionen:</b> Klassenstärkenauswertung, Atttestpflicht und Nachteilsausgleich </summary> <p> Das Tool bietet zusätzlich zur Hauptverarbeitung die Funktion, die Klassenstärken auf Grundlage des Import-Datenstandes zu ermitteln und in ein gewünschtes Verzeichnis auszugeben. Bei uns profitieren vor allem das Vertretungsteam und Stundenplaner davon, leicht an diese Daten zu kommen. </p><p> Die Attestpfichtfunktion fügt eine Attestpflichtspalte (Ja/Nein) dem WebUnits-Importdokument hinzu, in der auf Grundlage einer weiteren (per Schild leicht erstellbaren) Importdatei mit nur denjenigen Schülern mit Attestpficht die Daten entsprechend analysiert und angefügt werden.</p>
-<p> Die Nachteilsausgleichfunktion fügt eine Nachteilsausgleihspalte (Ja/Nein) dem WebUnits-Importdokument hinzu, in der auf Grundlage einer weiteren (per Schild leicht erstellbaren) Importdatei mit nur denjenigen Schülern mit Nachteilsausgleich die Daten entsprechend analysiert und angefügt werden.</p></details>
+<details><summary><b>➕Zusatzfunktionen:</b> Klassenstärkenauswertung, Attestpflicht, Nachteilsausgleich und Sonderpädagogen-Arbeitsdatei</summary>
+<p>Das Tool bietet zusätzlich zur Hauptverarbeitung die Funktion, die Klassenstärken auf Grundlage des Import-Datenstandes zu ermitteln und in ein gewünschtes Verzeichnis auszugeben. Bei uns profitieren vor allem das Vertretungsteam und Stundenplaner davon, leicht an diese Daten zu kommen.</p>
+<p>Die Attestpflichtfunktion fügt eine Attestpflicht-Spalte (Ja/Nein) dem WebUntis-Importdokument hinzu, basierend auf einer weiteren (per Schild leicht erstellbaren) Importdatei mit nur denjenigen Schülern mit Attestpflicht.</p>
+<p>Die Nachteilsausgleichfunktion fügt eine Nachteilsausgleich-Spalte (Ja/Nein) dem WebUntis-Importdokument hinzu, analog zur Attestpflicht.</p>
+<p><b>Neu in 3.0 — Nachteilsausgleich-Arbeitsdatei für Sonderpädagogen:</b> Eine Excel-Arbeitsdatei wird automatisch mit allen Schülern befüllt und enthält fünf Detailspalten (Zeitlich, Technisch, Räumlich, Personell, Sonstige Vereinbarungen) zur freien Bearbeitung durch Sonderpädagogen. Bei Nachteilsausgleich-Änderungen werden die Detailangaben automatisch in die Info-Mails übernommen — und sind in der Mail-Vorschau über einen ℹ️-Button direkt einsehbar. Vorhandene Einträge bleiben bei jedem neuen Import erhalten.</p></details>
 
 
 ## Voraussetzungen
@@ -113,6 +119,20 @@ Falls die Nachteilsausgleich verwenden möchten muss dieser auch in Schild als V
 
 </details>
 
+<details>
+<summary><b>6. Optional: Für die Nachteilsausgleich-Arbeitsdatei (Sonderpädagogen)</b></summary>
+
+Falls Sonderpädagogen Nachteilsausgleich-Details (Zeitlich, Technisch, Räumlich, Personell, Sonstige Vereinbarungen) pflegen sollen, die in Info-Mails bei Änderungen mitversendet werden:
+
+- **Keine zusätzlichen Schild-Exports nötig.** Das Tool generiert die Excel-Arbeitsdatei automatisch bei jedem Import auf Grundlage der Schülerdaten.
+- **Verzeichnis konfigurieren:** In den Einstellungen unter `📂 Verzeichnisse` → `Arbeitsverzeichnisse` ein Verzeichnis für die `Nachteilsausgleich-Arbeitsdatei` festlegen. Idealerweise ein Netzlaufwerk, auf das auch die Sonderpädagogen Schreibzugriff haben.
+- **Befüllung:** Sonderpädagogen öffnen die Datei `Nachteilsausgleich_Arbeitsdatei.xlsx` und tragen ihre Details in die orange markierten Spalten (`Zeitlich`, `Technisch`, `Räumlich`, `Personell`, `Sonstige Vereinbarungen`) ein. Pro Zelle sind Zeilenumbrüche und mehrere Einträge möglich.
+- **Aktivierung:** Damit die Details in Info-Mails einfließen, muss `Nachteilsausgleich` als Feld im Info-Mails-Bereich aktiviert sein.
+
+Das Tool liest die Datei bei jedem Lauf zurück, übernimmt vorhandene Einträge in die neu erstellte Datei und ergänzt nur die Schülerliste — nichts geht verloren.
+
+</details>
+
 ## Installation
 1. Laden Sie die .exe Datei des [aktuellen Releases](https://github.com/CmoneBK/Schild-WebUntis-Tool/releases/tag/v.2.8) oder die .exe Datei unter [Schild-WebUntis-Tool-WServer](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) in ein leeres (!) Verzeichnis.</br>
    Hinter letzterem Link gibt es oben rechts neben dem 'RAW' einen Download-Button.
@@ -153,26 +173,51 @@ Platzieren Sie schließlich die Klassen- und Lehrerdaten-Dateien in den Verzeich
 
 
 ## Verwendung
-Hauptfunktion:
-Das Programm wandelt bei einem Klick auf `Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterorder `WebUntis Importe` mit dem aktuellem Datum und Uhrzeit im Dateinamen. 
+**Hauptfunktion:**
+Das Programm wandelt bei einem Klick auf `▶️ Verarbeiten` die aktuelle Schild-Export CSV in eine WebUntis geeignete CSV um und speichert sie im Unterordner `WebUntis Importe` mit dem aktuellem Datum und Uhrzeit im Dateinamen.
 Dabei vergleicht das Programm diese Datei außerdem mit der zuletzt in dieses Verzeichnis exportierten Datei und stellt kritische Unterschiede als Warnungen dar.
 
 <details>
-<summary>E-Mail-Funktion:</summary>
+<summary><b>🔍 Dateien prüfen (Vorab-Validierung):</b></summary>
 
-- Mit einem Klick auf `Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
+Vor dem eigentlichen Verarbeiten kann mit `🔍 Dateien prüfen` ein schneller Check der Schild-, Lehrer- und Klassendateien ausgeführt werden. Geprüft werden u.a. fehlende Pflichtspalten, falsche Trennzeichen und leere Verzeichnisse — so erkennen Sie Probleme, bevor sie die Verarbeitung blockieren.
+</details>
 
-- Mit einem Klick auf `Emails Senden` werden diese E-Mails versendet.
+<details>
+<summary><b>⚠️ Warnungs-Mails:</b></summary>
+
+- Mit einem Klick auf `✍ Emails Generieren` werden E-Mails an die Klassenlehrkräfte der von den Warnungen betroffenen Schülern/Klassen generiert.
+- Mit einem Klick auf `📨 Emails Senden` werden diese E-Mails versendet.
 
 </details>
 
-Optionen: 
+<details>
+<summary><b>ℹ️ Info-Mails (Feldänderungen):</b></summary>
+
+Über das Menü `ℹ️ Info-Mails` lassen sich Lehrkräfte über Änderungen an WebUntis-relevanten Schülerfeldern (z.B. Nachteilsausgleich, Attestpflicht, Telefonnummer) informieren:
+
+1. Felder auswählen, die überwacht werden sollen (Auswahl wird in der `settings.ini` gespeichert).
+2. `✍ Generieren` klickt — eine Vorschau-Tabelle zeigt alle generierten Mails.
+3. Einzelne Mails per Checkbox abwählen, falls einzelne nicht versendet werden sollen.
+4. Bei Nachteilsausgleich-Änderungen erscheint ein ℹ️-Button — Klick zeigt die zugehörigen Details aus der Sonderpädagogen-Arbeitsdatei.
+5. Mit `📨 Senden` gehen die markierten Mails raus.
+
+</details>
+
+<details>
+<summary><b>📊 Dashboard & Historie:</b></summary>
+
+Über das Menü `📊 Dashboard` werden Statistiken, Hotspots und Verlaufstrends aus den vergangenen Importen angezeigt. Klassen lassen sich einzeln anklicken, um den Verlauf über die Zeit zu sehen. Über `📜 Historie` können vergangene Logs und Excel-Logs direkt im Browser eingesehen oder als Excel exportiert werden.
+
+</details>
+
+**Optionen:**
 <details><summary>1. Durch die Auswahloptionen im oberen Bereich... </summary> haben Sie die Möglichkeit für den aktuellen Durchlauf die Erstellung bestimmter Warnungsarten zu verhindern, sowie weitere nützliche Dateien zu erstellen, die auf WebUntis-kritische Fehler in den Stammdaten hindeuten und auch diese notdürftig abzufangen.</details>
 
-2. Über `⚙️ Einstellungen` können Sie alle Einstellugen dauerhaft beeinflussen.
+2. Über `⚙️ Einstellungen` können Sie alle Einstellungen dauerhaft beeinflussen — neuerdings strukturiert in **Quelldaten-**, **Arbeits-** und **Ausgabedateien-Verzeichnisse**.
 
-3. Über `✉️ Email-Vorlagen Editor` können Sie alle E-Mail Vorlagen dauerhaft ändern.
-<details><summary>4. Mit dem `#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool` können Sie... </summary> z.B. Verknüpfungen geneieren die beim Doppelklick gewählte Prozesse direkt hintereinander ausführen (auch ohne dass ich überhaupt die Webseite öffnet). Gleiches gilt für Kommandozeilen-Befehle.</details>
+3. Über `✉️ Email-Vorlagen Editor` können Sie alle E-Mail Vorlagen dauerhaft ändern (mit komfortablem WYSIWYG-Editor und Platzhalter-Dokumentation).
+<details><summary>4. Mit dem `#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool` können Sie... </summary> z.B. Verknüpfungen generieren die beim Doppelklick gewählte Prozesse direkt hintereinander ausführen (auch ohne dass sich überhaupt die Webseite öffnet). Gleiches gilt für Kommandozeilen-Befehle.</details>
 <details><summary>5. Auf der außerdem geöffneten Konsole können Sie den Verarbeitungsprozess beobachten. </summary> Dort werden auch spezielle Admin-Warnungen angezeigt, falls in der importierten Schild-Datei Klassen oder Klassenlehrkräfte sind, die in Ihren Klassen- bzw. Lehrkräftedateien noch nicht vorkommen. Dies weist auf die Notwendigkeit der Aktualisierung hin.</details>
 
 
