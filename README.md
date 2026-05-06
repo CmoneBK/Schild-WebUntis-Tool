@@ -1,7 +1,7 @@
 # Schild-WebUntis-Tool
 **Dieses Tool ist eine Weiterentwicklung des [SchildNRW-WebUntis-Umwandlers](https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master)**
 
-**Dieses Tool ist derzeit Eingeschränkt mit Schild 3.0 kompatibel, da in Schild 3.0 derzeit (noch) kein Klassehrer bei den Individualdaten Exportiert werden kann.**
+**Dieses Tool ist derzeit Eingeschränkt mit Schild 3.0 kompatibel, da in Schild 3.0 derzeit (noch) kein Klassehrer bei den Individualdaten exportiert werden kann.**
 
 Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten, Klassenwechseln oder neu hinzustoßenden Schüler/innen. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
         <a href="/Screenshots/Start mit Daten.png" target="_blank">
