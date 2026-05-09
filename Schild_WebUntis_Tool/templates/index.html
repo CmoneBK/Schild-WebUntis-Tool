@@ -24,12 +24,15 @@
                         <!-- Spalte 1 (linke Seite): Abschlussdatum, 2te Datei, Klassengrößen -->
                         <div class="col-md-6">
                             <h5 class="mb-3">Verarbeitungseinstellungen</h5>
-                            <div class="form-group form-check">
-                                <input type="checkbox" class="form-check-input" id="use_abschlussdatum"
+                            <div class="form-group form-check schild-api-abschluss-block">
+                                <input type="checkbox" class="form-check-input schild-api-disable" id="use_abschlussdatum"
                                     name="use_abschlussdatum" {% if use_abschlussdatum %}checked{% endif %}>
                                 <label class="form-check-label" for="use_abschlussdatum">
                                     🗓️ Benutze Vorrauss. Abschlussdatum als Entlassdatum
                                 </label>
+                                <small class="form-text text-muted schild-api-abschluss-hint" style="display:none;">
+                                    Im Schild-API-Modus deaktiviert: Das Feld <em>vorauss. Abschlussdatum</em> ist über die SVWS-API derzeit nicht verfügbar.
+                                </small>
                             </div>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="enable_attestpflicht_column"
@@ -955,13 +958,16 @@
                 <div class="tab-pane fade" id="processing" role="tabpanel" aria-labelledby="processing-tab">
                     <form id="form-processing">
                         <h5 class="mb-3">Verarbeitungseinstellungen</h5>
-                        <div class="form-group">
+                        <div class="form-group schild-api-abschluss-block">
                             <label for="use_abschlussdatum">🗓️ Immer Vorraussichtliches Abschlussdatum
                                 verwenden:</label>
-                            <select class="form-control" id="use_abschlussdatum" name="use_abschlussdatum">
+                            <select class="form-control schild-api-disable" id="use_abschlussdatum" name="use_abschlussdatum">
                                 <option value="True">Ja</option>
                                 <option value="False">Nein</option>
                             </select>
+                            <small class="form-text text-muted schild-api-abschluss-hint" style="display:none;">
+                                Im Schild-API-Modus deaktiviert: Das Feld <em>vorauss. Abschlussdatum</em> ist über die SVWS-API derzeit nicht verfügbar.
+                            </small>
                         </div>
                         <div class="form-group">
                             <label for="enable_attestpflicht_column">📄 Immer Attestpflicht-Spalte hinzufügen:</label>

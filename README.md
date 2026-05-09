@@ -23,6 +23,7 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
 <details><summary><b>ℹ️Info-Mails bei Feldänderungen:</b> Lehrkräfte aktiv über Änderungen informieren</summary>Frei wählbare Schülerfelder (z.B. Nachteilsausgleich, Attestpflicht, Telefonnummer) werden auf Änderungen überwacht. Bei Änderungen werden automatisch Info-Mails an die zuständigen Klassenlehrkräfte generiert. Vor dem Versand zeigt eine Vorschau-Tabelle alle Mails an — einzelne lassen sich per Checkbox abwählen. Die Feldauswahl wird geräteübergreifend in der `settings.ini` gespeichert.</details>
 <details><summary><b>📊Dashboard mit Historien-Auswertung:</b> Statistiken und Trends auf einen Blick</summary>Eine eigene persistente Historien-Datenbank protokolliert alle Importe und Änderungen. Im Dashboard werden Statistiken, Klassen-Hotspots und Verlaufstrends mit Diagrammen dargestellt. Einzelne Klassen lassen sich über die Zeit nachvollziehen, und die gesamte Historie kann als Excel exportiert werden.</details>
 <details><summary><b>🔍Vorab-Validierung der Importdateien:</b> Probleme erkennen, bevor sie zum Problem werden</summary>Auf Knopfdruck werden Schild-, Lehrer- und Klassendateien auf fehlende Pflichtspalten, falsche Trennzeichen und leere Verzeichnisse geprüft — bevor die eigentliche Verarbeitung gestartet wird.</details>
+<details><summary><b>🏫Schild-API (Schild 3.x):</b> Direkter Zugriff auf den SVWS-Server statt CSV-Export</summary>Statt Schüler-, Klassen- und Lehrerdaten manuell aus Schild zu exportieren, kann das Tool sie ab <strong>Schild 3.x</strong> direkt vom SVWS-Server über die REST-API abrufen. Dazu wird ein technischer Benutzer mit minimalen Lese-Kompetenzen angelegt und im Tool unter <code>⚙️ Einstellungen → 🏫 Schild API</code> eingetragen. Ein Verbindungstest, ein konfigurierbarer Schuljahresabschnitt und eine Status-Whitelist (z.B. Aktiv, Abschluss, Abgang) gehören dazu. Bei API-Fehlern fällt das Tool automatisch auf den CSV-Pfad zurück. Schild-2-Schulen oder Schulen ohne API-Zugang nutzen weiterhin nahtlos den CSV-Weg — die Funktion ist optional.</details>
 <details><summary><b>📢Admin Warnungen:</b> Wenn Ihre Daten durch Veralterung inkonsistent werden bekommen Sie Meldungen bevor was schiefgeht.</summary>Der Nutzer erhält per Konsole (optional Mail) Meldungen, wenn in den Schild-Daten (plötzlich) Klassen oder Klassenlehrkräfte vorkommen die in den bereitgestellten Klassen- und Lehrkräftedaten noch fehlen.</details>
 <details><summary><b>🔃📜Änderungs-Log-Dateien:</b> Alle Dateiumwandlugnen werden protokolliert und bei Bedarf an Sie versendet.</summary>Nach jeder Datenumwandlung wird die aktuelle Import-Datei mit der zuvor erstellten Import-Datei vergleichen und die Unterschiede in Änderungs-Log Dateien festgehalten. Bei Angabe einer E-Mail Adresse ist auch ein Versand an diese möglich.</details>
 <details><summary><b>#️⃣Kommandozeilen-Modus:</b> Einer Voll-Automatisierung steht nichts im Weg.</summary>Auf Wunsch kann die gesammte Funktion zur besseren Automatisierung auch per Kommandozeile ausgeführt werden. Dabei gibt es auch nützliche Zusatzfunktionen wie den Log-Versand per E-Mail oder den Zeitraum-Vergleich für die Windows-Aufgabenplanung.</details>
@@ -120,7 +121,46 @@ Falls die Nachteilsausgleich verwenden möchten muss dieser auch in Schild als V
 </details>
 
 <details>
-<summary><b>6. Optional: Für die Nachteilsausgleich-Arbeitsdatei (Sonderpädagogen)</b></summary>
+<summary><b>6. Optional: Schild-API (SVWS-Server, Schild 3.x) als Alternative zum CSV-Export</b></summary>
+
+Ab **Schild 3.x** kann das Tool die Schüler-, Klassen- und Lehrerdaten direkt vom SVWS-Server über dessen REST-API abrufen — die manuellen Schild-Exporte (Punkt 1, 2, 3) entfallen dann. **Schild-2-Schulen** oder Schulen, die diese Option nicht freischalten möchten, können den CSV-Weg unverändert weiter verwenden.
+
+**Voraussetzungen serverseitig:**
+
+1. Ein laufender SVWS-Server, der vom Rechner erreichbar ist (z.B. `https://schild.schule.local` oder `https://localhost`).
+2. Ein **technischer Benutzer** im SVWS-Server mit minimalen Lese-Kompetenzen. So legen Sie ihn an:
+   - Im SVWS-Web-Client als Admin anmelden → `Verwaltung → Benutzer` → `Neuer Benutzer`
+   - Empfohlener Name: `APIZugang` (oder ähnlich)
+   - Passwort vergeben und sicher aufbewahren
+   - Auf der Berechtigungs-Seite folgende vier Kompetenzen freigeben (jeweils nur den **„Ansehen"**-Haken):
+     - ☑ **Schüler Individualdaten** → Ansehen
+     - ☑ **Lehrerdaten** → Ansehen
+     - ☑ **Schulbezogene Daten** → Ansehen
+     - ☑ **Katalog-Einträge** → Ansehen
+   - **Nicht** benötigt werden: Leistungsdaten, Berichte, Stundenplanung, Notenmodul, Import/Export, Datenbank-Management, Blockoperationen u.a.
+
+**Konfiguration im Tool:**
+
+1. Im Browser unter `⚙️ Einstellungen → 🏫 Schild API` öffnen
+2. `Schild-API verwenden`: **Ja**
+3. `Server-URL` (Basis ohne Pfad), `DB-Schema` (typischerweise `svwsdb`), `Benutzername` und `Passwort` des technischen Users eintragen
+4. `TLS-Zertifikat prüfen`: Bei Self-signed Cert auf **Nein** lassen, in Produktion mit gültigem Zertifikat auf **Ja**
+5. `Fallback auf CSV bei API-Fehler`: empfohlen **Ja** — bei Verbindungsabbruch arbeitet das Tool automatisch mit dem letzten CSV-Stand weiter
+6. `Schuljahresabschnitt`: Default „Aktuell aktiver Abschnitt" — der Server liefert immer den richtigen
+7. `Schild-Status` (Whitelist): Default `2, 6, 8, 9` (Aktiv, Extern, Abschluss, Abgang) — entspricht dem klassischen Schild-Filter „Aktive, Abgänger und Abschlüsse"
+8. **Verbindung testen** anklicken — bei grünem ✅ Speichern
+
+Bei aktiver Schild-API werden die Verzeichnisse für Klassendaten, Lehrerdaten und Schild-Exporte automatisch gesperrt (sie werden nicht mehr verwendet) und ein entsprechender Hinweis erscheint.
+
+**Bekannte Einschränkungen der API-Methode:**
+
+- Das Feld **„vorauss. Abschlussdatum"** ist in der aktuellen SVWS-Server-Version (Stand 1.3.x) **nicht über die REST-API erreichbar**, obwohl es im Schild-Client unter „Aktuelle Laufbahndaten" sichtbar und persistent ist. Im API-Modus bleibt dieses Feld daher leer; die Option `use_abschlussdatum` (Entlassdatum durch Abschlussdatum ersetzen) wirkt entsprechend nicht. Für Schulen, die genau diese Funktion benötigen, ist der CSV-Weg vorzuziehen.
+- Performance: Bei sehr großen Schulen (>2000 Schüler) dauert ein API-Lauf ca. 1–3 Minuten — der CSV-Lauf wäre deutlich schneller. Für reguläre Schulgrößen (bis ~500 Schüler) ist der Unterschied marginal.
+
+</details>
+
+<details>
+<summary><b>7. Optional: Für die Nachteilsausgleich-Arbeitsdatei (Sonderpädagogen)</b></summary>
 
 Falls Sonderpädagogen Nachteilsausgleich-Details (Zeitlich, Technisch, Räumlich, Personell, Sonstige Vereinbarungen) pflegen sollen, die in Info-Mails bei Änderungen mitversendet werden:
 

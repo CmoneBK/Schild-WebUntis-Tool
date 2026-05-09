@@ -35,8 +35,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Schild-API-Status: Banner + Sperre für die Quelldaten-Verzeichnisse,
-    // die im API-Modus nicht verwendet werden.
+    // Schild-API-Status: Banner + Sperre für die Quelldaten-Verzeichnisse
+    // und das "Vorauss. Abschlussdatum"-Feature, die im API-Modus nicht verwendet
+    // bzw. nicht verfügbar sind.
     function applySchildApiLockState() {
         const useApiSelect = document.getElementById('schild_api_use_api');
         const active = useApiSelect && useApiSelect.value === 'True';
@@ -46,11 +47,15 @@ document.addEventListener("DOMContentLoaded", function () {
             // readonly bleibt für UX, wir sperren die Bearbeitungs-Buttons
             inp.classList.toggle('text-muted', active);
         });
-        document.querySelectorAll('.schild-api-disable').forEach(btn => {
-            btn.disabled = active;
-            btn.title = active
+        document.querySelectorAll('.schild-api-disable').forEach(el => {
+            el.disabled = active;
+            el.title = active
                 ? 'Im Schild-API-Modus deaktiviert.'
                 : '';
+        });
+        // Hinweise unter den Vorauss.-Abschlussdatum-Feldern
+        document.querySelectorAll('.schild-api-abschluss-hint').forEach(h => {
+            h.style.display = active ? '' : 'none';
         });
     }
     // Live-Update beim Toggle des API-Schalters
