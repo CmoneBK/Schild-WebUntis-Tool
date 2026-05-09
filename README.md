@@ -50,6 +50,8 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
 <details>
 <summary><b>1. Auswahlsfilter in SchildNRW und Export</b></summary>
 
+> 💡 **Hinweis:** Wenn Sie die **Schild-API (Punkt 6)** nutzen, ist dieser Schritt **nicht nötig** — die Schülerdaten werden dann direkt vom SVWS-Server abgerufen.
+
 - **Filtereinstellungen:**
   - Unten bei Laufbahninfo: `Schuljahr das aktuelle Schuljahr` auswählen
   - Oben rechts bei Status: `Aktiv`, `Abschluss` und `Abgänger` anwählen
@@ -74,6 +76,8 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
 </details>
 <details>
 <summary><b>3. Optional: Stammdaten Exporte für Warnungs-Funktion</b></summary>
+
+> 💡 **Hinweis:** Wenn Sie die **Schild-API (Punkt 6)** nutzen, sind diese Exporte **nicht nötig** — Lehrer- und Klassendaten kommen dann direkt vom SVWS-Server.
 
 Falls die Warnungs-Funktion genutzt werden soll (z. B. E-Mail-Benachrichtigungen an Klassenleitungen), benötigen Sie:
 
