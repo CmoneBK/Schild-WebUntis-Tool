@@ -1616,7 +1616,29 @@ def read_attest_ids_from_latest_file():
     """
     Sucht im 'attest_file_directory' (aus settings.ini) nach der neuesten .csv-Datei,
     liest daraus alle 'Interne ID-Nummer' Einträge in ein Set und gibt dieses zurück.
+    Im Schild-API-Modus (mit konfigurierter Vermerk-Bezeichnung) wird stattdessen
+    direkt der SVWS-Server abgefragt.
     """
+    # SVWS-API-Pfad (Schild 3.x) — nur wenn API aktiv UND attest_source = 'api'
+    use_api, svws_client, fallback_to_csv, _ = get_schild_api_config()
+    cfg = configparser.ConfigParser()
+    safe_read_config(cfg, 'settings.ini')
+    source = cfg.get('SchildAPI', 'attest_source', fallback='csv').strip().lower()
+    if use_api and svws_client and source == 'api':
+        bez = cfg.get('SchildAPI', 'attest_vermerk_bezeichnung', fallback='').strip()
+        if not bez:
+            print_warning("Attestpflicht-Quelle = 'api', aber keine Vermerkart-Bezeichnung gesetzt — Fallback auf CSV.")
+        else:
+            try:
+                ids = svws_client.get_schueler_ids_by_vermerk_bezeichnung(bez)
+                print_info(f"Attestpflicht-IDs über SVWS-API geladen ({len(ids)} Schüler, Vermerkart: '{bez}').")
+                return ids
+            except Exception as e:
+                if fallback_to_csv:
+                    print_warning(f"SVWS-API für Attestpflicht fehlgeschlagen ({e}) — Fallback auf CSV.")
+                else:
+                    raise
+
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
     attest_dir = config.get('Directories', 'attest_file_directory', fallback='./AttestpflichtDaten')
@@ -1660,7 +1682,29 @@ def read_nachteilsausgleich_ids_from_latest_file():
     """
     Sucht im 'nachteilsausgleich_file_directory' aus settings.ini
     nach der neuesten .csv-Datei und liefert die IDs als Set zurück.
+    Im Schild-API-Modus (mit konfigurierter Vermerk-Bezeichnung) wird stattdessen
+    direkt der SVWS-Server abgefragt.
     """
+    # SVWS-API-Pfad (Schild 3.x) — nur wenn API aktiv UND nachteilsausgleich_source = 'api'
+    use_api, svws_client, fallback_to_csv, _ = get_schild_api_config()
+    cfg = configparser.ConfigParser()
+    safe_read_config(cfg, 'settings.ini')
+    source = cfg.get('SchildAPI', 'nachteilsausgleich_source', fallback='csv').strip().lower()
+    if use_api and svws_client and source == 'api':
+        bez = cfg.get('SchildAPI', 'nachteilsausgleich_vermerk_bezeichnung', fallback='').strip()
+        if not bez:
+            print_warning("Nachteilsausgleich-Quelle = 'api', aber keine Vermerkart-Bezeichnung gesetzt — Fallback auf CSV.")
+        else:
+            try:
+                ids = svws_client.get_schueler_ids_by_vermerk_bezeichnung(bez)
+                print_info(f"Nachteilsausgleich-IDs über SVWS-API geladen ({len(ids)} Schüler, Vermerkart: '{bez}').")
+                return ids
+            except Exception as e:
+                if fallback_to_csv:
+                    print_warning(f"SVWS-API für Nachteilsausgleich fehlgeschlagen ({e}) — Fallback auf CSV.")
+                else:
+                    raise
+
     config = configparser.ConfigParser()
     safe_read_config(config, "settings.ini")
     nad_dir = config.get('Directories', 'nachteilsausgleich_file_directory', fallback='./NachteilsausgleichDaten')

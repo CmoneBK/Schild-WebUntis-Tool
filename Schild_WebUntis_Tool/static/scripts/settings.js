@@ -37,14 +37,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Schild-API-Status: Banner + Sperre für die Quelldaten-Verzeichnisse
     // und das "Vorauss. Abschlussdatum"-Feature, die im API-Modus nicht verwendet
-    // bzw. nicht verfügbar sind.
+    // bzw. nicht verfügbar sind. Außerdem feature-spezifische Sperren für
+    // Attestpflicht- und Nachteilsausgleich-Verzeichnisse, wenn deren Quelle
+    // auf SVWS-API gesetzt wurde.
     function applySchildApiLockState() {
         const useApiSelect = document.getElementById('schild_api_use_api');
         const active = useApiSelect && useApiSelect.value === 'True';
         const banner = document.getElementById('schildApiActiveBanner');
         if (banner) banner.style.display = active ? '' : 'none';
         document.querySelectorAll('.schild-api-replaceable input').forEach(inp => {
-            // readonly bleibt für UX, wir sperren die Bearbeitungs-Buttons
             inp.classList.toggle('text-muted', active);
         });
         document.querySelectorAll('.schild-api-disable').forEach(el => {
@@ -53,14 +54,55 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? 'Im Schild-API-Modus deaktiviert.'
                 : '';
         });
+        // Inverse Logik: Nur aktivierbar wenn Schild-API aktiv ist
+        document.querySelectorAll('.schild-api-only').forEach(el => {
+            el.disabled = !active;
+            el.title = !active
+                ? 'Nur verfügbar wenn die Schild-API aktiv ist.'
+                : '';
+        });
         // Hinweise unter den Vorauss.-Abschlussdatum-Feldern
         document.querySelectorAll('.schild-api-abschluss-hint').forEach(h => {
             h.style.display = active ? '' : 'none';
         });
+
+        // Feature-spezifische Sperren: Attestpflicht / Nachteilsausgleich
+        // → wenn API aktiv UND deren Source-Auswahl == 'api', dann das jeweilige
+        //   Verzeichnis-Feld sperren.
+        const attestSrc = document.getElementById('schild_api_attest_source');
+        const nachteilSrc = document.getElementById('schild_api_nachteilsausgleich_source');
+        const attestApi  = active && attestSrc && attestSrc.value === 'api';
+        const nachteilApi = active && nachteilSrc && nachteilSrc.value === 'api';
+
+        document.querySelectorAll('.schild-api-attest-disable').forEach(el => {
+            el.disabled = attestApi;
+            el.title = attestApi ? 'Attestpflicht-Quelle = SVWS-API: Verzeichnis nicht verwendet.' : '';
+        });
+        document.querySelectorAll('.schild-api-attest-block input').forEach(inp => {
+            inp.classList.toggle('text-muted', attestApi);
+        });
+        document.querySelectorAll('.schild-api-attest-hint').forEach(h => {
+            h.style.display = attestApi ? '' : 'none';
+        });
+
+        document.querySelectorAll('.schild-api-nachteil-disable').forEach(el => {
+            el.disabled = nachteilApi;
+            el.title = nachteilApi ? 'Nachteilsausgleich-Quelle = SVWS-API: Verzeichnis nicht verwendet.' : '';
+        });
+        document.querySelectorAll('.schild-api-nachteil-block input').forEach(inp => {
+            inp.classList.toggle('text-muted', nachteilApi);
+        });
+        document.querySelectorAll('.schild-api-nachteil-hint').forEach(h => {
+            h.style.display = nachteilApi ? '' : 'none';
+        });
     }
-    // Live-Update beim Toggle des API-Schalters
+    // Live-Update beim Toggle des API-Schalters und der Quellen-Dropdowns
     document.addEventListener('change', (e) => {
-        if (e.target && e.target.id === 'schild_api_use_api') {
+        if (!e.target) return;
+        const id = e.target.id;
+        if (id === 'schild_api_use_api'
+         || id === 'schild_api_attest_source'
+         || id === 'schild_api_nachteilsausgleich_source') {
             applySchildApiLockState();
         }
     });

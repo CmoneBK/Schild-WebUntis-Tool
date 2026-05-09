@@ -282,6 +282,13 @@ abschnitt_id =
 #   0=Aufnahme, 1=Warteliste, 2=Aktiv, 3=Beurlaubt, 6=Extern,
 #   8=Abschluss, 9=Abgang ohne Abschluss, 10=Ehemalige
 allowed_statuses = 2,6,8,9
+# Bezeichnung der Vermerkart in Schild fuer Attestpflicht / Nachteilsausgleich.
+attest_vermerk_bezeichnung =
+nachteilsausgleich_vermerk_bezeichnung =
+# Quelle pro Vermerk: 'csv' = aus separater CSV-Datei (Voraussetzungen 4/5)
+#                     'api' = direkt vom SVWS-Server (nur wirksam wenn use_api=True)
+attest_source = csv
+nachteilsausgleich_source = csv
 
 [mail]
 # Empfänger nur bei Klassenwechsel-Warnungen
@@ -371,6 +378,10 @@ client_name = Schild-WebUntis-Tool
                 ('fallback_to_csv', 'True'),
                 ('abschnitt_id', ''),
                 ('allowed_statuses', '2,6,8,9'),
+                ('attest_vermerk_bezeichnung', ''),
+                ('nachteilsausgleich_vermerk_bezeichnung', ''),
+                ('attest_source', 'csv'),
+                ('nachteilsausgleich_source', 'csv'),
             ]:
                 if not config.has_option('SchildAPI', key):
                     config.set('SchildAPI', key, default)
@@ -1183,6 +1194,24 @@ def test_schild_api():
         return jsonify({"success": ok, "message": msg})
     except Exception as e:
         return jsonify({"success": False, "message": f"Fehler: {e}"})
+
+# Route zum Holen der Vermerkarten (für Datalist im UI)
+@app.route('/api/schild_api/vermerkarten', methods=['POST'])
+def list_schild_vermerkarten():
+    data = request.json or {}
+    try:
+        from schild_api import SVWSClient
+        client = SVWSClient(
+            server_url=data.get('server_url', ''),
+            schema=data.get('schema', ''),
+            user=data.get('user', ''),
+            password=data.get('password', ''),
+            verify_ssl=str(data.get('verify_ssl', 'False')).lower() in ('true', '1', 'yes'),
+        )
+        vermerkarten = client.get_vermerkarten()
+        return jsonify({"success": True, "vermerkarten": vermerkarten})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Fehler: {e}", "vermerkarten": []})
 
 # Route zum Holen der verfügbaren Schuljahresabschnitte (für Dropdown im UI)
 @app.route('/api/schild_api/abschnitte', methods=['POST'])

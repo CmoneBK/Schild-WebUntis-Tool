@@ -844,29 +844,35 @@
                         </div>
 
                         <!-- Attestpflicht-Datei-Verzeichnis -->
-                        <div class="form-group">
+                        <div class="form-group schild-api-attest-block">
                             <label for="attest_file_directory">📑 Attestpflicht-Datei-Verzeichnis:</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="attest_file_directory"
                                     name="attest_file_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary"
+                                    <button type="button" class="btn btn-secondary schild-api-attest-disable"
                                         data-directory-input="attest_file_directory">Durchsuchen</button>
                                 </div>
                             </div>
+                            <small class="form-text text-muted schild-api-attest-hint" style="display:none;">
+                                Im Schild-API-Modus mit Quelle „SVWS-API" deaktiviert: Attestpflicht-Schüler werden direkt vom SVWS-Server über die Vermerkart geholt.
+                            </small>
                         </div>
                         <!-- Nachteilsausgleich-Verzeichnis -->
-                        <div class="form-group">
+                        <div class="form-group schild-api-nachteil-block">
                             <label for="nachteilsausgleich_file_directory">♿ Nachteilsausgleich-Datei-Verzeichnis:
                             </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="nachteilsausgleich_file_directory"
                                     name="nachteilsausgleich_file_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary"
+                                    <button type="button" class="btn btn-secondary schild-api-nachteil-disable"
                                         data-directory-input="nachteilsausgleich_file_directory">Durchsuchen</button>
                                 </div>
                             </div>
+                            <small class="form-text text-muted schild-api-nachteil-hint" style="display:none;">
+                                Im Schild-API-Modus mit Quelle „SVWS-API" deaktiviert: Nachteilsausgleich-Schüler werden direkt vom SVWS-Server über die Vermerkart geholt.
+                            </small>
                         </div>
 
                         <!-- Trennlinie Arbeitsverzeichnisse -->
@@ -1260,6 +1266,53 @@
                             </div>
                             <input type="hidden" id="schild_api_allowed_statuses" name="schild_api_allowed_statuses">
                         </div>
+                        <hr>
+                        <h6 class="mb-2">📑 Quellen für Attestpflicht / Nachteilsausgleich</h6>
+                        <p class="text-muted small mb-2">
+                            Wählen Sie pro Vermerk, woher die Liste der betroffenen Schüler kommen soll:
+                            <strong>CSV-Datei</strong> (Voraussetzungen Punkt 4 / 5) oder direkt vom <strong>SVWS-Server</strong>
+                            anhand einer Vermerkart. Die Bezeichnung muss <strong>exakt</strong> dem Schild-Eintrag entsprechen.
+                            <em>SVWS-API</em> ist nur wirksam, wenn oben „SVWS-API verwenden" auf <em>Ja</em> steht.
+                        </p>
+                        <datalist id="schildVermerkartenList"></datalist>
+
+                        <!-- Attestpflicht -->
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="schild_api_attest_source">📑 Attestpflicht — Quelle:</label>
+                                <select class="form-control schild-api-only" id="schild_api_attest_source" name="schild_api_attest_source">
+                                    <option value="csv">CSV-Datei</option>
+                                    <option value="api">SVWS-API</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-8">
+                                <label for="schild_api_attest_vermerk_bezeichnung">Vermerkart-Bezeichnung (nur bei „SVWS-API"):</label>
+                                <input type="text" class="form-control" id="schild_api_attest_vermerk_bezeichnung"
+                                       name="schild_api_attest_vermerk_bezeichnung"
+                                       list="schildVermerkartenList" placeholder="z.B. Attestpflicht">
+                            </div>
+                        </div>
+
+                        <!-- Nachteilsausgleich -->
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label for="schild_api_nachteilsausgleich_source">♿ Nachteilsausgleich — Quelle:</label>
+                                <select class="form-control schild-api-only" id="schild_api_nachteilsausgleich_source" name="schild_api_nachteilsausgleich_source">
+                                    <option value="csv">CSV-Datei</option>
+                                    <option value="api">SVWS-API</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-md-8">
+                                <label for="schild_api_nachteilsausgleich_vermerk_bezeichnung">Vermerkart-Bezeichnung (nur bei „SVWS-API"):</label>
+                                <input type="text" class="form-control" id="schild_api_nachteilsausgleich_vermerk_bezeichnung"
+                                       name="schild_api_nachteilsausgleich_vermerk_bezeichnung"
+                                       list="schildVermerkartenList" placeholder="z.B. Nachteilsausgleich">
+                            </div>
+                        </div>
+
+                        <button type="button" id="loadSchildVermerkarten" class="btn btn-outline-secondary btn-sm">🔄 Vermerkarten vom Server laden (Vorschläge)</button>
+                        <span id="schildVermerkartenInfo" class="ml-2 text-muted small"></span>
+                        <hr>
                         <button type="button" id="testSchildApiConnection" class="btn btn-outline-info">🔍 Verbindung testen</button>
                         <span id="schildApiTestResult" class="ml-2"></span>
                     </form>

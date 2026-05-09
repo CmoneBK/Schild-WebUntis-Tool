@@ -278,6 +278,42 @@ document.getElementById("loadSchildAbschnitte")?.addEventListener("click", () =>
 document.getElementById("schildapi-tab")?.addEventListener("shown.bs.tab", () => loadSchildAbschnitte(false));
 document.getElementById("schildapi-tab")?.addEventListener("click", () => setTimeout(() => loadSchildAbschnitte(false), 200));
 
+// Schild-API: Vermerkarten-Katalog → Datalist befüllen (für die zwei Vermerk-Bezeichnungs-Felder)
+async function loadSchildVermerkarten(showFeedback) {
+    const list = document.getElementById("schildVermerkartenList");
+    const info = document.getElementById("schildVermerkartenInfo");
+    if (!list) return;
+    if (showFeedback) {
+        const btn = document.getElementById("loadSchildVermerkarten");
+        if (btn) { btn.disabled = true; btn.textContent = "⌛ Lade..."; }
+    }
+    try {
+        const r = await fetch("/api/schild_api/vermerkarten", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(_schildApiCreds()),
+        });
+        const d = await r.json();
+        if (!d.success) {
+            if (info) info.textContent = "❌ " + (d.message || "Fehler");
+            return;
+        }
+        list.innerHTML = "";
+        (d.vermerkarten || []).forEach(v => {
+            const opt = document.createElement("option");
+            opt.value = v.bezeichnung || "";
+            list.appendChild(opt);
+        });
+        if (info) info.textContent = `${(d.vermerkarten || []).length} Vermerkarten vom Server geladen`;
+    } catch (e) {
+        if (info) info.textContent = "❌ Fehler: " + e;
+    } finally {
+        const btn = document.getElementById("loadSchildVermerkarten");
+        if (btn) { btn.disabled = false; btn.textContent = "🔄 Vermerkarten vom Server laden (Vorschläge)"; }
+    }
+}
+document.getElementById("loadSchildVermerkarten")?.addEventListener("click", () => loadSchildVermerkarten(true));
+
 // Schild API (SVWS-Server, Schild 3.x) Verbindungstest
 document.getElementById("testSchildApiConnection")?.addEventListener("click", function () {
     const data = {

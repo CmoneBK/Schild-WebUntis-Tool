@@ -167,6 +167,38 @@ class SVWSClient:
         except Exception:
             return {}
 
+    # --- Vermerke (für Attestpflicht / Nachteilsausgleich) ---------------
+
+    def get_vermerkarten(self):
+        """Liefert den Katalog der Vermerkarten — [{id, bezeichnung, …}, …]."""
+        try:
+            return self._get("/schule/vermerkarten") or []
+        except Exception:
+            return []
+
+    def get_schueler_ids_by_vermerk_bezeichnung(self, bezeichnung):
+        """
+        Liefert ein Set von Schüler-IDs (als String!), die einen Vermerk mit der
+        angegebenen Bezeichnung haben. Vergleich case-insensitive nach Trim.
+        Leere Bezeichnung → leeres Set (Funktion deaktiviert).
+        """
+        if not bezeichnung or not bezeichnung.strip():
+            return set()
+        target = bezeichnung.strip().lower()
+        # 1) Vermerkarten-Katalog → ID finden
+        vermerkarten = self.get_vermerkarten()
+        match = next((v for v in vermerkarten
+                      if (v.get('bezeichnung') or '').strip().lower() == target), None)
+        if not match:
+            return set()
+        vermerkart_id = match.get('id')
+        # 2) Vermerke mit dieser Art holen → Schüler-IDs extrahieren
+        try:
+            vermerke = self._get(f"/schueler/vermerke/vermerkart/{vermerkart_id}") or []
+        except Exception:
+            return set()
+        return {str(v.get('idSchueler')) for v in vermerke if v.get('idSchueler')}
+
     # --- High-level: kombinierter Schüler-/Klassen-Aufbau ----------------
 
     def fetch_classes_with_teachers(self, abschnitt_id=None):

@@ -12,7 +12,7 @@ Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUnt
 ### 📥 Datenquellen & Verarbeitung
 <details><summary><b>🔄Datenumwandlung:</b> Automatische Anpassung von Schülerdaten aus SchildNRW für den WebUntis-Import.</summary>Daten wie Schulpflicht müssen boolsch (Nein->Ja,Ja->Nein) umgekehrt werden damit sie passen. Beim Status wird bei Schild eine 2, 6, 7, 8 ausgegeben, was in WebUntis auch boolschen Werten entspricht. Externe Schüler (Status 6) sind dabei optional als „aktiv" zu behandeln. Solche Umwandlungen können grade bei größeren Schulen und täglichem Import mühsam sein. Jetzt nicht mehr.</details>
 <details><summary><b>🔍Vorab-Validierung der Importdateien:</b> Probleme erkennen, bevor sie zum Problem werden</summary>Auf Knopfdruck werden Schild-, Lehrer- und Klassendateien auf fehlende Pflichtspalten, falsche Trennzeichen und leere Verzeichnisse geprüft — bevor die eigentliche Verarbeitung gestartet wird.</details>
-<details><summary><b>🏫Schild-API (Schild 3.x):</b> Direkter Zugriff auf den SVWS-Server statt CSV-Export</summary>Statt Schüler-, Klassen- und Lehrerdaten manuell aus Schild zu exportieren, kann das Tool sie ab <strong>Schild 3.x</strong> direkt vom SVWS-Server über die REST-API abrufen. Dazu wird ein technischer Benutzer mit minimalen Lese-Kompetenzen angelegt und im Tool unter <code>⚙️ Einstellungen → 🏫 Schild API</code> eingetragen. Ein Verbindungstest, ein konfigurierbarer Schuljahresabschnitt und eine Status-Whitelist (z.B. Aktiv, Abschluss, Abgang) gehören dazu. Bei API-Fehlern fällt das Tool automatisch auf den CSV-Pfad zurück. Schild-2-Schulen oder Schulen ohne API-Zugang nutzen weiterhin nahtlos den CSV-Weg — die Funktion ist optional.</details>
+<details><summary><b>🏫Schild-API (Schild 3.x):</b> Direkter Zugriff auf den SVWS-Server statt CSV-Export</summary>Statt Schüler-, Klassen- und Lehrerdaten manuell aus Schild zu exportieren, kann das Tool sie ab <strong>Schild 3.x</strong> direkt vom SVWS-Server über die REST-API abrufen. Dazu wird ein technischer Benutzer mit minimalen Lese-Kompetenzen angelegt und im Tool unter <code>⚙️ Einstellungen → 🏫 Schild API</code> eingetragen. Ein Verbindungstest, ein konfigurierbarer Schuljahresabschnitt und eine Status-Whitelist (z.B. Aktiv, Abschluss, Abgang) gehören dazu. Auch Attestpflicht- und Nachteilsausgleich-Schüler können pro Vermerkart direkt über die API ermittelt werden — der separate Schild-Filter-Export entfällt dann. Pro Vermerk lässt sich einzeln zwischen CSV-Datei und SVWS-API wählen. Bei API-Fehlern fällt das Tool automatisch auf den CSV-Pfad zurück. Schild-2-Schulen oder Schulen ohne API-Zugang nutzen weiterhin nahtlos den CSV-Weg — die Funktion ist optional.</details>
 
 ### ⚠️ Warnungen & Benachrichtigungen
 <details><summary><b>⚠️Warnungen für Klassenlehrkräfte:</b> Generiert (auf Wunsch) Warnungen:</summary>
@@ -107,6 +107,8 @@ Wenn Sie das Verzeichnis so belassen habne wie sie waren, können Sie die Dateie
 <details>
 <summary><b>4. Optional: Für die Attestpflicht-Spalte</b></summary>
 
+> 💡 **Hinweis:** Wenn Sie die **Schild-API (Punkt 6)** nutzen, können Sie bei „Quelle" auf <em>SVWS-API</em> umstellen und die Vermerk-Bezeichnung direkt eintragen — der untenstehende manuelle Schild-Filter-Export entfällt dann komplett.
+
 Falls die Attestpflicht-Spalte verwenden möchten, aktivieren Sie die Funktion und stellen einen Datensatz mit Schid wie folgt her:
 
 Die Attestpflicht wird als Vermerk in Schild hinterlegt. Daher brauchen wir zunächst einen Filter, der alle Schüler aus dem aktuellen Schuljahr mit der Vermerkart "Attestpflicht" identifiziert.
@@ -128,7 +130,9 @@ stellen Sie die Ausgabedatei wie schon für den normalen Export auf .csv und in 
 
 <details>
 <summary><b>5. Optional: Für die Nachteilsausgleich-Spalte</b></summary>
-        
+
+> 💡 **Hinweis:** Wie bei der Attestpflicht — bei aktivierter **Schild-API (Punkt 6)** kann die Quelle auf <em>SVWS-API</em> umgestellt werden, dann wird der Schild-Filter-Export überflüssig.
+
 Falls die Nachteilsausgleich verwenden möchten muss dieser auch in Schild als Vermerk hinterlegt sein. Ansonsten ist das Vorgehen zu 100% äquivalent zur Attestpflicht-Spalte.
 
 </details>
@@ -161,9 +165,12 @@ Ab **Schild 3.x** kann das Tool die Schüler-, Klassen- und Lehrerdaten direkt v
 5. `Fallback auf CSV bei API-Fehler`: empfohlen **Ja** — bei Verbindungsabbruch arbeitet das Tool automatisch mit dem letzten CSV-Stand weiter
 6. `Schuljahresabschnitt`: Default „Aktuell aktiver Abschnitt" — der Server liefert immer den richtigen
 7. `Schild-Status` (Whitelist): Default `2, 6, 8, 9` (Aktiv, Extern, Abschluss, Abgang) — entspricht dem klassischen Schild-Filter „Aktive, Abgänger und Abschlüsse"
-8. **Verbindung testen** anklicken — bei grünem ✅ Speichern
+8. **Quellen für Attestpflicht / Nachteilsausgleich** *(unten im Tab)*: Pro Vermerk wählen Sie zwischen:
+   - **CSV-Datei** (Default) — wie bisher, separater Schild-Filter-Export gemäß Voraussetzungen Punkt 4 / 5
+   - **SVWS-API** — die betroffenen Schüler werden direkt vom Server über eine Vermerkart ermittelt. Tragen Sie dazu die exakte **Vermerkart-Bezeichnung** ein, wie sie in Schild definiert ist (z.B. `Attestpflicht`). Mit dem Button „🔄 Vermerkarten vom Server laden" können Sie die Liste aller in Schild definierten Vermerkarten als Vorschläge laden.
+9. **Verbindung testen** anklicken — bei grünem ✅ Speichern
 
-Bei aktiver Schild-API werden die Verzeichnisse für Klassendaten, Lehrerdaten und Schild-Exporte automatisch gesperrt (sie werden nicht mehr verwendet) und ein entsprechender Hinweis erscheint.
+Bei aktiver Schild-API werden die Verzeichnisse für Klassendaten, Lehrerdaten und Schild-Exporte automatisch gesperrt (sie werden nicht mehr verwendet) und ein entsprechender Hinweis erscheint. Ist zusätzlich für Attestpflicht und/oder Nachteilsausgleich die Quelle auf <em>SVWS-API</em> gestellt, werden auch die jeweiligen Datei-Verzeichnisse (Voraussetzungen 4/5) gesperrt — pro Vermerk unabhängig.
 
 **Bekannte Einschränkungen der API-Methode:**
 
@@ -451,6 +458,7 @@ Außerdem wurden einige seltenere Bugs gefixt und die Robustheit des Programms e
 - **Neu - Vorab-Validierung der Importdateien:** Mit einem Klick werden Schild-, Lehrer- und Klassendateien auf fehlende Pflichtspalten, falsche Trennzeichen und leere Verzeichnisse geprüft, bevor die eigentliche Verarbeitung startet.
 - **Neu - Zeitraum-Vergleich für automatisierte Periodik:** Über den Kommandozeilen-Schalter `--send_log_email` lässt sich der aktuelle Import gegen den letzten Stand vor einer einstellbaren Anzahl von Stunden (`timeframe_hours`, Default 24) vergleichen. Eine Sammel-Mail mit HTML-Tabelle und Excel-Anhang geht an die Admin-Adresse — mit eingebautem Spam-Schutz, sodass pro Zeitfenster nur eine Mail versendet wird. Ideal für die Windows-Aufgabenplanung.
 - **Neu - Schild-Status 6 (Extern) konfigurierbar:** Externe Schüler (Schild-Status 6) können wahlweise als „aktiv" behandelt werden, sodass sie in Klassengrößen einfließen und nicht als Karteileichen gemeldet werden.
+- **Neu - Schild-API (SVWS-Server):** Ab Schild 3.x kann das Tool Schüler-, Klassen- und Lehrerdaten direkt vom SVWS-Server über dessen REST-API abrufen — der manuelle CSV-Export aus Schild entfällt dann. Konfigurierbar sind: Server-URL, DB-Schema, technischer Benutzer, TLS-Verifikation, automatischer Fallback auf CSV bei API-Fehlern, Schuljahresabschnitt-Auswahl und Status-Whitelist. Auch Attestpflicht- und Nachteilsausgleich-Listen können pro Vermerk wahlweise via API (Vermerkart-Bezeichnung) oder weiter via CSV bezogen werden. Bei aktivem API-Modus werden die nicht mehr benötigten Verzeichnisse im Webend automatisch gesperrt. Schild-2-Schulen nutzen weiterhin nahtlos den CSV-Weg.
 - **Neu - Drei Verzeichniskategorien:** Die Einstellungen unterscheiden jetzt zwischen Quelldaten-, Arbeits- und Ausgabedateien-Verzeichnissen mit jeweils erklärenden Beschreibungen.
 - **Verbessert - WYSIWYG-Email-Editor:** Mail-Vorlagen werden in einem komfortablen Quill-Editor mit Formatierungsmöglichkeiten bearbeitet. Alle Platzhalter sind im neuen Schlüssel-Info-Tab dokumentiert.
 - **Verbessert - Auto-Patcher für Konfigurationsdateien:** Bestehende `settings.ini` und `email_settings.ini` werden bei Updates automatisch um neue Optionen ergänzt — ohne manuelles Nachpflegen.
