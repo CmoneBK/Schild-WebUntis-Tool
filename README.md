@@ -61,6 +61,10 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
   - Erforderliche Daten (idealerweise auch in dieser Reihenfolge): Interne ID-Nummer, Nachname, Vorname, Klasse, Geburtsdatum, Geschlecht, vorrauss. Abschluss, Aufnahmedatum, Entlassdatum, Volljährig, Schulpflicht erfüllt, Status
   - Optionale Daten: Klassenlehrer, E-mail (privat), Telefon-Nr., Fax-Nr., Straße, Postleitzahl, Ortsname
 
+- **Wo findet man den Export?**
+  - **Schild 3:** `Verwaltung → Export → Als Excel-/Text-Dateien`. Um die `.csv`-Endung manuell eingeben zu können, beim Dateityp der Ausgabedatei *„Alle Dateien"* auswählen.
+  - **Schild 2:** `Datenaustausch → Export in Text-/Excel-Dateien → Exportieren`. Auch hier als Dateityp *„Alle Dateien"* wählen.
+
 **Hinweise:** Dies wird nicht funktionieren, wenn Sie die Datei als Excel-Datei exportieren und diese als .csv abspeichern. Ergänzen Sie stattdessen manuell die Endung .csv nachdem Sie als Exporttyp die Textdatei ausgewählt haben. Speichern Sie sich diese Exporteinstellung als Vorlage ab, um sie später schneller wieder verwenden zu können.
 
 [Beispiel-Schild-Export](/Beispiel-Dateien/SchildExport.csv)
