@@ -1,8 +1,6 @@
 # Schild-WebUntis-Tool
 **Dieses Tool ist eine Weiterentwicklung des [SchildNRW-WebUntis-Umwandlers](https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master)**
 
-**Dieses Tool ist derzeit eingeschränkt mit Schild 3.0 kompatibel, da in Schild 3.0 derzeit (noch) kein Klassehrer bei den Individualdaten exportiert werden kann.**
-
 Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten, Klassenwechseln oder neu hinzustoßenden Schüler/innen. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
         <a href="/Screenshots/Start mit Daten.png" target="_blank">
           <img src="/Screenshots/Start mit Daten.png" alt="Startbildschirm" width="600">
@@ -48,8 +46,8 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
   - Sie sollten diesen Filter speichern, damit Sie ihn später über "Auswahl - Vorhandene Filter laden" wieder verwenden können.
 - **Ein Export aus SchildNRW als Text/Excel Export, jedoch unbedingt mit der manuell eingegebenen Dateiendung .csv.**
   - Als Seperator ist ";" zu wählen.
-  - Erforderliche Daten (idealerweise auch in dieser Reihenfolge): Interne ID-Nummer, Nachname, Vorname, Klasse, Klassenlehrer, Geburtsdatum, Geschlecht, vorrauss. Abschluss, Aufnahmedatum, Entlassdatum, Volljährig, Schulpflicht erfüllt, Status
-  - Optionale Daten: E-mail (privat), Telefon-Nr., Fax-Nr., Straße, Postleitzahl, Ortsname
+  - Erforderliche Daten (idealerweise auch in dieser Reihenfolge): Interne ID-Nummer, Nachname, Vorname, Klasse, Geburtsdatum, Geschlecht, vorrauss. Abschluss, Aufnahmedatum, Entlassdatum, Volljährig, Schulpflicht erfüllt, Status
+  - Optionale Daten: Klassenlehrer, E-mail (privat), Telefon-Nr., Fax-Nr., Straße, Postleitzahl, Ortsname
 
 **Hinweise:** Dies wird nicht funktionieren, wenn Sie die Datei als Excel-Datei exportieren und diese als .csv abspeichern. Ergänzen Sie stattdessen manuell die Endung .csv nachdem Sie als Exporttyp die Textdatei ausgewählt haben. Speichern Sie sich diese Exporteinstellung als Vorlage ab, um sie später schneller wieder verwenden zu können.
 
