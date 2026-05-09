@@ -778,6 +778,9 @@
                 <li class="nav-item">
                     <a class="nav-link" id="webuntis-tab" data-toggle="tab" href="#webuntis" role="tab" aria-controls="webuntis" aria-selected="false"> 🌐 WebUntis API</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="schildapi-tab" data-toggle="tab" href="#schildapi" role="tab" aria-controls="schildapi" aria-selected="false"> 🏫 Schild API</a>
+                </li>
             </ul>
             <div class="tab-content mt-3">
                 <!-- Standard-Verzeichnisse -->
@@ -790,43 +793,51 @@
                         <h5 class="mb-1">Quelldaten-Verzeichnisse</h5>
                         <p class="text-muted small mb-3">Verzeichnisse, aus denen das Tool Daten liest – Schild-Exporte, Klassen- und Lehrerdaten sowie Zusatzdateien für Attestpflicht und Nachteilsausgleich.</p>
 
+                        <!-- Banner: Schild-API aktiv → Klassen/Lehrer/SchildExport-Verzeichnisse irrelevant -->
+                        <div id="schildApiActiveBanner" class="alert alert-info py-2" style="display:none; font-size:0.9rem;">
+                            <strong>🏫 Schild-API aktiv:</strong> Die Verzeichnisse für <em>Klassendaten</em>, <em>Lehrerdaten</em> und <em>Schild-Exporte</em> werden im API-Modus nicht verwendet — die Daten kommen direkt vom SVWS-Server. Eine Änderung dieser Verzeichnisse ist daher gesperrt. Zum Bearbeiten ggf. die Schild-API im Reiter „🏫 Schild API" deaktivieren.
+                        </div>
+
                         <!-- Klassendatenverzeichnis -->
-                        <div class="form-group">
+                        <div class="form-group schild-api-replaceable">
                             <label for="classes_directory">🏫 Klassendatenverzeichnis:</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="classes_directory" name="classes_directory"
                                     readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary"
+                                    <button type="button" class="btn btn-secondary schild-api-disable"
                                         data-directory-input="classes_directory">Durchsuchen</button>
                                 </div>
                             </div>
+                            <small class="form-text text-muted">Wird nicht verwendet wenn die Schild-API aktiv ist.</small>
                         </div>
 
                         <!-- Lehrerdatenverzeichnis -->
-                        <div class="form-group">
+                        <div class="form-group schild-api-replaceable">
                             <label for="teachers_directory">🧑‍🏫 Lehrerdatenverzeichnis:</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="teachers_directory"
                                     name="teachers_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary"
+                                    <button type="button" class="btn btn-secondary schild-api-disable"
                                         data-directory-input="teachers_directory">Durchsuchen</button>
                                 </div>
                             </div>
+                            <small class="form-text text-muted">Wird nicht verwendet wenn die Schild-API aktiv ist.</small>
                         </div>
 
                         <!-- Schild Exporte -->
-                        <div class="form-group">
+                        <div class="form-group schild-api-replaceable">
                             <label for="schildexport_directory">🟦📥 Schild Exporte:</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="schildexport_directory"
                                     name="schildexport_directory" readonly>
                                 <div class="input-group-append">
-                                    <button type="button" class="btn btn-secondary"
+                                    <button type="button" class="btn btn-secondary schild-api-disable"
                                         data-directory-input="schildexport_directory">Durchsuchen</button>
                                 </div>
                             </div>
+                            <small class="form-text text-muted">Wird nicht verwendet wenn die Schild-API aktiv ist.</small>
                         </div>
 
                         <!-- Attestpflicht-Datei-Verzeichnis -->
@@ -1162,6 +1173,89 @@
                             <input type="text" class="form-control" id="client_name" name="client_name">
                         </div>
                         <button type="button" id="testApiConnection" class="btn btn-outline-info">🔍 Verbindung testen</button>
+                    </form>
+                </div>
+                <!-- Schild API (SVWS-Server, Schild 3.x) -->
+                <div class="tab-pane fade" id="schildapi" role="tabpanel" aria-labelledby="schildapi-tab">
+                    <form id="form-schildapi">
+                        <div class="alert alert-info py-2" style="font-size:0.9rem;">
+                            <strong>Hinweis:</strong> Die SVWS-API steht erst <strong>ab Schild 3.x</strong> zur Verfügung.
+                            Wenn aktiv, ersetzt sie den CSV-Import: Schüler-, Klassen- und Lehrerdaten werden direkt vom SVWS-Server gelesen.
+                            Schild 2-Nutzer lassen die Option auf <em>Nein</em>.
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_use_api">🏫 SVWS-API verwenden:</label>
+                            <select class="form-control" id="schild_api_use_api" name="schild_api_use_api">
+                                <option value="True">Ja</option>
+                                <option value="False">Nein</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_server_url">🔗 Server-URL:</label>
+                            <input type="text" class="form-control" id="schild_api_server_url" name="schild_api_server_url" placeholder="https://schild.schule.local">
+                            <small class="form-text text-muted">Nur Basis-URL ohne Pfad. Beispiel: <code>https://localhost</code></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_schema">📚 DB-Schema:</label>
+                            <input type="text" class="form-control" id="schild_api_schema" name="schild_api_schema" placeholder="svwsdb">
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_user">👤 Benutzername:</label>
+                            <input type="text" class="form-control" id="schild_api_user" name="schild_api_user">
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_password">🔑 Passwort:</label>
+                            <input type="password" class="form-control" id="schild_api_password" name="schild_api_password">
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_verify_ssl">🔐 TLS-Zertifikat prüfen:</label>
+                            <select class="form-control" id="schild_api_verify_ssl" name="schild_api_verify_ssl">
+                                <option value="True">Ja (Prod)</option>
+                                <option value="False">Nein (Self-signed Cert)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_fallback_to_csv">🔁 Fallback auf CSV bei API-Fehler:</label>
+                            <select class="form-control" id="schild_api_fallback_to_csv" name="schild_api_fallback_to_csv">
+                                <option value="True">Ja (empfohlen)</option>
+                                <option value="False">Nein (Fehler werfen)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_abschnitt_id">🗓️ Schuljahresabschnitt:</label>
+                            <div class="input-group">
+                                <select class="form-control" id="schild_api_abschnitt_id" name="schild_api_abschnitt_id">
+                                    <option value="">— Aktuell aktiver Abschnitt (Default) —</option>
+                                </select>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-outline-secondary" id="loadSchildAbschnitte" title="Liste vom Server laden">🔄</button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Bei „Aktuell aktiver Abschnitt" liest das Tool den vom Server gemeldeten aktuellen Abschnitt — das ist der empfohlene Standard.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>📋 Schild-Status: welche Schüler abrufen?</label>
+                            <p class="text-muted small mb-2">
+                                Default <code>2, 6, 8, 9</code> entspricht dem Schild-Filter
+                                „Aktuelles Schuljahr – Aktive, Abgänger und Abschlüsse" plus Externe.
+                            </p>
+                            <div class="row">
+                                {% for sid, label in [(0,'Aufnahme'), (1,'Warteliste'), (2,'Aktiv'), (3,'Beurlaubt'), (6,'Extern'), (8,'Abschluss'), (9,'Abgang (ohne Abschluss)'), (10,'Ehemalige')] %}
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input schild-api-status" type="checkbox"
+                                               id="schild_api_status_{{ sid }}" value="{{ sid }}">
+                                        <label class="form-check-label" for="schild_api_status_{{ sid }}">
+                                            <code>{{ sid }}</code> – {{ label }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" id="schild_api_allowed_statuses" name="schild_api_allowed_statuses">
+                        </div>
+                        <button type="button" id="testSchildApiConnection" class="btn btn-outline-info">🔍 Verbindung testen</button>
+                        <span id="schildApiTestResult" class="ml-2"></span>
                     </form>
                 </div>
             </div>

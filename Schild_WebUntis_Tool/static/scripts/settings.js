@@ -35,6 +35,31 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Schild-API-Status: Banner + Sperre für die Quelldaten-Verzeichnisse,
+    // die im API-Modus nicht verwendet werden.
+    function applySchildApiLockState() {
+        const useApiSelect = document.getElementById('schild_api_use_api');
+        const active = useApiSelect && useApiSelect.value === 'True';
+        const banner = document.getElementById('schildApiActiveBanner');
+        if (banner) banner.style.display = active ? '' : 'none';
+        document.querySelectorAll('.schild-api-replaceable input').forEach(inp => {
+            // readonly bleibt für UX, wir sperren die Bearbeitungs-Buttons
+            inp.classList.toggle('text-muted', active);
+        });
+        document.querySelectorAll('.schild-api-disable').forEach(btn => {
+            btn.disabled = active;
+            btn.title = active
+                ? 'Im Schild-API-Modus deaktiviert.'
+                : '';
+        });
+    }
+    // Live-Update beim Toggle des API-Schalters
+    document.addEventListener('change', (e) => {
+        if (e.target && e.target.id === 'schild_api_use_api') {
+            applySchildApiLockState();
+        }
+    });
+
     // Tabs und Inhalte initialisieren
     const tabs = [
         { id: "directories", form: "form-directories" },
@@ -45,6 +70,7 @@ document.addEventListener("DOMContentLoaded", function () {
         { id: "oauth", form: "form-oauth" },
         { id: "admin", form: "form-admin" },
         { id: "webuntis", form: "form-webuntis" },
+        { id: "schildapi", form: "form-schildapi" },
     ];
 
     // Einstellungen laden
@@ -105,8 +131,41 @@ document.addEventListener("DOMContentLoaded", function () {
                     "client_name": "form-webuntis",
                 };
 
+                // SchildAPI-Section separat laden (Felder haben schild_api_-Praefix
+                // in der HTML, um Kollisionen mit WebUntisAPI-Feldern zu vermeiden)
+                if (settings['SchildAPI']) {
+                    const schildForm = document.getElementById('form-schildapi');
+                    if (schildForm) {
+                        Object.entries(settings['SchildAPI']).forEach(([key, value]) => {
+                            const input = schildForm.querySelector(`[name="schild_api_${key}"]`);
+                            if (input) {
+                                // abschnitt_id: ggf. Option dynamisch ergaenzen, damit
+                                // gespeicherter Wert ausgewaehlt bleibt bis die Liste vom Server kommt
+                                if (key === 'abschnitt_id' && value && input.tagName === 'SELECT') {
+                                    if (![...input.options].some(o => o.value === String(value))) {
+                                        const opt = document.createElement('option');
+                                        opt.value = String(value);
+                                        opt.textContent = `Abschnitt-ID ${value} (gespeichert)`;
+                                        input.appendChild(opt);
+                                    }
+                                }
+                                input.value = value;
+                            }
+                        });
+                        // allowed_statuses → Checkboxen aktivieren
+                        const raw = settings['SchildAPI']['allowed_statuses'] || '';
+                        const selected = new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
+                        document.querySelectorAll('.schild-api-status').forEach(cb => {
+                            cb.checked = selected.has(cb.value);
+                        });
+                    }
+                    // Banner + Sperre für Quelldaten-Verzeichnisse abhängig von use_api
+                    applySchildApiLockState();
+                }
+
                 // Loop over settings and populate forms
                 Object.entries(settings).forEach(([section, sectionValues]) => {
+                    if (section === 'SchildAPI') return;  // bereits oben behandelt
                     Object.entries(sectionValues).forEach(([key, value]) => {
                         const formId = keyToFormId[key];
                         if (formId) {
@@ -183,12 +242,26 @@ document.addEventListener("DOMContentLoaded", function () {
             "client_name": "WebUntisAPI",
         };
 
+        // SchildAPI Status-Checkboxen → Hidden-Feld synchronisieren (vor FormData)
+        const allowedHidden = document.getElementById('schild_api_allowed_statuses');
+        if (allowedHidden) {
+            const checked = Array.from(document.querySelectorAll('.schild-api-status:checked'))
+                .map(cb => cb.value);
+            allowedHidden.value = checked.join(',');
+        }
+
         // Collect data from all forms
         tabs.forEach((tab) => {
             const form = document.getElementById(tab.form);
             if (form) {
                 const formData = new FormData(form);
                 formData.forEach((value, key) => {
+                    // SchildAPI-Felder haben schild_api_-Praefix (Kollisions-Vermeidung)
+                    if (key.startsWith('schild_api_')) {
+                        if (!settings['SchildAPI']) settings['SchildAPI'] = {};
+                        settings['SchildAPI'][key.substring('schild_api_'.length)] = value;
+                        return;
+                    }
                     const section = keyToSection[key];
                     if (section) {
                         if (!settings[section]) settings[section] = {};

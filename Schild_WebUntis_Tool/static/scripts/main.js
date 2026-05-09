@@ -219,3 +219,102 @@ document.getElementById("testApiConnection")?.addEventListener("click", function
         this.textContent = "🔍 Verbindung testen";
     });
 });
+
+// Schild API (SVWS-Server) — Schuljahresabschnitte laden und Dropdown befüllen
+function _schildApiCreds() {
+    return {
+        server_url: document.getElementById("schild_api_server_url")?.value || "",
+        schema:     document.getElementById("schild_api_schema")?.value || "",
+        user:       document.getElementById("schild_api_user")?.value || "",
+        password:   document.getElementById("schild_api_password")?.value || "",
+        verify_ssl: document.getElementById("schild_api_verify_ssl")?.value || "False",
+    };
+}
+
+async function loadSchildAbschnitte(showFeedback) {
+    const select = document.getElementById("schild_api_abschnitt_id");
+    if (!select) return;
+    const previouslySelected = select.value;
+    if (showFeedback) {
+        const btn = document.getElementById("loadSchildAbschnitte");
+        if (btn) btn.textContent = "⌛";
+    }
+    try {
+        const r = await fetch("/api/schild_api/abschnitte", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(_schildApiCreds()),
+        });
+        const d = await r.json();
+        if (!d.success) {
+            if (showFeedback) alert("Konnte Abschnitte nicht laden: " + (d.message || "Unbekannter Fehler"));
+            return;
+        }
+        // Dropdown leeren bis auf den Default-Eintrag
+        const def = select.querySelector('option[value=""]');
+        select.innerHTML = "";
+        if (def) select.appendChild(def);
+        (d.abschnitte || []).forEach((a) => {
+            const opt = document.createElement("option");
+            opt.value = a.id;
+            opt.textContent = a.label + (a.is_active ? "  (aktiv)" : "");
+            select.appendChild(opt);
+        });
+        // gespeicherten Wert wiederherstellen, falls noch in der Liste
+        if (previouslySelected && [...select.options].some(o => o.value === previouslySelected)) {
+            select.value = previouslySelected;
+        }
+    } catch (e) {
+        if (showFeedback) alert("Fehler beim Laden der Abschnitte: " + e);
+    } finally {
+        const btn = document.getElementById("loadSchildAbschnitte");
+        if (btn) btn.textContent = "🔄";
+    }
+}
+
+document.getElementById("loadSchildAbschnitte")?.addEventListener("click", () => loadSchildAbschnitte(true));
+
+// Beim Wechsel auf den Schild-API-Tab Abschnitte automatisch nachladen (silent)
+document.getElementById("schildapi-tab")?.addEventListener("shown.bs.tab", () => loadSchildAbschnitte(false));
+document.getElementById("schildapi-tab")?.addEventListener("click", () => setTimeout(() => loadSchildAbschnitte(false), 200));
+
+// Schild API (SVWS-Server, Schild 3.x) Verbindungstest
+document.getElementById("testSchildApiConnection")?.addEventListener("click", function () {
+    const data = {
+        server_url: document.getElementById("schild_api_server_url").value,
+        schema:     document.getElementById("schild_api_schema").value,
+        user:       document.getElementById("schild_api_user").value,
+        password:   document.getElementById("schild_api_password").value,
+        verify_ssl: document.getElementById("schild_api_verify_ssl").value,
+    };
+    const resultEl = document.getElementById("schildApiTestResult");
+    if (resultEl) resultEl.textContent = "";
+    this.disabled = true;
+    this.textContent = "⌛ Teste...";
+    fetch("/api/schild_api/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    })
+        .then((r) => r.json())
+        .then((d) => {
+            if (resultEl) {
+                resultEl.textContent = (d.success ? "✅ " : "❌ ") + d.message;
+                resultEl.className = "ml-2 " + (d.success ? "text-success" : "text-danger");
+            } else {
+                alert(d.message);
+            }
+        })
+        .catch((err) => {
+            if (resultEl) {
+                resultEl.textContent = "❌ Fehler: " + err;
+                resultEl.className = "ml-2 text-danger";
+            } else {
+                alert("Fehler beim Verbindungstest: " + err);
+            }
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.textContent = "🔍 Verbindung testen";
+        });
+});

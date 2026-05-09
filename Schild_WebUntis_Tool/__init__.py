@@ -261,6 +261,28 @@ treat_status_6_as_active = True
 [InfoMailOptions]
 selected_fields =
 
+[SchildAPI]
+# Optional: Schild 3.x SVWS-Server REST-API als Alternative zum CSV-Import.
+# Wenn aktiv, werden Schueler-, Klassen- und Lehrerdaten direkt vom Server gelesen
+# statt aus den CSV-Dateien. Schild 2.x: hier nichts ändern (use_api = False lassen).
+use_api = False
+server_url = https://localhost
+schema = svwsdb
+user =
+password =
+verify_ssl = False
+fallback_to_csv = True
+# Schuljahresabschnitt-Filter:
+#   leer  = aktuell aktiver Abschnitt vom Server (empfohlen)
+#   ID    = fester Abschnitt (z.B. fuer Tests, Vergangenheit)
+abschnitt_id =
+# Status-Whitelist (Schild-Statuswerte die abgerufen werden sollen).
+# Default 2,6,8,9 entspricht dem Schild-Filter
+# "Aktuelles Schuljahr - Aktive, Abgaenger und Abschluesse" + Externe.
+#   0=Aufnahme, 1=Warteliste, 2=Aktiv, 3=Beurlaubt, 6=Extern,
+#   8=Abschluss, 9=Abgang ohne Abschluss, 10=Ehemalige
+allowed_statuses = 2,6,8,9
+
 [mail]
 # Empfänger nur bei Klassenwechsel-Warnungen
 # gültig: old | new | both
@@ -334,6 +356,25 @@ client_name = Schild-WebUntis-Tool
             if not config.has_option('ProcessingOptions', 'treat_status_6_as_active'):
                 config.set('ProcessingOptions', 'treat_status_6_as_active', 'True')
                 updated = True
+
+            # SchildAPI-Section (Schild 3.x)
+            if not config.has_section('SchildAPI'):
+                config.add_section('SchildAPI')
+                updated = True
+            for key, default in [
+                ('use_api', 'False'),
+                ('server_url', 'https://localhost'),
+                ('schema', 'svwsdb'),
+                ('user', ''),
+                ('password', ''),
+                ('verify_ssl', 'False'),
+                ('fallback_to_csv', 'True'),
+                ('abschnitt_id', ''),
+                ('allowed_statuses', '2,6,8,9'),
+            ]:
+                if not config.has_option('SchildAPI', key):
+                    config.set('SchildAPI', key, default)
+                    updated = True
 
             # Directories
             if not config.has_option('Directories', 'nachteilsausgleich_excel_directory'):
@@ -1124,6 +1165,42 @@ def save_info_mail_fields():
     with open('settings.ini', 'w', encoding='utf-8-sig') as f:
         config.write(f)
     return jsonify({"status": "ok"})
+
+# Route zum Testen der SVWS-API-Verbindung (Schild 3.x)
+@app.route('/api/schild_api/test', methods=['POST'])
+def test_schild_api():
+    data = request.json or {}
+    try:
+        from schild_api import SVWSClient
+        client = SVWSClient(
+            server_url=data.get('server_url', ''),
+            schema=data.get('schema', ''),
+            user=data.get('user', ''),
+            password=data.get('password', ''),
+            verify_ssl=str(data.get('verify_ssl', 'False')).lower() in ('true', '1', 'yes'),
+        )
+        ok, msg = client.test_connection()
+        return jsonify({"success": ok, "message": msg})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Fehler: {e}"})
+
+# Route zum Holen der verfügbaren Schuljahresabschnitte (für Dropdown im UI)
+@app.route('/api/schild_api/abschnitte', methods=['POST'])
+def list_schild_abschnitte():
+    data = request.json or {}
+    try:
+        from schild_api import SVWSClient
+        client = SVWSClient(
+            server_url=data.get('server_url', ''),
+            schema=data.get('schema', ''),
+            user=data.get('user', ''),
+            password=data.get('password', ''),
+            verify_ssl=str(data.get('verify_ssl', 'False')).lower() in ('true', '1', 'yes'),
+        )
+        active_id, abschnitte = client.get_schuljahresabschnitte()
+        return jsonify({"success": True, "active_id": active_id, "abschnitte": abschnitte})
+    except Exception as e:
+        return jsonify({"success": False, "message": f"Fehler: {e}", "abschnitte": []})
 
 # Route zum Generieren von Info-Mails aus den Feldänderungen des letzten Laufs
 @app.route('/generate_info_mails', methods=['POST'])

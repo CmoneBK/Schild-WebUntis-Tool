@@ -67,6 +67,31 @@ def get_active_schild_status():
     return {'2', '6'} if treat_6_as_active else {'2'}
 
 
+def get_schild_api_config():
+    """Liest [SchildAPI]-Konfiguration.
+    Liefert (use, client_or_none, fallback_to_csv, abschnitt_id_or_none)."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    use = config.getboolean('SchildAPI', 'use_api', fallback=False)
+    fallback = config.getboolean('SchildAPI', 'fallback_to_csv', fallback=True)
+    raw_abschnitt = config.get('SchildAPI', 'abschnitt_id', fallback='').strip()
+    abschnitt_id = int(raw_abschnitt) if raw_abschnitt.isdigit() else None
+    if not use:
+        return False, None, fallback, abschnitt_id
+    try:
+        from schild_api import SVWSClient
+        client = SVWSClient(
+            server_url=config.get('SchildAPI', 'server_url', fallback=''),
+            schema=config.get('SchildAPI', 'schema', fallback=''),
+            user=config.get('SchildAPI', 'user', fallback=''),
+            password=config.get('SchildAPI', 'password', fallback=''),
+            verify_ssl=config.getboolean('SchildAPI', 'verify_ssl', fallback=False),
+        )
+        return True, client, fallback, abschnitt_id
+    except Exception:
+        return False, None, fallback, abschnitt_id
+
+
 SCHILD_REQUIRED_COLUMNS = [
     'Interne ID-Nummer', 'Nachname', 'Vorname', 'Klasse', 'Klassenlehrer', 
     'Geburtsdatum', 'Geschlecht', 'vorauss. Abschlussdatum', 'Aufnahmedatum', 
@@ -855,7 +880,21 @@ def compare_timeframe_imports(timeframe_hours=24, no_log=False, no_xlsx=False):
 
 
 def read_classes(classes_dir, teachers_dir, return_teachers=False):
-    # 0) WebUntis API Vorbereitung (Hybrid-Modus)
+    # 0a) SVWS-API-Pfad (Schild 3.x) — falls aktiviert (höchste Priorität)
+    use_svws, svws_client, fallback_to_csv, abschnitt_id = get_schild_api_config()
+    if use_svws and svws_client:
+        try:
+            print_info("Lese Klassen-/Lehrerdaten über SVWS-API (Schild 3.x)...")
+            classes_by_name = svws_client.fetch_classes_with_teachers(abschnitt_id=abschnitt_id)
+            print_success(f"Klassen erfolgreich über SVWS-API geladen ({len(classes_by_name)} Klassen).")
+            return (classes_by_name, {}) if return_teachers else classes_by_name
+        except Exception as e:
+            if fallback_to_csv:
+                print_warning(f"SVWS-API für Klassen fehlgeschlagen ({e}) — Fallback auf nächsten Weg.")
+            else:
+                raise
+
+    # 0b) WebUntis API Vorbereitung (Hybrid-Modus)
     config_api = configparser.ConfigParser()
     safe_read_config(config_api, 'email_settings.ini')
     use_api = config_api.getboolean('WebUntisAPI', 'use_api', fallback=False)
@@ -1015,6 +1054,21 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
 
 
 def read_students(use_abschlussdatum=False):
+    # SVWS-API-Pfad (Schild 3.x) — falls aktiviert
+    use_api, svws_client, fallback_to_csv, abschnitt_id = get_schild_api_config()
+    if use_api and svws_client:
+        try:
+            ab_info = f"Abschnitt-ID {abschnitt_id}" if abschnitt_id else "aktiver Abschnitt"
+            print_info(f"Lese Schülerdaten über SVWS-API (Schild 3.x, {ab_info})...")
+            output_data, students_by_id = svws_client.fetch_students(abschnitt_id=abschnitt_id)
+            print_success(f"Schülerdaten erfolgreich über SVWS-API geladen ({len(students_by_id)} Schüler).")
+            return output_data, students_by_id
+        except Exception as e:
+            if fallback_to_csv:
+                print_warning(f"SVWS-API fehlgeschlagen ({e}) — Fallback auf CSV-Pfad.")
+            else:
+                raise
+
     # Funktion zum Einlesen der Schülerdaten aus der neuesten CSV-Datei im aktuellen Verzeichnis
     print_info("Lese Schülerdaten ein...")
     active_statuses = get_active_schild_status()
