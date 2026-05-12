@@ -212,7 +212,7 @@ Falls Sie Schüler-Fotos im Dashboard anzeigen und/oder als ZIP für den WebUnti
 
 - **Foto-Export aus Schild:**
   - **Schild 2:** `Datenaustausch → Fotos → Fotos exportieren`. Wählen Sie als Benennung die **Interne ID-Nummer** der Schüler.
-  - **Schild 3:** Der entsprechende Foto-Export findet sich ebenfalls im Bereich Datenaustausch/Export — auch hier ist die Benennung nach Interner ID-Nummer zu wählen.
+  - **Schild 3:** `Verwaltung → Export → Fotos`. — auch hier ist die Benennung nach Interner ID-Nummer zu wählen.
 - **Verzeichnis konfigurieren:** In den Einstellungen unter `📂 Verzeichnisse` → `Arbeitsverzeichnisse` das `🖼️ Foto-Verzeichnis` festlegen und die exportierten Fotos dorthin ablegen. (Das `📦 Foto-ZIP-Ausgabeverzeichnis` unter „Ausgabedateien-Verzeichnisse" bestimmt, wohin erzeugte ZIPs geschrieben werden.)
 - **Verwendung:** Über den Button `🖼️ Fotos managen` (rechts in der Verarbeiten-Zeile) sehen Sie die Übersicht, erstellen ZIPs (optional nach Schild-Status gefiltert) und können verwaiste Fotos archivieren. Im Dashboard erscheint das Foto bei der Schülerhistorien-Suche automatisch.
 - Unterstützte Bildformate: `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`.
