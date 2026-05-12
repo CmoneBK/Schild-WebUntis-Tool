@@ -138,6 +138,7 @@ generated_emails_cache = []     # Cache für generierte Warn-E-Mails
 admin_warnings_cache = []
 info_changes_cache = []         # Rohe Feldänderungen aus dem letzten Lauf (für Info-Mails)
 generated_info_mails_cache = [] # Cache für generierte Info-Mails
+last_foto_zip = None            # {'path': ..., 'name': ..., 'included': ..., 'missing': ...} — zuletzt erstelltes Foto-ZIP
 
 # Start der Datenverarbeitung über das Kommandozeilen-Argument --process (nicht WebEnd-Button) heraus.
 def process_data(no_log=False, no_xlsx=False):
@@ -228,6 +229,8 @@ def ensure_ini_files_exist():
     default_attest_file_directory ="AttestpflichtDaten"
     default_nachteilsausgleich_file_directory ="NachteilsausgleichDaten"
     default_nachteilsausgleich_excel_directory ="NachteilsausgleichExcel"
+    default_foto_directory ="SchuelerFotos"
+    default_foto_zip_directory ="SchuelerFotosZips"
 
     # Standard-Inhalt für settings.ini vorbereiten
     settings_ini_content = f"""[Directories]
@@ -241,6 +244,13 @@ class_size_directory = {default_class_size_dir}
 attest_file_directory = {default_attest_file_directory}
 nachteilsausgleich_file_directory = {default_nachteilsausgleich_file_directory}
 nachteilsausgleich_excel_directory = {default_nachteilsausgleich_excel_directory}
+foto_directory = {default_foto_directory}
+foto_zip_directory = {default_foto_zip_directory}
+
+[FotoOptions]
+# Vorlage fuer den ZIP-Dateinamen beim Foto-Export.
+# Platzhalter: {{datum}} {{datetime}} {{zeit}} {{jahr}} {{monat}} {{tag}}
+zip_name_template = Fotos_{{datum}}
 
 [ProcessingOptions]
 use_abschlussdatum = False
@@ -391,6 +401,19 @@ client_name = Schild-WebUntis-Tool
             if not config.has_option('Directories', 'nachteilsausgleich_excel_directory'):
                 config.set('Directories', 'nachteilsausgleich_excel_directory', default_nachteilsausgleich_excel_directory)
                 updated = True
+            if not config.has_option('Directories', 'foto_directory'):
+                config.set('Directories', 'foto_directory', default_foto_directory)
+                updated = True
+            if not config.has_option('Directories', 'foto_zip_directory'):
+                config.set('Directories', 'foto_zip_directory', default_foto_zip_directory)
+                updated = True
+            # FotoOptions
+            if not config.has_section('FotoOptions'):
+                config.add_section('FotoOptions')
+                updated = True
+            if not config.has_option('FotoOptions', 'zip_name_template'):
+                config.set('FotoOptions', 'zip_name_template', 'Fotos_{datum}')
+                updated = True
 
             if updated:
                 with open("settings.ini", "w", encoding="utf-8-sig") as configfile:
@@ -470,6 +493,8 @@ client_name = Schild-WebUntis-Tool
         "attest_file_directory": default_attest_file_directory,
         "nachteilsausgleich_file_directory": default_nachteilsausgleich_file_directory,
         "nachteilsausgleich_excel_directory": default_nachteilsausgleich_excel_directory,
+        "foto_directory": default_foto_directory,
+        "foto_zip_directory": default_foto_zip_directory,
     }
 
     print_section("Verzeichnisse")
@@ -1230,6 +1255,145 @@ def list_schild_abschnitte():
         return jsonify({"success": True, "active_id": active_id, "abschnitte": abschnitte})
     except Exception as e:
         return jsonify({"success": False, "message": f"Fehler: {e}", "abschnitte": []})
+
+# ====================== Foto-Verwaltung ======================
+
+def _current_students_with_status():
+    """Liefert {id: status_str} der aktuellen Schüler (CSV oder API, je nach Konfig)."""
+    try:
+        _, students_by_id = read_students()
+        return {sid: str(s.get('Status', '')).strip() for sid, s in students_by_id.items()}, students_by_id
+    except Exception:
+        return {}, {}
+
+
+@app.route('/api/fotos/list', methods=['GET'])
+def fotos_list():
+    """Listet alle Fotos im foto_directory + Match-Info gegen aktuelle Schüler."""
+    import foto_manager
+    fotos = foto_manager.list_fotos(include_archive=True)
+    status_by_id, students_by_id = _current_students_with_status()
+    out = []
+    for f in fotos:
+        sid = f['id']
+        student = students_by_id.get(sid)
+        out.append({
+            **f,
+            'in_import': sid in status_by_id,
+            'status': status_by_id.get(sid, ''),
+            'name': (f"{student.get('Vorname','')} {student.get('Nachname','')}".strip()
+                     if student else ''),
+            'klasse': (student.get('Klasse', '') if student else ''),
+        })
+    # Status-Übersicht für die UI: welche Stati kommen im aktuellen Import vor
+    present_statuses = sorted({st for st in status_by_id.values() if st})
+    return jsonify({
+        'foto_directory': foto_manager.get_foto_directory(),
+        'zip_name_template': foto_manager.get_zip_name_template(),
+        'fotos': out,
+        'student_count': len(students_by_id),
+        'present_statuses': present_statuses,
+    })
+
+
+@app.route('/api/fotos/image/<path:student_id>', methods=['GET'])
+def fotos_image(student_id):
+    """Liefert das Foto eines Schülers (für Dashboard / Vorschau)."""
+    import foto_manager
+    archived = request.args.get('archived') == '1'
+    foto_dir = foto_manager.get_foto_directory()
+    if archived:
+        foto_dir = os.path.join(foto_dir, foto_manager.ARCHIVE_SUBDIR)
+    path = foto_manager.get_foto_path(student_id, foto_dir)
+    if not path or not os.path.isfile(path):
+        return '', 404
+    directory = os.path.dirname(path)
+    return send_from_directory(directory, os.path.basename(path))
+
+
+@app.route('/api/fotos/zip/create', methods=['POST'])
+def fotos_zip_create():
+    """Erstellt ein Foto-ZIP und speichert es im foto_zip_directory.
+       Body: {statuses: [..] | null, name_template: str | null}. statuses=null → alle im Import."""
+    global last_foto_zip
+    import foto_manager
+    data = request.json or {}
+    statuses = data.get('statuses')
+    name_template = (data.get('name_template') or '').strip() or None
+
+    # Vorlage persistent speichern
+    if name_template:
+        try:
+            foto_manager.save_zip_name_template(name_template)
+        except Exception:
+            pass
+
+    status_by_id, _ = _current_students_with_status()
+    if statuses:
+        wanted = {str(s).strip() for s in statuses}
+        ids = [sid for sid, st in status_by_id.items() if st in wanted]
+    else:
+        ids = list(status_by_id.keys())
+
+    if not ids:
+        return jsonify({"error": "Keine passenden Schüler gefunden."}), 400
+
+    try:
+        zip_path, zip_name, included, missing = foto_manager.create_zip_file(
+            ids, name_template=name_template)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Erstellen: {e}"}), 500
+    if included == 0:
+        return jsonify({"error": f"Keine Fotos gefunden (0 von {len(ids)} Schülern haben ein Foto)."}), 400
+
+    last_foto_zip = {'path': zip_path, 'name': zip_name, 'included': included, 'missing': missing}
+    return jsonify({
+        "success": True,
+        "name": zip_name,
+        "path": zip_path,
+        "directory": foto_manager.get_zip_directory(),
+        "included": included,
+        "missing": missing,
+        "total": len(ids),
+    })
+
+
+@app.route('/api/fotos/zip/download', methods=['GET'])
+def fotos_zip_download():
+    """Lädt das zuletzt erstellte Foto-ZIP herunter."""
+    from flask import send_file
+    if not last_foto_zip or not os.path.isfile(last_foto_zip.get('path', '')):
+        return jsonify({"error": "Es wurde noch kein ZIP erstellt (oder die Datei wurde verschoben/gelöscht)."}), 404
+    return send_file(
+        last_foto_zip['path'],
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=last_foto_zip['name'],
+    )
+
+
+@app.route('/api/fotos/archive', methods=['POST'])
+def fotos_archive():
+    """Verschiebt Fotos verwaister Schüler (nicht mehr im Import) in den Archiv-Unterordner."""
+    import foto_manager
+    status_by_id, _ = _current_students_with_status()
+    if not status_by_id:
+        return jsonify({"error": "Keine aktuellen Schülerdaten verfügbar — bitte zuerst eine Verarbeitung durchführen."}), 400
+    moved = foto_manager.archive_orphan_fotos(list(status_by_id.keys()))
+    return jsonify({"moved": moved, "count": len(moved)})
+
+
+@app.route('/api/fotos/restore', methods=['POST'])
+def fotos_restore():
+    """Holt eine archivierte Foto-Datei zurück ins Hauptverzeichnis."""
+    import foto_manager
+    data = request.json or {}
+    filename = (data.get('filename') or '').strip()
+    if not filename:
+        return jsonify({"error": "Dateiname fehlt."}), 400
+    ok = foto_manager.restore_archived_foto(filename)
+    return jsonify({"ok": ok})
+
 
 # Route zum Generieren von Info-Mails aus den Feldänderungen des letzten Laufs
 @app.route('/generate_info_mails', methods=['POST'])

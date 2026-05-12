@@ -127,11 +127,14 @@
                     </div>
 
                     <!-- Buttons am Ende, unter der row -->
-                    <div class="btn-group mt-4">
-                        <button type="submit" class="btn btn-primary">▶️ Verarbeiten</button>
-                        <button id="validateImports" type="button" class="btn btn-secondary ml-2">🔍 Dateien prüfen</button>
-                        <button id="generateEmails" type="button" class="btn btn-info ml-2">✍ Emails Generieren</button>
-                        <button id="sendEmails" type="button" class="btn btn-success ml-2">📨 Emails Senden</button>
+                    <div class="clearfix mt-4">
+                        <div class="btn-group float-left">
+                            <button type="submit" class="btn btn-primary">▶️ Verarbeiten</button>
+                            <button id="validateImports" type="button" class="btn btn-secondary ml-2">🔍 Dateien prüfen</button>
+                            <button id="generateEmails" type="button" class="btn btn-info ml-2">✍ Emails Generieren</button>
+                            <button id="sendEmails" type="button" class="btn btn-success ml-2">📨 Emails Senden</button>
+                        </div>
+                        <button id="toggleFotoPanel" type="button" class="btn btn-dark float-right">🖼️ Fotos managen</button>
                     </div>
                     <div id="validationReportContainer" class="mt-3">
                         {% if initial_validation %}
@@ -718,6 +721,83 @@
             </div>
         </div>
 
+        <!-- Foto-Verwaltungs-Panel -->
+        <div id="fotoPanel" class="mt-4" style="display: none;">
+            <div class="card shadow border-dark">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <span>🖼️ Fotos managen</span>
+                    <button id="fotoReload" type="button" class="btn btn-light btn-sm">🔄 Aktualisieren</button>
+                </div>
+                <div class="card-body">
+                    <div id="fotoStatus" class="alert alert-secondary py-2 mb-3" style="font-size:0.9rem;">
+                        Lade Foto-Übersicht…
+                    </div>
+
+                    <!-- ZIP-Export -->
+                    <div class="card mb-3">
+                        <div class="card-header py-2"><strong>📦 Fotos als ZIP für WebUntis-Import</strong></div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-2">
+                                Standardmäßig werden die Fotos aller Schüler im aktuellen Import gepackt.
+                                Optional kann nach Schild-Status eingeschränkt werden (leer = alle).
+                            </p>
+                            <div class="row mb-2" id="fotoStatusCheckboxes">
+                                {% for sid, label in [(0,'Aufnahme'), (1,'Warteliste'), (2,'Aktiv'), (3,'Beurlaubt'), (6,'Extern'), (8,'Abschluss'), (9,'Abgang (ohne Abschluss)'), (10,'Ehemalige')] %}
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input foto-status-cb" type="checkbox" id="foto_status_{{ sid }}" value="{{ sid }}">
+                                        <label class="form-check-label" for="foto_status_{{ sid }}"><code>{{ sid }}</code> – {{ label }}</label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-group mb-2">
+                                <label for="fotoZipNameTemplate" class="mb-1">ZIP-Dateiname (Platzhalter: <code>{datum}</code> <code>{datetime}</code> <code>{zeit}</code> <code>{jahr}</code> <code>{monat}</code> <code>{tag}</code>):</label>
+                                <input type="text" class="form-control" id="fotoZipNameTemplate" placeholder="Fotos_{datum}">
+                                <small class="form-text text-muted">Wird beim Erstellen als Standard gespeichert.</small>
+                            </div>
+                            <div class="d-inline-block">
+                                <button id="fotoCreateZip" type="button" class="btn btn-success mr-2">📦 ZIP erstellen</button>
+                                <button id="fotoDownloadZip" type="button" class="btn btn-outline-success" disabled>⬇️ ZIP herunterladen</button>
+                            </div>
+                            <span id="fotoZipResult" class="ml-2 text-muted small"></span>
+                        </div>
+                    </div>
+
+                    <!-- Verwaiste archivieren -->
+                    <div class="card mb-3">
+                        <div class="card-header py-2"><strong>🗄️ Verwaiste Fotos archivieren</strong></div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-2">
+                                Verschiebt Fotos von Schülern, die nicht mehr im aktuellen Import vorkommen, in den Unterordner <code>Archiv</code> —
+                                so erscheinen sie nicht mehr in der Auswahl. Archivierte Fotos können einzeln zurückgeholt werden.
+                            </p>
+                            <button id="fotoArchiveOrphans" type="button" class="btn btn-warning">🗄️ Verwaiste jetzt archivieren</button>
+                        </div>
+                    </div>
+
+                    <!-- Tabelle aller Fotos -->
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped" id="fotoTable">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th style="width:60px">Foto</th>
+                                    <th>Datei</th>
+                                    <th>ID</th>
+                                    <th>Schüler</th>
+                                    <th>Klasse</th>
+                                    <th>Status</th>
+                                    <th>Im Import?</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="fotoTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="historyPanel" class="mt-4" style="display: none;">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
@@ -897,12 +977,40 @@
                             <small class="form-text text-muted">Excel-Arbeitsdatei für Sonderpädagogen: Das Tool befüllt die Datei automatisch, Sonderpädagogen ergänzen die Nachteilsausgleichdetails, das Tool liest sie beim Info-Mail-Versand zurück.</small>
                         </div>
 
+                        <!-- Foto-Verzeichnis -->
+                        <div class="form-group">
+                            <label for="foto_directory">🖼️ Foto-Verzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="foto_directory"
+                                    name="foto_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="foto_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">Hier legen Sie die aus Schild exportierten Schüler-Fotos ab (Dateiname = Interne ID-Nummer). Wird im Dashboard zur Foto-Anzeige und im „🖼️ Fotos managen"-Bereich (ZIP-Export, Archivierung) genutzt.</small>
+                        </div>
+
                         <!-- Trennlinie Export-Verzeichnisse -->
                         <hr class="my-4">
 
                         <!-- Überschrift für Ausgabedateien-Verzeichnisse -->
                         <h5 class="mb-1">Ausgabedateien-Verzeichnisse</h5>
-                        <p class="text-muted small mb-3">Verzeichnisse, in die das Tool Dateien schreibt – Logs, Excel-Auswertungen und fertige WebUntis-Importdateien.</p>
+                        <p class="text-muted small mb-3">Verzeichnisse, in die das Tool Dateien schreibt – Logs, Excel-Auswertungen, fertige WebUntis-Importdateien und Foto-ZIPs.</p>
+
+                        <!-- Foto-ZIP-Ausgabeverzeichnis -->
+                        <div class="form-group">
+                            <label for="foto_zip_directory">📦 Foto-ZIP-Ausgabeverzeichnis:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="foto_zip_directory"
+                                    name="foto_zip_directory" readonly>
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-secondary"
+                                        data-directory-input="foto_zip_directory">Durchsuchen</button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">In dieses Verzeichnis schreibt der „📦 ZIP erstellen"-Button im Bereich „🖼️ Fotos managen" die fertige ZIP-Datei (z.B. zur manuellen Abholung oder Weiterverarbeitung).</small>
+                        </div>
 
                         <!-- Logverzeichnis -->
                         <div class="form-group">

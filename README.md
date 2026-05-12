@@ -44,6 +44,14 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
 <p>Die Attestpflichtfunktion fügt eine Attestpflicht-Spalte (Ja/Nein) dem WebUntis-Importdokument hinzu, basierend auf einer weiteren (per Schild leicht erstellbaren) Importdatei mit nur denjenigen Schülern mit Attestpflicht.</p>
 <p>Die Nachteilsausgleichfunktion fügt eine Nachteilsausgleich-Spalte (Ja/Nein) dem WebUntis-Importdokument hinzu, analog zur Attestpflicht.</p>
 <p><b>Neu in 3.0 — Nachteilsausgleich-Arbeitsdatei für Sonderpädagogen:</b> Eine Excel-Arbeitsdatei wird automatisch mit allen Schülern befüllt und enthält fünf Detailspalten (Zeitlich, Technisch, Räumlich, Personell, Sonstige Vereinbarungen) zur freien Bearbeitung durch Sonderpädagogen. Bei Nachteilsausgleich-Änderungen werden die Detailangaben automatisch in die Info-Mails übernommen — und sind in der Mail-Vorschau über einen ℹ️-Button direkt einsehbar. Vorhandene Einträge bleiben bei jedem neuen Import erhalten.</p></details>
+<details><summary><b>🖼️Foto-Verwaltung:</b> Schüler-Fotos für WebUntis aufbereiten</summary>
+<p>Schild kann Schüler-Fotos exportieren, benannt nach der Internen ID. Das Tool liest diese aus einem konfigurierbaren Foto-Verzeichnis und stellt im Bereich „🖼️ Fotos managen" (Button rechts in der Verarbeiten-Zeile) folgende Funktionen bereit:</p>
+<ul>
+<li><b>Übersicht:</b> Welche Fotos zu aktuellen Schülern passen, welche verwaist sind (Schüler nicht mehr im Import), welche bereits archiviert sind — mit Thumbnail-Vorschau.</li>
+<li><b>ZIP-Export für WebUntis:</b> Die Fotos der Schüler im aktuellen Import (optional nach Schild-Status gefiltert; Standard = die im Import vorkommenden Stati) werden als ZIP gepackt. Der Dateiname ist über eine Vorlage mit Platzhaltern (Datum, Uhrzeit etc.) konfigurierbar. „📦 ZIP erstellen" legt das ZIP in einem konfigurierbaren Ausgabeverzeichnis ab; „⬇️ ZIP herunterladen" lädt es zusätzlich über den Browser.</li>
+<li><b>Verwaiste archivieren:</b> Fotos von Schülern, die nicht mehr im Import sind, werden per Klick in einen Unterordner <code>Archiv</code> verschoben — so erscheinen sie nicht mehr in der Auswahl. Einzeln zurückholbar.</li>
+</ul>
+<p>Zusätzlich wird das Foto eines Schülers im Dashboard bei der Schülerhistorien-Suche angezeigt.</p></details>
 
 
 ## Voraussetzungen
@@ -197,6 +205,20 @@ Das Tool liest die Datei bei jedem Lauf zurück, übernimmt vorhandene Einträge
 
 </details>
 
+<details>
+<summary><b>8. Optional: Für die Foto-Verwaltung</b></summary>
+
+Falls Sie Schüler-Fotos im Dashboard anzeigen und/oder als ZIP für den WebUntis-Foto-Import vorbereiten möchten:
+
+- **Foto-Export aus Schild:**
+  - **Schild 2:** `Datenaustausch → Fotos → Fotos exportieren`. Wählen Sie als Benennung die **Interne ID-Nummer** der Schüler.
+  - **Schild 3:** Der entsprechende Foto-Export findet sich ebenfalls im Bereich Datenaustausch/Export — auch hier ist die Benennung nach Interner ID-Nummer zu wählen.
+- **Verzeichnis konfigurieren:** In den Einstellungen unter `📂 Verzeichnisse` → `Arbeitsverzeichnisse` das `🖼️ Foto-Verzeichnis` festlegen und die exportierten Fotos dorthin ablegen. (Das `📦 Foto-ZIP-Ausgabeverzeichnis` unter „Ausgabedateien-Verzeichnisse" bestimmt, wohin erzeugte ZIPs geschrieben werden.)
+- **Verwendung:** Über den Button `🖼️ Fotos managen` (rechts in der Verarbeiten-Zeile) sehen Sie die Übersicht, erstellen ZIPs (optional nach Schild-Status gefiltert) und können verwaiste Fotos archivieren. Im Dashboard erscheint das Foto bei der Schülerhistorien-Suche automatisch.
+- Unterstützte Bildformate: `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`.
+
+</details>
+
 ## Installation
 1. Laden Sie die .exe Datei des [aktuellen Releases](https://github.com/CmoneBK/Schild-WebUntis-Tool/releases/tag/v.3.0) oder, wenn Sie nicht gut auf neue Funktionen warten können, die .exe Datei unter [Schild-WebUntis-Tool-WServer](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) [Entwicklungsversion] in ein leeres (!) Verzeichnis.</br>
    Hinter letzterem Link gibt es oben rechts neben dem 'RAW' einen Download-Button.
@@ -271,7 +293,17 @@ Vor dem eigentlichen Verarbeiten kann mit `🔍 Dateien prüfen` ein schneller C
 <details>
 <summary><b>📊 Dashboard & Historie:</b></summary>
 
-Über das Menü `📊 Dashboard` werden Statistiken, Hotspots und Verlaufstrends aus den vergangenen Importen angezeigt. Klassen lassen sich einzeln anklicken, um den Verlauf über die Zeit zu sehen. Über `📜 Historie` können vergangene Logs und Excel-Logs direkt im Browser eingesehen oder als Excel exportiert werden.
+Über das Menü `📊 Dashboard` werden Statistiken, Hotspots und Verlaufstrends aus den vergangenen Importen angezeigt. Klassen lassen sich einzeln anklicken, um den Verlauf über die Zeit zu sehen. Bei der Schülerhistorien-Suche wird (falls vorhanden) das Foto des Schülers angezeigt. Über `📜 Historie` können vergangene Logs und Excel-Logs direkt im Browser eingesehen oder als Excel exportiert werden.
+
+</details>
+
+<details>
+<summary><b>🖼️ Fotos managen:</b></summary>
+
+Über den Button `🖼️ Fotos managen` (rechts in der Verarbeiten-Zeile) öffnet sich der Foto-Bereich:
+- **Übersicht** aller Fotos im Foto-Verzeichnis mit Thumbnail, Schüler-Zuordnung und Status (im Import / verwaist / archiviert).
+- **`📦 ZIP erstellen`** packt die Fotos der Schüler im aktuellen Import (optional nach Schild-Status gefiltert) und legt das ZIP im Foto-ZIP-Ausgabeverzeichnis ab. **`⬇️ ZIP herunterladen`** lädt das zuletzt erstellte ZIP über den Browser.
+- **`🗄️ Verwaiste jetzt archivieren`** verschiebt Fotos von Schülern, die nicht mehr im Import sind, in den Unterordner `Archiv` — einzeln zurückholbar.
 
 </details>
 
@@ -463,6 +495,7 @@ Außerdem wurden einige seltenere Bugs gefixt und die Robustheit des Programms e
 - **Neu - Zeitraum-Vergleich für automatisierte Periodik:** Über den Kommandozeilen-Schalter `--send_log_email` lässt sich der aktuelle Import gegen den letzten Stand vor einer einstellbaren Anzahl von Stunden (`timeframe_hours`, Default 24) vergleichen. Eine Sammel-Mail mit HTML-Tabelle und Excel-Anhang geht an die Admin-Adresse — mit eingebautem Spam-Schutz, sodass pro Zeitfenster nur eine Mail versendet wird. Ideal für die Windows-Aufgabenplanung.
 - **Neu - Schild-Status 6 (Extern) konfigurierbar:** Externe Schüler (Schild-Status 6) können wahlweise als „aktiv" behandelt werden, sodass sie in Klassengrößen einfließen und nicht als Karteileichen gemeldet werden.
 - **Neu - Schild-API (SVWS-Server):** Ab Schild 3.x kann das Tool Schüler-, Klassen- und Lehrerdaten direkt vom SVWS-Server über dessen REST-API abrufen — der manuelle CSV-Export aus Schild entfällt dann. Konfigurierbar sind: Server-URL, DB-Schema, technischer Benutzer, TLS-Verifikation, automatischer Fallback auf CSV bei API-Fehlern, Schuljahresabschnitt-Auswahl und Status-Whitelist. Auch Attestpflicht- und Nachteilsausgleich-Listen können pro Vermerk wahlweise via API (Vermerkart-Bezeichnung) oder weiter via CSV bezogen werden. Bei aktivem API-Modus werden die nicht mehr benötigten Verzeichnisse im Webend automatisch gesperrt. Schild-2-Schulen nutzen weiterhin nahtlos den CSV-Weg.
+- **Neu - Foto-Verwaltung:** Schüler-Fotos (aus Schild exportiert, benannt nach Interner ID) werden im Dashboard bei der Schülerhistorien-Suche angezeigt. Über den Bereich „🖼️ Fotos managen" lassen sich Fotos als ZIP für den WebUntis-Foto-Import packen (optional nach Schild-Status gefiltert, mit konfigurierbarer Dateinamen-Vorlage; ZIP wird in ein Ausgabeverzeichnis geschrieben und/oder heruntergeladen) und verwaiste Fotos (Schüler nicht mehr im Import) in einen Archiv-Unterordner verschieben.
 - **Neu - Drei Verzeichniskategorien:** Die Einstellungen unterscheiden jetzt zwischen Quelldaten-, Arbeits- und Ausgabedateien-Verzeichnissen mit jeweils erklärenden Beschreibungen.
 - **Verbessert - WYSIWYG-Email-Editor:** Mail-Vorlagen werden in einem komfortablen Quill-Editor mit Formatierungsmöglichkeiten bearbeitet. Alle Platzhalter sind im neuen Schlüssel-Info-Tab dokumentiert.
 - **Verbessert - Auto-Patcher für Konfigurationsdateien:** Bestehende `settings.ini` und `email_settings.ini` werden bei Updates automatisch um neue Optionen ergänzt — ohne manuelles Nachpflegen.

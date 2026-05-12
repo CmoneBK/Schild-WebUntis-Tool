@@ -140,6 +140,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     "attest_file_directory": "form-directories",
                     "nachteilsausgleich_file_directory": "form-directories",
                     "nachteilsausgleich_excel_directory": "form-directories",
+                    "foto_directory": "form-directories",
+                    "foto_zip_directory": "form-directories",
                     // ProcessingOptions
                     "use_abschlussdatum": "form-processing",
                     "create_second_file": "form-processing",
@@ -253,6 +255,8 @@ document.addEventListener("DOMContentLoaded", function () {
             "attest_file_directory": "Directories",
             "nachteilsausgleich_file_directory": "Directories",
             "nachteilsausgleich_excel_directory": "Directories",
+            "foto_directory": "Directories",
+            "foto_zip_directory": "Directories",
             // ProcessingOptions
             "use_abschlussdatum": "ProcessingOptions",
             "create_second_file": "ProcessingOptions",

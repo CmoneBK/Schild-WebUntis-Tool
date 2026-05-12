@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
         dashboardPanel: document.getElementById("dashboardPanel"),
         adminPanel:     document.getElementById("adminPanel"),
         infoMailPanel:  document.getElementById("infoMailPanel"),
+        fotoPanel:      document.getElementById("fotoPanel"),
     };
     console.log("Panels:", panels);
 
@@ -272,7 +273,12 @@ document.addEventListener("DOMContentLoaded", function () {
             html += `
                 <div class="card mb-3 shadow-sm border-left-info">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                        <span><strong>${item.student.name}</strong> (ID: ${item.student.id})</span>
+                        <span class="d-flex align-items-center">
+                            <img src="/api/fotos/image/${encodeURIComponent(item.student.id)}" alt=""
+                                 style="max-height:40px;max-width:40px;border-radius:4px;margin-right:8px;"
+                                 onerror="this.style.display='none'">
+                            <span><strong>${item.student.name}</strong> (ID: ${item.student.id})</span>
+                        </span>
                         <div>
                             <button class="btn btn-xs btn-outline-secondary py-0" style="font-size: 0.7rem;" onclick="copyStudentTimeline('${item.student.id}')">📋 Kopieren</button>
                             <button class="btn btn-xs btn-outline-success py-0 ml-1" style="font-size: 0.7rem;" onclick="exportStudentTimeline('${item.student.id}')">📊 Excel</button>
