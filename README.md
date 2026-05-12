@@ -2,9 +2,10 @@
 **Dieses Tool ist eine Weiterentwicklung des [SchildNRW-WebUntis-Umwandlers](https://github.com/CmoneBK/SchildNRW-WebUntis-Umwandler/tree/master)**
 
 Dieses Tool hilft dabei, Schülerdaten aus SchildNRW zu exportieren, für WebUntis aufzubereiten* und Warnungen oder Benachrichtigungen basierend auf spezifischen Kriterien zu generieren. Es unterstützt Sie bei dem Nachhalten der Änderungen und der Kommunikation an Klassenlehrkräfte, insbesondere bei kritischen Änderungen wie Entlassdaten, Aufnahmedaten, Klassenwechseln oder neu hinzustoßenden Schüler/innen. Darüber hinaus bietet es die Möglichkeit den Prozess teilweise zu automatisieren.
-        <a href="/Screenshots/Start mit Daten.png" target="_blank">
-          <img src="/Screenshots/Start mit Daten.png" alt="Startbildschirm" width="600">
-          
+<a href="/Screenshots/Hauptbereich.png" target="_blank">
+  <img src="/Screenshots/Hauptbereich.png" alt="Hauptbereich" width="600">
+</a>
+
 *Darunter auch insbesondere solche Daten, die im Schild-Export nicht kompatibel mit WebUntis sind (Status, Schulpflicht, Attestpflicht, Nachteilsausgleich, ... ).
 
 ## Funktionen
@@ -358,44 +359,86 @@ In der Konsole sehen Sie den Prozess durchlaufen.
   <table border="1" cellspacing="10" cellpadding="5" align="center">
     <tr>
       <td>
-        <a href="/Screenshots/Start mit Daten.png" target="_blank">
-          <img src="/Screenshots/Start mit Daten.png" alt="Start mit Daten" width="300">
+        <a href="/Screenshots/Hauptbereich.png" target="_blank">
+          <img src="/Screenshots/Hauptbereich.png" alt="Hauptbereich" width="300">
         </a>
-        <p>Startbildschirm</p>
+        <p>Hauptbereich</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Navigation und Module.png" target="_blank">
+          <img src="/Screenshots/Navigation und Module.png" alt="Navigation und Module" width="300">
+        </a>
+        <p>Navigation und Module</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="/Screenshots/Warnungen.png" target="_blank">
+          <img src="/Screenshots/Warnungen.png" alt="Warnungen" width="300">
+        </a>
+        <p>Warnungen</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Admin Check und Warnungen.png" target="_blank">
+          <img src="/Screenshots/Admin Check und Warnungen.png" alt="Admin Check und Warnungen" width="300">
+        </a>
+        <p>Admin-Check &amp; Warnungen</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="/Screenshots/Generierte Mail.png" target="_blank">
+          <img src="/Screenshots/Generierte Mail.png" alt="Generierte Mail" width="300">
+        </a>
+        <p>Generierte Mail</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Info Mail Optionen.png" target="_blank">
+          <img src="/Screenshots/Info Mail Optionen.png" alt="Info-Mail-Optionen" width="300">
+        </a>
+        <p>Info-Mail-Optionen</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="/Screenshots/Email Vorlagen Editor.png" target="_blank">
+          <img src="/Screenshots/Email Vorlagen Editor.png" alt="E-Mail-Vorlagen-Editor" width="300">
+        </a>
+        <p>E-Mail-Vorlagen-Editor</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Historie.png" target="_blank">
+          <img src="/Screenshots/Historie.png" alt="Historie" width="300">
+        </a>
+        <p>Historie</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="/Screenshots/Einstellungen.png" target="_blank">
+          <img src="/Screenshots/Einstellungen.png" alt="Einstellungen" width="300">
+        </a>
+        <p>Einstellungen</p>
+      </td>
+      <td>
+        <a href="/Screenshots/Schild 3.0 API.png" target="_blank">
+          <img src="/Screenshots/Schild 3.0 API.png" alt="Schild 3.0 API" width="300">
+        </a>
+        <p>Schild 3.0 API <em>(in Entwicklung)</em></p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="/Screenshots/Foto Manager.png" target="_blank">
+          <img src="/Screenshots/Foto Manager.png" alt="Foto-Manager" width="300">
+        </a>
+        <p>Foto-Manager <em>(in Entwicklung)</em></p>
       </td>
       <td>
         <a href="/Screenshots/Befehl-und Verknüpfungsersteller.png" target="_blank">
-          <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl und Verknüpfungsersteller" width="300">
+          <img src="/Screenshots/Befehl-und Verknüpfungsersteller.png" alt="Befehl- und Verknüpfungsersteller" width="300">
         </a>
-        <p>Befehl und Verknüpfungsersteller</p>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <a href="/Screenshots/Beispiel Warnungen.png" target="_blank">
-          <img src="/Screenshots/Beispiel Warnungen.png" alt="Beispiel Warnungen" width="300">
-        </a>
-        <p>Beispiel Warnungen</p>
-      </td>
-      <td>
-        <a href="/Screenshots/Email Editor NEU.png" target="_blank">
-          <img src="/Screenshots/Email Editor NEU.png" alt="E-Mail Vorlagen Editor" width="300">
-        </a>
-        <p>E-Mail Vorlagen Editor</p>
-      </td>
-    </tr>
-    <tr>
-      <td>
-        <a href="/Screenshots/Beispiel EMail.png" target="_blank">
-          <img src="/Screenshots/Beispiel EMail.png" alt="Beispiel E-Mail" width="300">
-        </a>
-        <p>Beispiel E-Mail</p>
-      </td>
-      <td>
-        <a href="/Screenshots/Einstellungs-Editor.png" target="_blank">
-          <img src="/Screenshots/Einstellungs-Editor.png" alt="Einstellungs-Editor" width="300">
-        </a>
-        <p>Einstellungs-Editor</p>
+        <p>Befehl- und Verknüpfungsersteller</p>
       </td>
     </tr>
   </table>
