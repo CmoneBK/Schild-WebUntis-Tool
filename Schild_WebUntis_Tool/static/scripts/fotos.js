@@ -42,6 +42,11 @@ document.addEventListener("DOMContentLoaded", function () {
             // ZIP-Namen-Template vorbelegen
             const tplInput = document.getElementById("fotoZipNameTemplate");
             if (tplInput && !tplInput.value) tplInput.value = d.zip_name_template || "Fotos_{datum}";
+            // Rename-Vorlage + Unterordner vorbelegen
+            const renTpl = document.getElementById("fotoRenameTemplate");
+            if (renTpl && !renTpl.value) renTpl.value = d.rename_template || "{nachname}_{vorname}_{id}";
+            const renSub = document.getElementById("fotoRenameSubdir");
+            if (renSub && !renSub.value) renSub.value = d.rename_subdir || "Umbenannt";
 
             // Status-Checkboxen: beim ersten Laden genau die Stati ankreuzen,
             // die im aktuellen Import vorkommen (danach bleibt die Auswahl erhalten)
@@ -83,7 +88,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     ? `<button class="btn btn-xs btn-outline-success py-0 foto-restore-btn" style="font-size:0.75rem" data-filename="${f.filename}">↩️ Zurückholen</button>`
                     : '';
                 return `<tr${f.archived ? ' class="text-muted"' : ''}>
-                    <td><img src="${imgSrc}" alt="" style="max-height:42px;max-width:42px;border-radius:3px" onerror="this.style.display='none'"></td>
+                    <td><img src="${imgSrc}" alt="" class="foto-thumb"
+                             data-fullsrc="${imgSrc}" data-student="${(f.name || '').replace(/"/g,'&quot;')}"
+                             style="max-height:42px;max-width:42px;border-radius:3px;cursor:zoom-in"
+                             onerror="this.style.display='none'"
+                             title="Klicken für Vorschau"></td>
                     <td>${f.filename}</td>
                     <td>${f.id}</td>
                     <td>${f.name || '<span class="text-muted">–</span>'}</td>
@@ -160,6 +169,42 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Umbenanntes Kopieren in Unterordner
+    document.getElementById("fotoRenameCopy")?.addEventListener("click", async () => {
+        const statuses = Array.from(document.querySelectorAll(".foto-status-cb:checked")).map(cb => cb.value);
+        const template = document.getElementById("fotoRenameTemplate")?.value.trim() || null;
+        const subdir = document.getElementById("fotoRenameSubdir")?.value.trim() || null;
+        const btn = document.getElementById("fotoRenameCopy");
+        const resultEl = document.getElementById("fotoRenameResult");
+        btn.disabled = true; btn.textContent = "⌛ Kopiere…";
+        if (resultEl) resultEl.textContent = "";
+        try {
+            const r = await fetch("/api/fotos/rename-copy", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    statuses: statuses.length ? statuses : null,
+                    template, subdir,
+                }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) {
+                if (resultEl) resultEl.innerHTML = `<span class="text-danger">❌ ${d.error || r.statusText}</span>`;
+                return;
+            }
+            if (resultEl) {
+                resultEl.innerHTML = `✅ ${d.copied} Fotos kopiert nach <code>${d.target_dir}</code>`
+                    + (d.missing ? `, ${d.missing} ohne Foto übersprungen` : "")
+                    + ".";
+            }
+            if (typeof showToast === "function") showToast(`${d.copied} Foto(s) kopiert.`);
+        } catch (e) {
+            if (resultEl) resultEl.innerHTML = `<span class="text-danger">❌ Fehler: ${e}</span>`;
+        } finally {
+            btn.disabled = false; btn.textContent = "📂 Kopieren mit Umbenennung";
+        }
+    });
+
     // Verwaiste archivieren
     document.getElementById("fotoArchiveOrphans")?.addEventListener("click", async () => {
         if (!confirm("Alle Fotos von Schülern, die nicht mehr im aktuellen Import sind, in den Archiv-Ordner verschieben?")) return;
@@ -176,6 +221,17 @@ document.addEventListener("DOMContentLoaded", function () {
         } finally {
             btn.disabled = false; btn.textContent = "🗄️ Verwaiste jetzt archivieren";
         }
+    });
+
+    // Foto-Vorschau (Thumbnail anklicken → Modal)
+    document.getElementById("fotoTableBody")?.addEventListener("click", (e) => {
+        const thumb = e.target.closest(".foto-thumb");
+        if (!thumb) return;
+        const img = document.getElementById("fotoPreviewImg");
+        const label = document.getElementById("fotoPreviewModalLabel");
+        if (img) img.src = thumb.dataset.fullsrc;
+        if (label) label.textContent = "🖼️ Foto-Vorschau" + (thumb.dataset.student ? ` — ${thumb.dataset.student}` : "");
+        $('#fotoPreviewModal').modal('show');
     });
 
     // Archivierte zurückholen (Event-Delegation)

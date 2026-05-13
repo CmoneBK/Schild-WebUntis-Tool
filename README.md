@@ -407,6 +407,20 @@ In der Konsole sehen Sie den Prozess durchlaufen.
         <p>E-Mail-Vorlagen-Editor</p>
       </td>
       <td>
+        <a href="/Screenshots/Dashboard.PNG" target="_blank">
+          <img src="/Screenshots/Dashboard.PNG" alt="Dashboard" width="300">
+        </a>
+        <p>Dashboard</p>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <a href="/Screenshots/Trends.PNG" target="_blank">
+          <img src="/Screenshots/Trends.PNG" alt="Trends" width="300">
+        </a>
+        <p>Trends</p>
+      </td>
+      <td>
         <a href="/Screenshots/Historie.png" target="_blank">
           <img src="/Screenshots/Historie.png" alt="Historie" width="300">
         </a>

@@ -274,9 +274,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="card mb-3 shadow-sm border-left-info">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <span class="d-flex align-items-center">
-                            <img src="/api/fotos/image/${encodeURIComponent(item.student.id)}" alt=""
-                                 style="max-height:40px;max-width:40px;border-radius:4px;margin-right:8px;"
-                                 onerror="this.style.display='none'">
+                            <span class="d-inline-flex align-items-center justify-content-center mr-2"
+                                  style="width:56px;height:56px;border-radius:6px;background:#e9ecef;overflow:hidden;font-size:1.5rem;color:#adb5bd;flex-shrink:0;">
+                                <img src="/api/fotos/image/${encodeURIComponent(item.student.id)}" alt=""
+                                     style="max-width:56px;max-height:56px;display:block"
+                                     onerror="this.outerHTML='👤'">
+                            </span>
                             <span><strong>${item.student.name}</strong> (ID: ${item.student.id})</span>
                         </span>
                         <div>

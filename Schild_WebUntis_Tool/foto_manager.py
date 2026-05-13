@@ -46,6 +46,34 @@ def get_zip_directory():
     return config.get('Directories', 'foto_zip_directory', fallback='SchuelerFotosZips').strip() or 'SchuelerFotosZips'
 
 
+def get_rename_template():
+    """Vorlage für die Umbenennung beim Kopieren in den Unterordner."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.get('FotoOptions', 'rename_template', fallback='{nachname}_{vorname}_{id}').strip() or '{nachname}_{vorname}_{id}'
+
+
+def get_rename_subdir():
+    """Name des Unterordners für umbenannte Foto-Kopien."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.get('FotoOptions', 'rename_subdir', fallback='Umbenannt').strip() or 'Umbenannt'
+
+
+def save_rename_settings(template=None, subdir=None):
+    """Speichert Rename-Template und/oder Subdir persistent in settings.ini."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('FotoOptions'):
+        config.add_section('FotoOptions')
+    if template:
+        config.set('FotoOptions', 'rename_template', template.strip())
+    if subdir:
+        config.set('FotoOptions', 'rename_subdir', subdir.strip())
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
 def save_zip_name_template(template):
     """Speichert die ZIP-Namen-Vorlage persistent in settings.ini."""
     template = (template or '').strip()
@@ -216,6 +244,75 @@ def archive_orphan_fotos(current_student_ids, foto_dir=None):
             except Exception:
                 pass
     return moved
+
+
+def _safe_filename_part(s):
+    """Macht einen Wert dateinamen-tauglich (verbotene Zeichen entfernen)."""
+    s = str(s or '').strip()
+    s = re.sub(r'[<>:"/\\|?*\r\n\t]', '_', s)
+    s = re.sub(r'\s+', ' ', s)
+    return s
+
+
+def render_rename_template(template, student):
+    """Ersetzt Platzhalter im Rename-Template anhand der Schüler-Daten.
+    Platzhalter: {id}, {vorname}, {nachname}, {klasse}, {status}, {geschlecht}, {geburtsdatum}."""
+    repl = {
+        'id':           student.get('Interne ID-Nummer', ''),
+        'vorname':      student.get('Vorname', ''),
+        'nachname':     student.get('Nachname', ''),
+        'klasse':       student.get('Klasse', ''),
+        'status':       student.get('Status', ''),
+        'geschlecht':   student.get('Geschlecht', ''),
+        'geburtsdatum': student.get('Geburtsdatum', ''),
+    }
+    name = template
+    for k, v in repl.items():
+        name = name.replace('{' + k + '}', _safe_filename_part(v))
+    return _safe_filename_part(name)
+
+
+def copy_renamed_fotos(students_data, foto_dir=None, template=None, target_subdir=None):
+    """
+    Kopiert die Fotos aller Schüler aus students_data (Liste von Dicts) in einen
+    Unterordner des foto_directory und benennt sie nach dem Template um.
+    Liefert (zielverzeichnis, kopiert, fehlend).
+    """
+    import shutil
+    foto_dir = foto_dir or get_foto_directory()
+    template = template or get_rename_template()
+    target_subdir = (target_subdir or get_rename_subdir()).strip() or 'Umbenannt'
+
+    target_dir = os.path.join(foto_dir, target_subdir)
+    os.makedirs(target_dir, exist_ok=True)
+
+    copied, missing = 0, 0
+    for student in students_data:
+        sid = str(student.get('Interne ID-Nummer', '')).strip()
+        if not sid:
+            continue
+        src = get_foto_path(sid, foto_dir)
+        if not src or not os.path.isfile(src):
+            missing += 1
+            continue
+        ext = os.path.splitext(src)[1].lower()
+        base = render_rename_template(template, student) or sid
+        dst = os.path.join(target_dir, base + ext)
+        # Konfliktauflösung mit _1, _2, …
+        if os.path.exists(dst):
+            counter = 1
+            while True:
+                candidate = os.path.join(target_dir, f"{base}_{counter}{ext}")
+                if not os.path.exists(candidate):
+                    dst = candidate
+                    break
+                counter += 1
+        try:
+            shutil.copy2(src, dst)
+            copied += 1
+        except Exception:
+            missing += 1
+    return target_dir, copied, missing
 
 
 def restore_archived_foto(filename, foto_dir=None):

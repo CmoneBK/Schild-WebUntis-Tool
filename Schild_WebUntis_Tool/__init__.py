@@ -251,6 +251,10 @@ foto_zip_directory = {default_foto_zip_directory}
 # Vorlage fuer den ZIP-Dateinamen beim Foto-Export.
 # Platzhalter: {{datum}} {{datetime}} {{zeit}} {{jahr}} {{monat}} {{tag}}
 zip_name_template = Fotos_{{datum}}
+# Vorlage fuer das Umbenennen beim Kopieren in den Unterordner.
+# Platzhalter: {{id}} {{vorname}} {{nachname}} {{klasse}} {{status}} {{geschlecht}} {{geburtsdatum}}
+rename_template = {{nachname}}_{{vorname}}_{{id}}
+rename_subdir = Umbenannt
 
 [ProcessingOptions]
 use_abschlussdatum = False
@@ -413,6 +417,12 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             if not config.has_option('FotoOptions', 'zip_name_template'):
                 config.set('FotoOptions', 'zip_name_template', 'Fotos_{datum}')
+                updated = True
+            if not config.has_option('FotoOptions', 'rename_template'):
+                config.set('FotoOptions', 'rename_template', '{nachname}_{vorname}_{id}')
+                updated = True
+            if not config.has_option('FotoOptions', 'rename_subdir'):
+                config.set('FotoOptions', 'rename_subdir', 'Umbenannt')
                 updated = True
 
             if updated:
@@ -1290,6 +1300,8 @@ def fotos_list():
     return jsonify({
         'foto_directory': foto_manager.get_foto_directory(),
         'zip_name_template': foto_manager.get_zip_name_template(),
+        'rename_template': foto_manager.get_rename_template(),
+        'rename_subdir': foto_manager.get_rename_subdir(),
         'fotos': out,
         'student_count': len(students_by_id),
         'present_statuses': present_statuses,
@@ -1370,6 +1382,51 @@ def fotos_zip_download():
         as_attachment=True,
         download_name=last_foto_zip['name'],
     )
+
+
+@app.route('/api/fotos/rename-copy', methods=['POST'])
+def fotos_rename_copy():
+    """Kopiert die Fotos der passenden Schüler umbenannt in einen Unterordner.
+       Body: {statuses: [..] | null, template: str | null, subdir: str | null}."""
+    import foto_manager
+    data = request.json or {}
+    statuses = data.get('statuses')
+    template = (data.get('template') or '').strip() or None
+    subdir = (data.get('subdir') or '').strip() or None
+
+    # Vorlage + Unterordner persistent speichern
+    if template or subdir:
+        try:
+            foto_manager.save_rename_settings(template=template, subdir=subdir)
+        except Exception:
+            pass
+
+    status_by_id, students_by_id = _current_students_with_status()
+    if statuses:
+        wanted = {str(s).strip() for s in statuses}
+        students_list = [s for sid, s in students_by_id.items() if status_by_id.get(sid) in wanted]
+    else:
+        students_list = list(students_by_id.values())
+
+    if not students_list:
+        return jsonify({"error": "Keine passenden Schüler gefunden."}), 400
+
+    try:
+        target_dir, copied, missing = foto_manager.copy_renamed_fotos(
+            students_list, template=template, target_subdir=subdir)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Kopieren: {e}"}), 500
+
+    if copied == 0:
+        return jsonify({"error": f"Keine Fotos kopiert (0 von {len(students_list)} Schülern haben ein Foto)."}), 400
+
+    return jsonify({
+        "success": True,
+        "target_dir": target_dir,
+        "copied": copied,
+        "missing": missing,
+        "total": len(students_list),
+    })
 
 
 @app.route('/api/fotos/archive', methods=['POST'])

@@ -764,6 +764,30 @@
                         </div>
                     </div>
 
+                    <!-- Umbenanntes Kopieren in Unterordner -->
+                    <div class="card mb-3">
+                        <div class="card-header py-2"><strong>📂 Fotos umbenannt in Unterordner kopieren</strong></div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-2">
+                                Kopiert die Fotos der ausgewählten Schüler (gleiche Status-Auswahl wie oben) mit einem konfigurierbaren Dateinamen-Schema
+                                in einen Unterordner des Foto-Verzeichnisses. Nützlich, wenn Sie die Fotos außerhalb des Tools mit Klartextnamen benötigen.
+                            </p>
+                            <div class="form-row">
+                                <div class="form-group col-md-8 mb-2">
+                                    <label for="fotoRenameTemplate" class="mb-1">Dateinamen-Vorlage (Platzhalter: <code>{id}</code> <code>{vorname}</code> <code>{nachname}</code> <code>{klasse}</code> <code>{status}</code> <code>{geschlecht}</code> <code>{geburtsdatum}</code>):</label>
+                                    <input type="text" class="form-control" id="fotoRenameTemplate" placeholder="{nachname}_{vorname}_{id}">
+                                </div>
+                                <div class="form-group col-md-4 mb-2">
+                                    <label for="fotoRenameSubdir" class="mb-1">Unterordner-Name:</label>
+                                    <input type="text" class="form-control" id="fotoRenameSubdir" placeholder="Umbenannt">
+                                </div>
+                            </div>
+                            <button id="fotoRenameCopy" type="button" class="btn btn-primary">📂 Kopieren mit Umbenennung</button>
+                            <span id="fotoRenameResult" class="ml-2 text-muted small"></span>
+                            <small class="form-text text-muted">Vorlage und Unterordner werden beim Kopieren als Standard gespeichert. Bei Namenskonflikten wird automatisch <code>_1</code>, <code>_2</code> … angehängt.</small>
+                        </div>
+                    </div>
+
                     <!-- Verwaiste archivieren -->
                     <div class="card mb-3">
                         <div class="card-header py-2"><strong>🗄️ Verwaiste Fotos archivieren</strong></div>
@@ -793,6 +817,23 @@
                             </thead>
                             <tbody id="fotoTableBody"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Foto-Vorschau-Modal -->
+        <div class="modal fade" id="fotoPreviewModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h6 class="modal-title" id="fotoPreviewModalLabel">🖼️ Foto-Vorschau</h6>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Schließen">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body text-center" style="background:#1a1a1a;">
+                        <img id="fotoPreviewImg" src="" alt="Foto-Vorschau" style="max-width:100%;max-height:75vh;display:block;margin:0 auto;">
                     </div>
                 </div>
             </div>
