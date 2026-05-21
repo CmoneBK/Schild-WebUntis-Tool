@@ -310,6 +310,47 @@
     <!-- Toast Container for Notifications -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- Inline-Hilfe: Einzelner Eintrag -->
+    <div class="modal fade" id="helpModal" tabindex="-1" role="dialog" aria-labelledby="helpModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="helpModalTitle">Hilfe</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Schließen">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="helpModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-info mr-auto" id="helpModalOpenGlossar">📚 Alle Hilfe-Themen</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inline-Hilfe: Glossar (alle Einträge) -->
+    <div class="modal fade" id="helpGlossarModal" tabindex="-1" role="dialog" aria-labelledby="helpGlossarTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="helpGlossarTitle">📚 Alle Hilfe-Themen</h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Schließen">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" class="form-control mb-3" id="helpGlossarSearch" placeholder="🔍 Suchen (Titel oder Inhalt)…">
+                    <div id="helpGlossarList"></div>
+                    <p class="text-center text-muted small mt-3 mb-0" id="helpGlossarEmpty" style="display:none;">Keine Treffer.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Log Viewer Modal -->
     <div class="modal fade" id="logViewerModal" tabindex="-1" role="dialog" aria-labelledby="logViewerModalLabel"
         aria-hidden="true">
@@ -355,6 +396,7 @@
     <script src="{{ url_for('static', filename='scripts/main.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts/shortcut_creator.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts/fotos.js') }}"></script>
+    <script src="{{ url_for('static', filename='scripts/help.js') }}"></script>
     <script src="{{ url_for('static', filename='scripts/app.js') }}"></script>
 
     {% if not no_directory_change %}

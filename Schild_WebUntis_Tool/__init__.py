@@ -1266,6 +1266,25 @@ def list_schild_abschnitte():
     except Exception as e:
         return jsonify({"success": False, "message": f"Fehler: {e}", "abschnitte": []})
 
+# ====================== Inline-Hilfe ======================
+
+@app.route('/api/help/<key>', methods=['GET'])
+def api_help_single(key):
+    """Liefert einen einzelnen Hilfe-Eintrag."""
+    import help_content
+    entry = help_content.get_help(key)
+    if not entry:
+        return jsonify({"error": f"Hilfe-Eintrag '{key}' nicht gefunden."}), 404
+    return jsonify({"key": key, **entry})
+
+
+@app.route('/api/help', methods=['GET'])
+def api_help_all():
+    """Liefert alle Hilfe-Einträge (für den Glossar-Modus)."""
+    import help_content
+    return jsonify(help_content.get_all_help())
+
+
 # ====================== Foto-Verwaltung ======================
 
 def _current_students_with_status():

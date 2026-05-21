@@ -10,13 +10,17 @@
                 <h1 class="ml-3 mb-0">Schild-WebUntis-Tool</h1>
             </div>
 
-            <!-- Dark Mode Toggle -->
-            <button id="darkModeToggle" class="btn btn-outline-secondary">🌙 Dark Mode</button>
+            <!-- Dark Mode Toggle + Hilfe-Glossar -->
+            <div>
+                <button id="openHelpGlossar" type="button" class="btn btn-outline-info" title="Alle Hilfe-Themen anzeigen">📚 Hilfe</button>
+                <button id="darkModeToggle" class="btn btn-outline-secondary ml-2">🌙 Dark Mode</button>
+            </div>
         </div>
 
         <div class="card mt-4">
             <div class="card-header bg-primary text-white">
                 Hauptbereich (und Einstellungen für die aktuelle Ausführung)
+                <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="general_workflow" title="Hilfe zur Verarbeitung" style="font-size:1rem;line-height:1;">ℹ️</button>
             </div>
             <div class="card-body">
                 <form method="post">
@@ -220,7 +224,9 @@
                 <!-- Navigation Grid -->
                 <div class="row">
                     <div class="col-12">
-                        <h6 class="text-muted mb-3">📊 Analyse & Übersicht</h6>
+                        <h6 class="text-muted mb-3">📊 Analyse & Übersicht
+                            <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="navigation_overview" title="Was finde ich wo?">ℹ️</button>
+                        </h6>
                     </div>
                     <div class="col-md-3 mb-2">
                         <button id="toggleDashboard" class="btn btn-primary w-100 shadow-sm">
@@ -357,6 +363,7 @@
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
                     📊 Dashboard & Analyse
+                    <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="dashboard_overview" title="Hilfe zum Dashboard" style="font-size:1rem;line-height:1;">ℹ️</button>
                 </div>
                 <div class="card-body">
                     <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
@@ -653,7 +660,9 @@
         <div id="infoMailPanel" class="mt-4" style="display: none;">
             <div class="card shadow border-info">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                    <span>ℹ️ Info-Mails (Feldänderungen benachrichtigen)</span>
+                    <span>ℹ️ Info-Mails (Feldänderungen benachrichtigen)
+                        <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="info_mails" title="Hilfe zu Info-Mails" style="font-size:1rem;line-height:1;">ℹ️</button>
+                    </span>
                     <div class="btn-group">
                         <button id="btnGenerateInfoMails" type="button" class="btn btn-light btn-sm">✍ Generieren</button>
                         <button id="btnSendInfoMails" type="button" class="btn btn-success btn-sm ml-1">📨 Senden</button>
@@ -725,7 +734,9 @@
         <div id="fotoPanel" class="mt-4" style="display: none;">
             <div class="card shadow border-dark">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                    <span>🖼️ Fotos managen</span>
+                    <span>🖼️ Fotos managen
+                        <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="foto_export" title="Hilfe zur Foto-Verwaltung" style="font-size:1rem;line-height:1;">ℹ️</button>
+                    </span>
                     <button id="fotoReload" type="button" class="btn btn-light btn-sm">🔄 Aktualisieren</button>
                 </div>
                 <div class="card-body">
@@ -735,7 +746,9 @@
 
                     <!-- ZIP-Export -->
                     <div class="card mb-3">
-                        <div class="card-header py-2"><strong>📦 Fotos als ZIP für WebUntis-Import</strong></div>
+                        <div class="card-header py-2"><strong>📦 Fotos als ZIP für WebUntis-Import</strong>
+                            <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="foto_zip" title="Hilfe">ℹ️</button>
+                        </div>
                         <div class="card-body">
                             <p class="text-muted small mb-2">
                                 Standardmäßig werden die Fotos aller Schüler im aktuellen Import gepackt.
@@ -766,7 +779,9 @@
 
                     <!-- Umbenanntes Kopieren in Unterordner -->
                     <div class="card mb-3">
-                        <div class="card-header py-2"><strong>📂 Fotos umbenannt in Unterordner kopieren</strong></div>
+                        <div class="card-header py-2"><strong>📂 Fotos umbenannt in Unterordner kopieren</strong>
+                            <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="foto_rename" title="Hilfe">ℹ️</button>
+                        </div>
                         <div class="card-body">
                             <p class="text-muted small mb-2">
                                 Kopiert die Fotos der ausgewählten Schüler (gleiche Status-Auswahl wie oben) mit einem konfigurierbaren Dateinamen-Schema
@@ -924,7 +939,9 @@
 
                         <!-- Klassendatenverzeichnis -->
                         <div class="form-group schild-api-replaceable">
-                            <label for="classes_directory">🏫 Klassendatenverzeichnis:</label>
+                            <label for="classes_directory">🏫 Klassendatenverzeichnis:
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="klassen_csv" title="Hilfe">ℹ️</button>
+                            </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="classes_directory" name="classes_directory"
                                     readonly>
@@ -938,7 +955,9 @@
 
                         <!-- Lehrerdatenverzeichnis -->
                         <div class="form-group schild-api-replaceable">
-                            <label for="teachers_directory">🧑‍🏫 Lehrerdatenverzeichnis:</label>
+                            <label for="teachers_directory">🧑‍🏫 Lehrerdatenverzeichnis:
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="lehrer_csv" title="Hilfe">ℹ️</button>
+                            </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="teachers_directory"
                                     name="teachers_directory" readonly>
@@ -952,7 +971,9 @@
 
                         <!-- Schild Exporte -->
                         <div class="form-group schild-api-replaceable">
-                            <label for="schildexport_directory">🟦📥 Schild Exporte:</label>
+                            <label for="schildexport_directory">🟦📥 Schild Exporte:
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="schild_export" title="Hilfe">ℹ️</button>
+                            </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="schildexport_directory"
                                     name="schildexport_directory" readonly>
@@ -966,7 +987,9 @@
 
                         <!-- Attestpflicht-Datei-Verzeichnis -->
                         <div class="form-group schild-api-attest-block">
-                            <label for="attest_file_directory">📑 Attestpflicht-Datei-Verzeichnis:</label>
+                            <label for="attest_file_directory">📑 Attestpflicht-Datei-Verzeichnis:
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="attest_export" title="Hilfe">ℹ️</button>
+                            </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="attest_file_directory"
                                     name="attest_file_directory" readonly>
@@ -982,6 +1005,7 @@
                         <!-- Nachteilsausgleich-Verzeichnis -->
                         <div class="form-group schild-api-nachteil-block">
                             <label for="nachteilsausgleich_file_directory">♿ Nachteilsausgleich-Datei-Verzeichnis:
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="nachteil_export" title="Hilfe">ℹ️</button>
                             </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="nachteilsausgleich_file_directory"
@@ -1006,6 +1030,7 @@
                         <!-- Nachteilsausgleich-Arbeitsdatei-Verzeichnis -->
                         <div class="form-group">
                             <label for="nachteilsausgleich_excel_directory">📋 Nachteilsausgleich-Arbeitsdatei-Verzeichnis:
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="sopaed_workflow" title="Hilfe">ℹ️</button>
                             </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="nachteilsausgleich_excel_directory"
@@ -1020,7 +1045,9 @@
 
                         <!-- Foto-Verzeichnis -->
                         <div class="form-group">
-                            <label for="foto_directory">🖼️ Foto-Verzeichnis:</label>
+                            <label for="foto_directory">🖼️ Foto-Verzeichnis:
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="foto_export" title="Hilfe">ℹ️</button>
+                            </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="foto_directory"
                                     name="foto_directory" readonly>
@@ -1081,7 +1108,9 @@
 
                         <!-- WebUntis Importe -->
                         <div class="form-group">
-                            <label for="import_directory">🟧📤 WebUntis Importe:</label>
+                            <label for="import_directory">🟧📤 WebUntis Importe:
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="webuntis_import" title="Hilfe">ℹ️</button>
+                            </label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="import_directory" name="import_directory"
                                     readonly>
@@ -1342,6 +1371,7 @@
                         <div class="alert alert-info py-2" style="font-size:0.9rem;">
                             <strong>Hinweis:</strong> Die SVWS-API steht erst <strong>ab Schild 3.x</strong> zur Verfügung.
                             Wenn aktiv, ersetzt sie den CSV-Import: Schüler-, Klassen- und Lehrerdaten werden direkt vom SVWS-Server gelesen.
+                            <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="schild_api_setup" title="Vollständige Einrichtungs-Anleitung">ℹ️ Anleitung</button>
                             Schild 2-Nutzer lassen die Option auf <em>Nein</em>.
                         </div>
                         <div class="form-group">
@@ -1416,7 +1446,9 @@
                             <input type="hidden" id="schild_api_allowed_statuses" name="schild_api_allowed_statuses">
                         </div>
                         <hr>
-                        <h6 class="mb-2">📑 Quellen für Attestpflicht / Nachteilsausgleich</h6>
+                        <h6 class="mb-2">📑 Quellen für Attestpflicht / Nachteilsausgleich
+                            <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="vermerkart_naming" title="Hilfe">ℹ️</button>
+                        </h6>
                         <p class="text-muted small mb-2">
                             Wählen Sie pro Vermerk, woher die Liste der betroffenen Schüler kommen soll:
                             <strong>CSV-Datei</strong> (Voraussetzungen Punkt 4 / 5) oder direkt vom <strong>SVWS-Server</strong>
