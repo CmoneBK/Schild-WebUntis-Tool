@@ -19,9 +19,13 @@ HELP_CONTENT = {
     # ALLGEMEIN
     # =====================================================================
     "general_workflow": {
-        "title": "🔄 Wie funktioniert die Verarbeitung?",
+        "title": "🔄 Hauptbereich — Verarbeitung, Mails, Fotos",
         "html": """
-<p>Bei einem Klick auf <strong>▶️ Verarbeiten</strong> passiert Folgendes:</p>
+<p>Der Hauptbereich oben enthält die wichtigsten Aktionen für den täglichen Ablauf.
+Hier ein Überblick, was die einzelnen Buttons tun:</p>
+
+<h6>▶️ Verarbeiten <em>(Hauptfunktion)</em></h6>
+<p>Bei einem Klick passiert Folgendes:</p>
 <ol>
   <li>Das Tool sucht die <strong>neueste CSV-Datei</strong> im Schild-Export-Verzeichnis
       (oder, falls aktiv, ruft die Daten direkt vom SVWS-Server ab).</li>
@@ -32,13 +36,47 @@ HELP_CONTENT = {
   <li>Die fertige WebUntis-Import-CSV wird mit Datum/Uhrzeit-Stempel im
       Import-Verzeichnis gespeichert.</li>
   <li>Der neue Import wird mit dem zuletzt erstellten verglichen — Änderungen werden
-      als Log-Datei (Plaintext + Excel) protokolliert und ggf. in der Historie gespeichert.</li>
+      als Log-Datei (Plaintext + Excel) protokolliert und in der Historie gespeichert.</li>
   <li>Bei kritischen Änderungen (Entlassdatum, Klassenwechsel, neue Schüler, …) werden
-      Warnungen erzeugt, die per E-Mail an Klassenlehrkräfte verschickt werden können.</li>
+      Warnungen erzeugt, die anschließend per E-Mail verschickt werden können.</li>
 </ol>
-<p><strong>Tipp:</strong> Mit <em>🔍 Dateien prüfen</em> können Sie vor der Verarbeitung
-checken, ob alle Eingabedateien korrekt sind. Mit <em>ℹ️ Info-Mails</em> lassen sich
-gezielt Lehrkräfte über bestimmte Feldänderungen informieren.</p>
+
+<h6>🔍 Dateien prüfen</h6>
+<p>Vorab-Validierung der Eingabedateien <strong>bevor</strong> die eigentliche Verarbeitung
+gestartet wird. Geprüft werden: fehlende Pflichtspalten, falsche Trennzeichen, leere
+Verzeichnisse. So sehen Sie sofort, ob mit einem Schild-Export etwas nicht stimmt —
+ohne dass schon ein fehlerhafter WebUntis-Import erzeugt wird.</p>
+
+<h6>✍ Emails Generieren / 📨 Emails Senden</h6>
+<p>Nach dem Verarbeiten werden ggf. <strong>Warnungs-Mails</strong> für Klassenlehrkräfte
+vorbereitet (z.B. bei Klassenwechseln, Entlassdatum-Problemen, neuen Schülern).</p>
+<ul>
+  <li><strong>Emails Generieren</strong> erzeugt die Mails (noch nicht verschickt) und
+      zeigt eine Vorschau-Liste an. Vorlagen lassen sich im
+      <em>Email-Vorlagen Editor</em> anpassen.</li>
+  <li><strong>Emails Senden</strong> verschickt die zuvor generierten Mails über den
+      konfigurierten SMTP-Server.</li>
+</ul>
+<p>Dieser Zwei-Schritt-Prozess gibt Ihnen die Gelegenheit, vor dem Versand nochmal
+zu prüfen, an wen welche Mail geht.</p>
+
+<h6>🖼️ Fotos managen</h6>
+<p>Öffnet den Foto-Verwaltungs-Bereich (Button rechts in der Zeile):</p>
+<ul>
+  <li><strong>Übersicht</strong> aller Schüler-Fotos im Foto-Verzeichnis mit
+      Thumbnail-Vorschau und Schüler-Zuordnung.</li>
+  <li><strong>ZIP-Export</strong> für den WebUntis-Foto-Import (optional nach
+      Schild-Status gefiltert).</li>
+  <li><strong>Umbenanntes Kopieren</strong> in einen Unterordner mit lesbaren Namen.</li>
+  <li><strong>Verwaiste archivieren</strong>: Fotos von Schülern, die nicht mehr im
+      Import sind, in einen <code>Archiv</code>-Unterordner verschieben.</li>
+</ul>
+
+<h6>Verarbeitungseinstellungen <em>(Checkboxen oben)</em></h6>
+<p>Die Optionen <em>„Benutze Vorrauss. Abschlussdatum als Entlassdatum"</em>,
+<em>„Attestpflicht-Spalte"</em>, <em>„Nachteilsausgleich-Spalte"</em> und die
+Warnungs-Schalter wirken jeweils <strong>für den nächsten Lauf</strong>. Dauerhaft
+können sie in den <em>⚙️ Einstellungen</em> gesetzt werden.</p>
 """,
     },
 
@@ -607,35 +645,46 @@ manuelle Aktion nötig.</p>
     # NAVIGATION
     # =====================================================================
     "navigation_overview": {
-        "title": "🧭 Module & Navigation",
+        "title": "🎮 Navigation & Module",
         "html": """
-<p>Im Hauptbereich oben finden Sie die Navigation zu allen Modulen des Tools.
-Hier ein kurzer Überblick, was sich wo verbirgt:</p>
+<p>Im Bereich <em>„🎮 Navigation & Module"</em> finden Sie die Buttons zu allen
+weiteren Modulen des Tools. Hier ein Überblick, was sich wo verbirgt:</p>
 
+<h6>📊 Analyse & Übersicht</h6>
 <ul>
-  <li><strong>▶️ Verarbeiten</strong> — Hauptfunktion: Schild-Daten in WebUntis-Format umwandeln,
-      vergleichen, Warnungen erzeugen.</li>
-  <li><strong>🔍 Dateien prüfen</strong> — Vorab-Validierung der Eingabedateien (Pflichtspalten,
-      Trennzeichen, leere Verzeichnisse).</li>
-  <li><strong>✍ Emails Generieren / 📨 Senden</strong> — Warnungs-Mails an Klassenlehrkräfte.</li>
-  <li><strong>🖼️ Fotos managen</strong> (rechts) — Schüler-Fotos: Übersicht, ZIP-Export für
-      WebUntis, Archivierung, umbenanntes Kopieren.</li>
-  <li><strong>📊 Dashboard</strong> — Statistiken, Trends, Klassen-Auswertungen, Schülerhistorie.</li>
-  <li><strong>📜 Historie</strong> — Logs und Excel-Logs vergangener Importe einsehen.</li>
+  <li><strong>📊 Dashboard</strong> — Statistiken, Trends, Klassen-Auswertungen und
+      Schülerhistorie. Zeigt u.a. Klassen-Hotspots, Verlaufstrends mit Diagrammen
+      und eine Suchfunktion mit Foto-Anzeige des Schülers.</li>
+  <li><strong>📜 Historie</strong> — Direktzugriff auf Logs und Excel-Logs vergangener
+      Importe (Plaintext + Excel, in den konfigurierten Log-Verzeichnissen).</li>
   <li><strong>⚠️ Warnungen</strong> — Aktuelle Warnungen aus dem letzten Lauf
       (öffnet sich automatisch, wenn welche vorliegen).</li>
-  <li><strong>ℹ️ Info-Mails</strong> — Lehrkräfte über Änderungen an wählbaren
-      Schülerfeldern informieren.</li>
-  <li><strong>📢 Admin-Check</strong> — Veraltete Klassen-/Lehrerdaten gegen den aktuellen
-      Schild-Stand prüfen.</li>
-  <li><strong>⬆️ Upload</strong> (falls aktiviert) — Server-Modus: Dateien direkt über
-      den Browser hochladen.</li>
-  <li><strong>⚙️ Einstellungen</strong> — Verzeichnisse, Verarbeitungseinstellungen, SMTP,
-      Schild-API, OAuth, Admin-Kontakt, etc.</li>
-  <li><strong>✉️ Email-Vorlagen Editor</strong> — WYSIWYG-Editor für alle Mail-Vorlagen.</li>
-  <li><strong>#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool</strong> — Generiert Verknüpfungen
-      und CMD-Befehle für Doppelklick-Automatisierung (auch ohne Browser).</li>
+  <li><strong>ℹ️ Info-Mails</strong> — Lehrkräfte über Änderungen an frei wählbaren
+      Schülerfeldern (Nachteilsausgleich, Attestpflicht, Telefonnummer, …)
+      automatisiert informieren.</li>
+  <li><strong>📢 Admin-Check</strong> — Prüft, ob in den Schild-Daten Klassen oder
+      Klassenlehrkräfte auftauchen, die in den Klassen-/Lehrkräftedateien noch
+      nicht eingepflegt sind. Hinweis auf nötige Aktualisierungen.</li>
 </ul>
+
+<h6>🛠️ Konfiguration & Bedienung</h6>
+<ul>
+  <li><strong>⚙️ Einstellungen</strong> — Alle dauerhaften Einstellungen: Verzeichnisse
+      (Quelldaten, Arbeit, Ausgabe), Verarbeitungs-Defaults, SMTP, Schild-API,
+      OAuth, Admin-Kontakt, etc.</li>
+  <li><strong>✉️ Email-Vorlagen Editor</strong> — WYSIWYG-Editor für alle Mail-Vorlagen
+      (Warnungs-Mails, Info-Mails). Mit Schlüssel-Info-Tab für alle verfügbaren
+      Platzhalter.</li>
+  <li><strong>#️⃣🔗 Befehl- und Verknüpfungs-Erstelltool</strong> — Generiert Windows-Verknüpfungen
+      und CMD-Befehle, die per Doppelklick gewählte Prozesse automatisch ausführen
+      (auch ohne den Browser zu öffnen).</li>
+  <li><strong>⬆️ Upload</strong> <em>(nur wenn aktiviert)</em> — Server-Modus: Dateien
+      direkt über den Browser in die Verzeichnisse hochladen, ohne Datei-System-Zugriff.</li>
+</ul>
+
+<p><strong>Hinweis:</strong> Die <em>Hauptbereich-Funktionen</em> (Verarbeiten, Dateien
+prüfen, E-Mails, Fotos managen) sind oben über dem Navigationsbereich zu finden —
+mit eigener Hilfe (ℹ️-Button neben den Action-Buttons).</p>
 """,
     },
 }

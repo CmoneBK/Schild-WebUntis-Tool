@@ -20,7 +20,6 @@
         <div class="card mt-4">
             <div class="card-header bg-primary text-white">
                 Hauptbereich (und Einstellungen für die aktuelle Ausführung)
-                <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="general_workflow" title="Hilfe zur Verarbeitung" style="font-size:1rem;line-height:1;">ℹ️</button>
             </div>
             <div class="card-body">
                 <form method="post">
@@ -137,6 +136,7 @@
                             <button id="validateImports" type="button" class="btn btn-secondary ml-2">🔍 Dateien prüfen</button>
                             <button id="generateEmails" type="button" class="btn btn-info ml-2">✍ Emails Generieren</button>
                             <button id="sendEmails" type="button" class="btn btn-success ml-2">📨 Emails Senden</button>
+                            <button type="button" class="help-btn btn btn-outline-info ml-2" data-help="general_workflow" title="Hilfe zum Hauptbereich">ℹ️</button>
                         </div>
                         <button id="toggleFotoPanel" type="button" class="btn btn-dark float-right">🖼️ Fotos managen</button>
                     </div>
@@ -219,14 +219,13 @@
         <div class="card shadow mt-4 mb-5">
             <div class="card-header bg-primary text-white">
                 🎮 Navigation & Module
+                <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="navigation_overview" title="Was finde ich wo?" style="font-size:1rem;line-height:1;">ℹ️</button>
             </div>
             <div class="card-body">
                 <!-- Navigation Grid -->
                 <div class="row">
                     <div class="col-12">
-                        <h6 class="text-muted mb-3">📊 Analyse & Übersicht
-                            <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="navigation_overview" title="Was finde ich wo?">ℹ️</button>
-                        </h6>
+                        <h6 class="text-muted mb-3">📊 Analyse & Übersicht</h6>
                     </div>
                     <div class="col-md-3 mb-2">
                         <button id="toggleDashboard" class="btn btn-primary w-100 shadow-sm">
