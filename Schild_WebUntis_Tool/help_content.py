@@ -431,6 +431,161 @@ weiterhin die CSV-Variante verwendet werden.</p>
     # =====================================================================
     # INFO-MAILS
     # =====================================================================
+    "warnungen": {
+        "title": "⚠️ Warnungen — wann und warum?",
+        "html": """
+<p>Das Tool erkennt fünf typische Situationen, die in WebUntis zu Inkonsistenzen
+führen können. Klicken Sie auf eine Szene, um Details und die Wirkung auf den
+„Zeitstrahl" zu sehen.</p>
+
+<style>
+.warn-timeline { position:relative; height:64px; margin:14px 0 4px; }
+.warn-axis { position:absolute; left:0; right:0; top:32px; height:2px; background:#adb5bd; }
+.warn-axis::before, .warn-axis::after { content:''; position:absolute; top:-4px; width:2px; height:10px; background:#adb5bd; }
+.warn-axis::before { left:4%; }
+.warn-axis::after  { right:4%; }
+.warn-axis-label { position:absolute; top:42px; font-size:0.72rem; color:#6c757d; }
+.warn-axis-label.left  { left:1%;  }
+.warn-axis-label.right { right:1%; text-align:right; }
+.warn-marker { position:absolute; top:18px; width:14px; height:14px; border-radius:50%;
+               box-shadow:0 0 0 3px #fff, 0 0 0 4px rgba(0,0,0,0.15); transform:translateX(-50%); }
+.warn-marker.now { background:#0d6efd; top:24px; width:8px; height:32px; border-radius:2px; }
+.warn-marker.old { background:#dc3545; }
+.warn-marker.new { background:#198754; }
+.warn-arrow { position:absolute; top:25px; height:2px; background:#fd7e14; transform:translateX(0); }
+.warn-arrow::after { content:'▶'; position:absolute; right:-4px; top:-8px; color:#fd7e14; font-size:10px; }
+.warn-gap { position:absolute; top:14px; height:20px; background:rgba(220,53,69,0.15);
+            border:1px dashed #dc3545; border-radius:3px; }
+.warn-gap-label { position:absolute; top:-2px; font-size:0.7rem; color:#dc3545; font-weight:bold; white-space:nowrap; }
+details.warn-case { margin-bottom:10px; border-left:4px solid #fd7e14; padding-left:10px; }
+details.warn-case[open] { background:#fff8f0; }
+details.warn-case > summary { cursor:pointer; font-weight:600; padding:6px 0; outline:none; }
+details.warn-case > summary::-webkit-details-marker { display:none; }
+details.warn-case > summary::before { content:'▶ '; color:#fd7e14; font-size:0.8rem; margin-right:4px; }
+details.warn-case[open] > summary::before { content:'▼ '; }
+.warn-legend { font-size:0.78rem; color:#6c757d; margin-top:4px; }
+.warn-legend .dot { display:inline-block; width:10px; height:10px; border-radius:50%; vertical-align:middle; margin:0 4px 2px 8px; }
+.warn-legend .dot.now { background:#0d6efd; border-radius:2px; height:14px; width:4px; }
+.warn-legend .dot.old { background:#dc3545; }
+.warn-legend .dot.new { background:#198754; }
+body.dark-mode details.warn-case[open] { background:#3a2a14; }
+body.dark-mode .warn-axis-label { color:#adb5bd; }
+</style>
+
+<p class="warn-legend">
+  Legende:
+  <span class="dot now"></span>Heute
+  <span class="dot old"></span>Alter Wert
+  <span class="dot new"></span>Neuer Wert
+  <span style="color:#dc3545;border:1px dashed #dc3545;padding:0 4px;margin-left:8px;font-size:0.75rem;">Dokumentationslücke</span>
+</p>
+
+<!-- ===== 1. Entlassdatum in die Zukunft ===== -->
+<details class="warn-case">
+  <summary>📅 Entlassdatum in die Zukunft verschoben</summary>
+  <div class="warn-timeline">
+    <div class="warn-axis"></div>
+    <span class="warn-axis-label left">Schuljahres-Beginn</span>
+    <span class="warn-axis-label right">Schuljahres-Ende</span>
+    <div class="warn-marker old" style="left:35%" title="Altes Entlassdatum"></div>
+    <div class="warn-marker now" style="left:55%" title="Heute"></div>
+    <div class="warn-marker new" style="left:75%" title="Neues Entlassdatum"></div>
+    <div class="warn-arrow" style="left:35%;width:40%"></div>
+    <div class="warn-gap" style="left:35%;width:20%">
+      <span class="warn-gap-label">Lücke: alt → heute nicht dokumentiert</span>
+    </div>
+  </div>
+  <p><strong>Was ist passiert?</strong> Das Entlassdatum eines Schülers wurde nach hinten verschoben
+  (z.B. von April auf Juni). Lag das alte Entlassdatum vor heute, war der Schüler in
+  WebUntis bereits „entlassen" — der Zeitraum bis heute ist dort nicht dokumentiert.</p>
+  <p><strong>Folge:</strong> In WebUntis muss der Schüler manuell wieder „aufgenommen" werden,
+  damit die fehlenden Tage korrekt dokumentiert werden können.</p>
+</details>
+
+<!-- ===== 2. Aufnahmedatum in die Vergangenheit ===== -->
+<details class="warn-case">
+  <summary>📅 Aufnahmedatum in die Vergangenheit verschoben</summary>
+  <div class="warn-timeline">
+    <div class="warn-axis"></div>
+    <span class="warn-axis-label left">Schuljahres-Beginn</span>
+    <span class="warn-axis-label right">Schuljahres-Ende</span>
+    <div class="warn-marker new" style="left:25%" title="Neues Aufnahmedatum (früher)"></div>
+    <div class="warn-marker old" style="left:55%" title="Altes Aufnahmedatum"></div>
+    <div class="warn-marker now" style="left:75%" title="Heute"></div>
+    <div class="warn-arrow" style="left:25%;width:30%;transform:rotate(180deg);transform-origin:left"></div>
+    <div class="warn-gap" style="left:25%;width:30%">
+      <span class="warn-gap-label">Lücke: neu → alt nicht dokumentiert</span>
+    </div>
+  </div>
+  <p><strong>Was ist passiert?</strong> Das Aufnahmedatum eines Schülers wurde nach vorne verschoben
+  (z.B. von November auf September). In WebUntis ist der Schüler erst ab dem alten
+  Aufnahmedatum bekannt — für den nun früher liegenden Zeitraum gibt es keine Doku.</p>
+  <p><strong>Folge:</strong> Manuelle Nachpflege in WebUntis: Schüler-Status für die früher
+  liegende Zeit ergänzen.</p>
+</details>
+
+<!-- ===== 3. Klassenwechsel ===== -->
+<details class="warn-case">
+  <summary>🔄 Klassenwechsel mitten im Schuljahr</summary>
+  <div class="warn-timeline">
+    <div class="warn-axis"></div>
+    <span class="warn-axis-label left">Schuljahres-Beginn</span>
+    <span class="warn-axis-label right">Schuljahres-Ende</span>
+    <div style="position:absolute;left:5%;width:50%;top:24px;height:16px;background:rgba(220,53,69,0.5);border-radius:3px;color:#fff;font-size:0.7rem;text-align:center;line-height:16px;">alte Klasse</div>
+    <div style="position:absolute;left:55%;width:40%;top:24px;height:16px;background:rgba(25,135,84,0.6);border-radius:3px;color:#fff;font-size:0.7rem;text-align:center;line-height:16px;">neue Klasse</div>
+    <div class="warn-marker now" style="left:55%;background:#000" title="Wechsel-Zeitpunkt"></div>
+  </div>
+  <p><strong>Was ist passiert?</strong> Ein Schüler hat die Klasse gewechselt
+  (z.B. von 10A nach 10B). Schild meldet ab sofort die neue Klasse — WebUntis
+  übernimmt das nicht rückwirkend.</p>
+  <p><strong>Folge:</strong> Im Digitalen Klassenbuch muss der Wechsel <em>manuell</em>
+  zum richtigen Datum eingetragen werden — sonst landen Einträge in der falschen
+  Klasse. E-Mails gehen auf Wunsch an alte, neue oder beide Klassenlehrkräfte.</p>
+</details>
+
+<!-- ===== 4. Neue Schüler ===== -->
+<details class="warn-case">
+  <summary>🆕 Neuer Schüler im Import</summary>
+  <div class="warn-timeline">
+    <div class="warn-axis"></div>
+    <span class="warn-axis-label left">Schuljahres-Beginn</span>
+    <span class="warn-axis-label right">Schuljahres-Ende</span>
+    <div class="warn-marker new" style="left:55%" title="Aufnahmedatum (heute)"></div>
+    <div class="warn-marker now" style="left:55%;background:transparent;box-shadow:none" title="Heute"></div>
+    <div style="position:absolute;left:55%;top:5px;font-size:0.7rem;color:#198754;font-weight:bold;">★ neu</div>
+  </div>
+  <p><strong>Was ist passiert?</strong> Ein Schüler taucht erstmals im Schild-Export auf
+  (Interne ID war im vorigen Import noch nicht vorhanden).</p>
+  <p><strong>Folge:</strong> In WebUntis muss der Schüler ggf. in Schülergruppen
+  (z.B. Fächergruppen, AGs, Kurse) ergänzt werden — das passiert beim Standard-Import
+  nicht automatisch.</p>
+</details>
+
+<!-- ===== 5. Karteileichen ===== -->
+<details class="warn-case">
+  <summary>👻 Karteileiche — Schüler verschwunden</summary>
+  <div class="warn-timeline">
+    <div class="warn-axis"></div>
+    <span class="warn-axis-label left">Schuljahres-Beginn</span>
+    <span class="warn-axis-label right">Schuljahres-Ende</span>
+    <div class="warn-marker old" style="left:55%" title="Letzter Stand"></div>
+    <div class="warn-marker now" style="left:60%" title="Heute"></div>
+    <div style="position:absolute;left:60%;width:35%;top:24px;height:16px;background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(108,117,125,0.3) 4px,rgba(108,117,125,0.3) 8px);border:1px dashed #6c757d;border-radius:3px;font-size:0.7rem;text-align:center;line-height:16px;color:#6c757d;">verschwunden ohne Entlassdatum</div>
+  </div>
+  <p><strong>Was ist passiert?</strong> Ein Schüler war im vorigen Import noch da,
+  taucht jetzt aber nicht mehr auf — und hat <em>kein</em> Entlassdatum erhalten.
+  Bei korrektem Schild-Filter („Aktuelles Schuljahr - Aktive, Abgänger und Abschlüsse")
+  sollte das praktisch nie passieren.</p>
+  <p><strong>Folge:</strong> Wahrscheinlich Filter-Fehler in Schild — der Schüler ist
+  weder ordentlich entlassen noch noch aktiv. <em>Vor dem nächsten Import korrigieren.</em></p>
+</details>
+
+<p class="text-muted small mt-3">💡 Diese Warnungen werden bei <em>▶️ Verarbeiten</em>
+automatisch ermittelt. Per <em>✍ Emails Generieren</em> entstehen daraus vorbereitete
+Mails an die zuständigen Klassenlehrkräfte; <em>📨 Emails Senden</em> verschickt sie.</p>
+""",
+    },
+
     "info_mails": {
         "title": "ℹ️ Info-Mails bei Feldänderungen",
         "html": """
@@ -690,11 +845,60 @@ mit eigener Hilfe (ℹ️-Button neben den Action-Buttons).</p>
 }
 
 
+# ---------------------------------------------------------------------------
+# Kategorisierung für den Glossar-Modus (Reihenfolge bestimmt Anzeige-Reihenfolge)
+# ---------------------------------------------------------------------------
+HELP_CATEGORIES = [
+    ("🛠️ Bedienung & Workflows", [
+        "general_workflow",
+        "navigation_overview",
+        "dashboard_overview",
+        "warnungen",
+        "info_mails",
+        "sopaed_workflow",
+    ]),
+    ("📥 Eingabe-Dateien aus Schild", [
+        "schild_export",
+        "klassen_csv",
+        "lehrer_csv",
+        "attest_export",
+        "nachteil_export",
+        "foto_export",
+    ]),
+    ("🏫 Schild-API (Schild 3.x)", [
+        "schild_api_setup",
+        "vermerkart_naming",
+    ]),
+    ("📤 WebUntis-Konfiguration", [
+        "webuntis_import",
+    ]),
+    ("🖼️ Foto-Verwaltung", [
+        "foto_zip",
+        "foto_rename",
+    ]),
+]
+
+
 def get_help(key):
     """Liefert einen einzelnen Hilfe-Eintrag (Dict mit title, html) oder None."""
     return HELP_CONTENT.get(key)
 
 
 def get_all_help():
-    """Liefert alle Hilfe-Einträge als Dict {key: {title, html}}."""
-    return HELP_CONTENT
+    """Liefert alle Hilfe-Einträge als Dict {key: {title, html, category}}.
+    Kategorien werden zur Anzeige im Glossar-Modus mitgeliefert."""
+    out = {}
+    # Reverse-Mapping: Key → Kategorie
+    cat_by_key = {}
+    for cat_name, keys in HELP_CATEGORIES:
+        for k in keys:
+            cat_by_key[k] = cat_name
+    for key, entry in HELP_CONTENT.items():
+        out[key] = dict(entry)
+        out[key]['category'] = cat_by_key.get(key, 'Sonstiges')
+    return out
+
+
+def get_categories():
+    """Liefert die Kategorien-Definition (Liste von (name, [keys])) für die Anzeige-Reihenfolge."""
+    return HELP_CATEGORIES

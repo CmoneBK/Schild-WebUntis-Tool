@@ -20,6 +20,7 @@
         <div class="card mt-4">
             <div class="card-header bg-primary text-white">
                 Hauptbereich (und Einstellungen für die aktuelle Ausführung)
+                <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="general_workflow" title="Hilfe zum Hauptbereich" style="font-size:1rem;line-height:1;">ℹ️</button>
             </div>
             <div class="card-body">
                 <form method="post">
@@ -72,7 +73,9 @@
 
                         <!-- Spalte 2 (rechte Seite): Warnungen -->
                         <div class="col-md-6">
-                            <h5 class="mb-3">Zu generierende Warnungen/Hinweise</h5>
+                            <h5 class="mb-3">Zu generierende Warnungen/Hinweise
+                                <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="warnungen" title="Welche Warnungen gibt es?" style="font-size:0.9rem;line-height:1;vertical-align:middle;">ℹ️</button>
+                            </h5>
                             <div class="form-group form-check">
                                 <input type="checkbox" class="form-check-input" id="warn_entlassdatum"
                                     name="warn_entlassdatum" {% if warn_entlassdatum %}checked{% endif %}>
@@ -136,7 +139,6 @@
                             <button id="validateImports" type="button" class="btn btn-secondary ml-2">🔍 Dateien prüfen</button>
                             <button id="generateEmails" type="button" class="btn btn-info ml-2">✍ Emails Generieren</button>
                             <button id="sendEmails" type="button" class="btn btn-success ml-2">📨 Emails Senden</button>
-                            <button type="button" class="help-btn btn btn-outline-info ml-2" data-help="general_workflow" title="Hilfe zum Hauptbereich">ℹ️</button>
                         </div>
                         <button id="toggleFotoPanel" type="button" class="btn btn-dark float-right">🖼️ Fotos managen</button>
                     </div>
@@ -570,7 +572,9 @@
         <div id="warningsPanel" class="mt-4" style="display: none;" data-has-warnings="{{ 'true' if warnings else 'false' }}">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    ⚠️ Warnungen
+                    <span>⚠️ Warnungen
+                        <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="warnungen" title="Welche Warnungen gibt es?" style="font-size:1rem;line-height:1;">ℹ️</button>
+                    </span>
                     <div class="btn-group">
                         <button id="headerGenerateEmails" type="button" class="btn btn-info">✍ Emails Generieren</button>
                         <button id="headerSendEmails" type="button" class="btn btn-success">📨 Emails Senden</button>
@@ -1217,6 +1221,9 @@
                 <!-- Warnungen -->
                 <div class="tab-pane fade" id="warnings" role="tabpanel" aria-labelledby="warnings-tab">
                     <form id="form-warnings">
+                        <h5 class="mb-3">Warnungen
+                            <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="warnungen" title="Welche Warnungen gibt es?" style="font-size:0.9rem;line-height:1;vertical-align:middle;">ℹ️</button>
+                        </h5>
                         <div class="form-group">
                             <label for="warn_entlassdatum">➡️ Immer Warnungen für Entlassdatum generieren:</label>
                             <select class="form-control" id="warn_entlassdatum" name="warn_entlassdatum">
