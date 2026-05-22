@@ -219,7 +219,7 @@ Falls Sie Schüler-Fotos im Dashboard anzeigen und/oder als ZIP für den WebUnti
 </details>
 
 ## Installation
-1. Laden Sie die .exe Datei des [aktuellen Releases](https://github.com/CmoneBK/Schild-WebUntis-Tool/releases/tag/v.3.0) oder, wenn Sie nicht gut auf neue Funktionen warten können, die .exe Datei unter [Schild-WebUntis-Tool-WServer](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) [Entwicklungsversion] in ein leeres (!) Verzeichnis.</br>
+1. Laden Sie die .exe Datei des [aktuellen Releases](https://github.com/CmoneBK/Schild-WebUntis-Tool/releases/tag/v.3.1) oder, wenn Sie nicht gut auf neue Funktionen warten können, die .exe Datei unter [Schild-WebUntis-Tool-WServer](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) [Entwicklungsversion] in ein leeres (!) Verzeichnis.</br>
    Hinter letzterem Link gibt es oben rechts neben dem 'RAW' einen Download-Button.
 2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool-WServer.exe`-Datei.</br>
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
@@ -436,7 +436,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
         <a href="/Screenshots/Schild 3.0 API.png" target="_blank">
           <img src="/Screenshots/Schild 3.0 API.png" alt="Schild 3.0 API" width="300">
         </a>
-        <p>Schild 3.0 API <em>(in Entwicklung)</em></p>
+        <p>Schild 3.0 API</p>
       </td>
     </tr>
     <tr>
@@ -444,7 +444,7 @@ In der Konsole sehen Sie den Prozess durchlaufen.
         <a href="/Screenshots/Foto Manager.png" target="_blank">
           <img src="/Screenshots/Foto Manager.png" alt="Foto-Manager" width="300">
         </a>
-        <p>Foto-Manager <em>(in Entwicklung)</em></p>
+        <p>Foto-Manager</p>
       </td>
       <td>
         <a href="/Screenshots/Befehl-und Verknüpfungsersteller.png" target="_blank">
@@ -542,7 +542,9 @@ In der Konsole sehen Sie den Prozess durchlaufen.
 Außerdem wurden einige seltenere Bugs gefixt und die Robustheit des Programms erhöht.
 </details>
 
-### Update 3.0
+<details>
+<summary><b>Update 3.0</b></summary>
+
 - **Neu - Dashboard mit Historien-Auswertung:** Eigene persistente Datenbank zur Auswertung vergangener Importe. Statistiken, Trends und Klassen-Hotspots werden direkt im Webend mit Diagrammen dargestellt. Klassen lassen sich einzeln über die Zeit nachvollziehen, und der gesamte Verlauf kann als Excel exportiert werden.
 - **Neu - Info-Mails bei Feldänderungen:** Lehrkräfte können automatisch über Änderungen an WebUntis-relevanten Schülerfeldern (z.B. Nachteilsausgleich, Attestpflicht, Telefonnummer) informiert werden. Die zu überwachenden Felder sind frei wählbar und werden geräteübergreifend in der `settings.ini` gespeichert. Vor dem Versand erscheint eine Vorschau-Tabelle, in der einzelne Mails per Checkbox abgewählt werden können.
 - **Neu - Nachteilsausgleich-Arbeitsdatei für Sonderpädagogen:** Eine Excel-Datei wird automatisch mit allen Schülern befüllt und enthält fünf Detailspalten (Zeitlich, Technisch, Räumlich, Personell, Sonstige Vereinbarungen) zur freien Bearbeitung durch Sonderpädagogen. Die Inhalte werden in den Info-Mails bei Nachteilsausgleich-Änderungen mitversendet und sind in der Mail-Vorschau über einen Info-Button direkt einsehbar. Vorhandene Einträge bleiben bei jedem neuen Import erhalten.
@@ -557,8 +559,9 @@ Außerdem wurden einige seltenere Bugs gefixt und die Robustheit des Programms e
 - **Bug Fix - Excel-ID-Behandlung:** Numerische Schüler-IDs wurden nach dem Speichern in Excel teilweise als Float interpretiert (z.B. `12345.0`), was zu Fehlzuordnungen führen konnte. IDs werden jetzt sauber normalisiert.
 
 Außerdem wurden zahlreiche kleinere Verbesserungen, Bug Fixes und Robustheitsmaßnahmen umgesetzt.
+</details>
 
-### Update 3.1 (in Entwicklung)
+### Update 3.1
 - **Neu - Schild-API (SVWS-Server):** Ab Schild 3.x kann das Tool Schüler-, Klassen- und Lehrerdaten direkt vom SVWS-Server über dessen REST-API abrufen — der manuelle CSV-Export aus Schild entfällt dann. Konfigurierbar sind: Server-URL, DB-Schema, technischer Benutzer, TLS-Verifikation, automatischer Fallback auf CSV bei API-Fehlern, Schuljahresabschnitt-Auswahl und Status-Whitelist. Auch Attestpflicht- und Nachteilsausgleich-Listen können pro Vermerk wahlweise via API (Vermerkart-Bezeichnung) oder weiter via CSV bezogen werden. Bei aktivem API-Modus werden die nicht mehr benötigten Verzeichnisse im Webend automatisch gesperrt. Schild-2-Schulen nutzen weiterhin nahtlos den CSV-Weg.
 - **Neu - Foto-Verwaltung:** Schüler-Fotos (aus Schild exportiert, benannt nach Interner ID) werden im Dashboard bei der Schülerhistorien-Suche angezeigt. Über den Bereich „🖼️ Fotos managen" lassen sich Fotos als ZIP für den WebUntis-Foto-Import packen (optional nach Schild-Status gefiltert, mit konfigurierbarer Dateinamen-Vorlage; ZIP wird in ein Ausgabeverzeichnis geschrieben und/oder heruntergeladen) und verwaiste Fotos (Schüler nicht mehr im Import) in einen Archiv-Unterordner verschieben.
 - **Neu - Inline-Hilfe direkt im Webend:** An vielen relevanten Stellen (Hauptbereich, Warnungs-Bereich, Schild-API, Foto-Manager, Verzeichnisse, Einstellungs-Tabs, …) sind nun kleine **ℹ️-Buttons** platziert, die die wichtigsten Inhalte der README direkt im Browser anzeigen — offline und ohne externen Link. Alle Hilfe-Themen lassen sich zusätzlich in einem **Glossar-Modus** mit Volltextsuche und thematischer Gruppierung (Bedienung, Eingabe-Dateien, Schild-API, WebUntis, Foto-Verwaltung) durchstöbern. Die Warnungs-Hilfe enthält eine anschauliche **interaktive Timeline** für jede Warnungsart (Entlass-/Aufnahmedatum-Verschiebungen, Klassenwechsel, neue Schüler, Karteileichen).
