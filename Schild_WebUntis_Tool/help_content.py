@@ -639,6 +639,18 @@ integriert (Update 3.2).</p>
     "ausbilder_workflow": {
         "title": "🏭 Ausbilder-Workflow — DSGVO-konformer Import (Berufskolleg)",
         "html": """
+<style>
+details.ausb-detail { margin: 10px 0; border-left: 4px solid #17a2b8; padding: 4px 0 4px 10px; background: #f4fbfc; border-radius: 0 4px 4px 0; }
+details.ausb-detail[open] { background: #e7f6f8; }
+details.ausb-detail > summary { cursor: pointer; font-weight: 600; padding: 6px 0; outline: none; list-style: none; }
+details.ausb-detail > summary::-webkit-details-marker { display: none; }
+details.ausb-detail > summary::before { content: '▶ '; color: #17a2b8; font-size: 0.8rem; margin-right: 4px; }
+details.ausb-detail[open] > summary::before { content: '▼ '; }
+details.ausb-detail .ausb-body { padding: 0 4px 4px 4px; }
+body.dark-mode details.ausb-detail { background: #16323a; border-left-color: #2aa1b8; }
+body.dark-mode details.ausb-detail[open] { background: #1c4854; }
+</style>
+
 <p>Speziell für <strong>Berufskollegs in NRW</strong>: SchildNRW exportiert für
 jeden Auszubildenden auch die Daten seines Ausbildungsbetriebs / Betreuers.
 Diese sollen in WebUntis gepflegt werden, damit Ausbilder die Fehlstunden ihrer
@@ -654,13 +666,14 @@ haben. Dieser Workflow filtert den Schild-Export entsprechend:</p>
       ausgeschlossen — dauerhaft, bis sie wieder aktiviert werden.</li>
 </ul>
 
-<h6>Vorbereitung</h6>
+<h6>Vorbereitung im Tool</h6>
 <ol>
   <li><strong>Schild-Export</strong> mit den Spalten <code>Interne ID-Nummer</code>,
       <code>Klasse</code>, <code>Vorname</code>, <code>Nachname</code> sowie allen
       benötigten Ausbilder-/Betreuer-Feldern als CSV mit Semikolon-Separator speichern.
       Datei im konfigurierten <em>Ausbilder-Eingabeverzeichnis</em> ablegen
-      (Einstellungen → Quelldaten-Verzeichnis).</li>
+      (Einstellungen → Quelldaten-Verzeichnis). Eine ausführliche Export-Vorlagen-
+      Empfehlung ist weiter unten ausklappbar.</li>
   <li>In der Schüler-Tabelle die <strong>Klassen-Whitelist</strong> über die
       farbigen Klassen-Chips konfigurieren — wird automatisch gespeichert.</li>
   <li>In der Schüler-Tabelle das <strong>Häkchen</strong> bei jenen Schülern
@@ -687,9 +700,199 @@ auch im Browser holen.</p>
 das Tool automatisch einen <code>HHMMSS</code>-Zeitstempel an, statt die alte
 Datei zu überschreiben.</p>
 
+<hr>
+<h6>📚 Weiterführende Informationen</h6>
+<p class="small text-muted mb-2">Die folgenden Abschnitte lassen sich einzeln ausklappen.</p>
+
+<details class="ausb-detail">
+  <summary>📜 Rechtlicher Hintergrund — VO DVI &amp; DSGVO</summary>
+  <div class="ausb-body">
+    <p class="alert alert-warning py-2 small mb-3">
+      <strong>Disclaimer:</strong> Der Autor dieses Tools ist <em>Lehrkraft, nicht Anwalt</em>.
+      Die hier zusammengefasste rechtliche Einschätzung ist die <strong>vorherrschende
+      Auslegung am Berufskolleg des Autors</strong>. Im Zweifel bitte selbst prüfen lassen —
+      die Verantwortung für den datenschutzkonformen Einsatz liegt bei Ihnen / Ihrer Schule.
+    </p>
+
+    <p><strong>Was die VO DVI in NRW erlaubt:</strong></p>
+    <p>In Nordrhein-Westfalen regelt die <em>Verordnung über die zur Verarbeitung
+    zugelassenen Daten von Schülerinnen, Schülern und Eltern</em> (<strong>VO DVI</strong>),
+    welche Daten Berufskollegs an Ausbildungsbetriebe übermitteln dürfen. Erlaubt ist von
+    sich aus <strong>nur die Übermittlung unentschuldigter Schulversäumnisse</strong>
+    (BASS-Verweis: Anlage 1, Nr. 5 zur VO DVI —
+    <a href="https://bass.schul-welt.de/101.htm#:~:text=4.%20Erreichbarkeit%2C-,5.%20Angaben%20zu%20unentschuldigten%20Schulvers%C3%A4umnissen.,-(5)%20Zur%20Organisation"
+       target="_blank" rel="noopener">Quelle in der BASS</a>).</p>
+
+    <p>Die rechtliche Grundlage für diese Übermittlung ist <strong>DSGVO Art. 6 Abs. 1
+    Satz 1 Buchstabe e</strong>, Abs. 3 in Verbindung mit <strong>Art. 9 Abs. 2 Buchstabe g</strong>
+    (<a href="https://bass.schul-welt.de/101.htm#:~:text=Nach%20Artikel%206%20Abs.%201%20Satz%201%20Buchstabe%20e%2C%20Abs.%203%20und%20Artikel%209%20Abs.%202%20Buchstabe%20g"
+        target="_blank" rel="noopener">Quelle</a>).</p>
+
+    <p>Für <strong>alle anderen Daten</strong> — insbesondere <em>entschuldigte</em>
+    Fehlzeiten — ist eine ausdrückliche <strong>Einwilligung des/der Auszubildenden</strong>
+    erforderlich (<a href="https://dsgvo-gesetz.de/art-6-dsgvo/#:~:text=Die%20betroffene%20Person,betroffenen%20Person%20erfolgen%3B"
+    target="_blank" rel="noopener">DSGVO Art. 6 Abs. 1 lit. a / b</a>).
+    Die <a href="https://bass.schul-welt.de/101.htm#:~:text=insbesondere,6%2C%207%2C%209"
+    target="_blank" rel="noopener">BASS verweist explizit</a> auf die DSGVO-Artikel 5, 6,
+    7 und 9 als geltendes Recht.</p>
+
+    <p><strong>Das konkrete WebUntis-Problem</strong> (Stand 08.07.2024):</p>
+    <ul>
+      <li>WebUntis <strong>unterscheidet in der Ausbilder-Sicht derzeit nicht</strong>
+          zwischen entschuldigten und unentschuldigten Fehlzeiten.</li>
+      <li>Ausbilder werden über die <strong>Schülerstammdaten</strong> per Abgleich der
+          Betreuer-Daten automatisch zugeordnet und erhalten dadurch <strong>permanenten
+          Zugriff</strong> auf die Abwesenheitsdaten <em>aller</em> ihnen so zugeordneten
+          Auszubildenden — auch derjenigen, die der erweiterten Datenverarbeitung
+          <strong>nicht zugestimmt</strong> haben.</li>
+    </ul>
+
+    <p><strong>Re-Identifizierungs-Risiko:</strong> Selbst wenn ausschließlich
+    <em>unentschuldigte</em> Daten sichtbar wären oder wiederholt übertragen würden,
+    ließe sich durch den dauerhaften bzw. wiederholten Zugriff im Nachhinein die
+    <em>Entschuldigung</em> einzelner Fehlzeiten rekonstruieren — was nach VO DVI
+    ebenfalls nicht zulässig wäre.</p>
+
+    <p><strong>Lösungsweg dieses Tools:</strong> Damit Sie nicht jedes Mal manuell
+    in Schild filtern müssen (sehr umständlich) oder umgekehrt komplett auf den
+    Ausbilder-Import verzichten (nicht praktikabel), erlaubt dieser Workflow:</p>
+    <ul>
+      <li>Pauschal alle Klassen, in denen Ausbilder-Importe <em>nicht</em> sinnvoll sind,
+          per <strong>Klassen-Whitelist</strong> auszuschließen (z.B. für Probephasen).</li>
+      <li>Einzelne Auszubildende, die der Datenverarbeitung <em>nicht</em> zugestimmt
+          haben, per <strong>Schüler-Blacklist</strong> dauerhaft aus dem Export
+          herauszuhalten.</li>
+    </ul>
+
+    <p class="text-muted small mb-0">💡 <strong>Tipp:</strong> SchildNRW hat eine Checkbox
+    <code>DV-Einwilligung vorh.</code> im Schüler-Datensatz. Wenn diese Checkbox in Ihrer
+    Schule <em>konsistent ausschließlich</em> für die DSGVO-Einwilligung der Ausbilder-
+    Datenübermittlung verwendet wurde, brauchen Sie dieses Tool eigentlich nicht — Sie
+    können dann direkt in Schild über die Checkbox filtern. Wurde die Checkbox in der
+    Vergangenheit jedoch jemals für etwas anderes (mit-)benutzt, ist die Datenbasis nicht
+    mehr verlässlich, und dieses Tool ist der praktikable Workaround.</p>
+  </div>
+</details>
+
+<details class="ausb-detail">
+  <summary>📋 Vorbereitende Schritte in SchildNRW</summary>
+  <div class="ausb-body">
+    <p><strong>1. Betreuer-Datenpflege:</strong> Damit der spätere Ausbilder-Import in
+    WebUntis sauber durchläuft (und Ausbilder nicht doppelt angelegt werden), müssen
+    die Betreuer-Datensätze in Schild konsistent gepflegt sein. Bei <em>allen</em>
+    Aktiven, Abgängern und Abschlüssen sollte gelten:</p>
+    <ul>
+      <li>Jeder Betreuer kommt in <strong>genau einer Schreibweise</strong> vor
+          (Vorname, Nachname, E-Mail).</li>
+      <li>Alle Namensfelder sind <strong>vorhanden und korrekt</strong> ausgefüllt.</li>
+      <li>Das <strong>E-Mail-Feld</strong> ist gepflegt und enthält möglichst eine
+          <em>persönliche</em> Adresse des Betreuers — keine allgemeine Firmenadresse,
+          da WebUntis die E-Mail-Adresse zur Identifikation verwendet.</li>
+      <li>Auch die <strong>Anrede</strong> ist gesetzt (wird in WebUntis für die
+          ordentliche Darstellung benötigt).</li>
+    </ul>
+    <p class="small text-muted">💡 Wenn Sie die Daten neu aufbereiten, füllen Sie am
+    besten <em>alle</em> Felder. Tipp: Ordnen Sie einen aufbereiteten Betreuer in Schild
+    am besten gleich allen ihm/ihr betreuten Auszubildenden zu.</p>
+
+    <p><strong>2. Schild-Filter für den Export:</strong> Erstellen Sie einen Filter,
+    der zuverlässig <em>alle</em> Auszubildenden des Schuljahres erfasst — wichtig:
+    inklusive <strong>Abgänger und Abschlüsse</strong>, damit deren Ausbilder-Zuweisungen
+    beim nächsten Import in WebUntis auch wieder entfernt werden.</p>
+    <ul>
+      <li><strong>Klassisch:</strong> <code>Laufbahn-Schuljahr: Aktuelles</code>,
+          <code>Status: Aktiv, Abgang, Abschluss</code>, unter <em>Weitere Daten</em>:
+          <code>Beschäftigungsart: Auszubildender</code>.</li>
+      <li><strong>SQL-Filter</strong> (drei vorgefertigte Varianten — prüfen entweder
+          die Anwesenheit eines Betriebs-Datensatzes, die Vertragsart oder beides):
+          siehe README des Original-Tools, Abschnitt <em>Vor der Installation</em>:
+          <a href="https://github.com/CmoneBK/AusbilderImporterFlask#vor-der-installation"
+             target="_blank" rel="noopener">AusbilderImporterFlask auf GitHub</a>.</li>
+    </ul>
+  </div>
+</details>
+
+<details class="ausb-detail">
+  <summary>📤 Empfohlene Schild-Export-Vorlage (Spalten)</summary>
+  <div class="ausb-body">
+    <p>Erstellen Sie in Schild eine Export-Vorlage mit folgenden Spalten — diese sind
+    entweder von dieser App, von WebUntis oder von beiden zur Identifikation der
+    Auszubildenden und Betreuer nötig:</p>
+    <table class="table table-sm table-bordered mb-2">
+      <thead class="thead-light">
+        <tr><th>Spalte in Schild</th><th>Zweck</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Interne ID-Nummer</code></td><td>Identifikation Schüler (Tool + WebUntis)</td></tr>
+        <tr><td><code>Nachname</code></td><td>App-Anzeige</td></tr>
+        <tr><td><code>Vorname</code></td><td>App-Anzeige</td></tr>
+        <tr><td><code>Klasse</code></td><td>App-Filter + Anzeige</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Anrede</code></td><td>WebUntis-Darstellung</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Vorname</code></td><td>Identifikation Betreuer</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Name</code></td><td>Identifikation Betreuer</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer E-Mail</code></td><td>WebUntis-Betreueraccount</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Titel</code></td><td>Falls als Anrede verwendet</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Telefon</code></td><td>WebUntis-Identifikation (optional)</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Abteilung</code></td><td>WebUntis-Identifikation (optional)</td></tr>
+        <tr><td><code>Allg. Adresse: Fax-Nr.</code></td><td>WebUntis-Identifikation (optional)</td></tr>
+        <tr><td><code>Allg. Adresse: Name1</code></td><td>Betriebsname (Übersicht)</td></tr>
+      </tbody>
+    </table>
+    <p class="small text-muted mb-0">Die Vorlage muss als <code>.csv</code> mit Semikolon-Separator
+    exportieren — in Schild ggf. den Dateityp manuell auf „Alle Dateien (*.*)" stellen und die
+    Endung <code>.csv</code> selbst anhängen.</p>
+  </div>
+</details>
+
+<details class="ausb-detail">
+  <summary>📥 Empfohlene WebUntis-Import-Vorlage</summary>
+  <div class="ausb-body">
+    <p>Legen Sie in WebUntis eine Import-Vorlage für <em>Ausbildungsbeauftragte</em> an.
+    Wesentliche Einstellungen:</p>
+    <ul>
+      <li><strong>Erste Zeile ignorieren:</strong> Ja (CSV-Header)</li>
+      <li><strong>Schülerverbindung additiv importieren:</strong>
+          <span class="text-danger">Nein</span> — ein „Ja" würde dazu führen, dass
+          neu auf die Blacklist gesetzte Schüler ihre Ausbilder-Zuweisung
+          <em>nicht</em> mehr verlieren bzw. leere Einträge vorhandene nicht
+          überschreiben. <strong>Genau das wäre der Datenschutz-GAU.</strong></li>
+      <li><strong>Identifikation des Ausbildungsbeauftragten:</strong> automatisch</li>
+    </ul>
+    <p>Feld-Zuordnung (Schild-Spalte → WebUntis-Feld):</p>
+    <table class="table table-sm table-bordered mb-2">
+      <thead class="thead-light">
+        <tr><th>Schild-Spalte</th><th>→ WebUntis-Feld</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Allg. Adresse: Betreuer Anrede</code></td><td>Titel</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Vorname</code></td><td>Vorname</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Name</code></td><td>Nachname</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer E-Mail</code></td><td>E-Mail-Adresse</td></tr>
+        <tr><td><code>Allg. Adresse: Betreuer Telefon</code></td><td>Mobiltelefon (optional)</td></tr>
+        <tr><td><code>Allg. Adresse: Fax-Nr.</code></td><td>Telefonnummer (optional)</td></tr>
+        <tr><td><code>Interne ID-Nummer</code></td><td><strong>Schlüssel (extern, Schüler)</strong> — zentral</td></tr>
+      </tbody>
+    </table>
+    <p class="small text-muted mb-0">Weitere optionale Betreuer-Felder helfen WebUntis
+    bei der automatischen Erkennung bereits vorhandener Ausbilder — Felder, die Sie nicht
+    brauchen, lassen Sie einfach leer.</p>
+  </div>
+</details>
+
+<details class="ausb-detail">
+  <summary>⚙️ Voraussetzungen für die Identifikation</summary>
+  <div class="ausb-body">
+    <ul class="mb-0">
+      <li>Sie nutzen in SchildNRW die <strong>Interne ID</strong> zur Schüler-Identifikation.</li>
+      <li>Sie nutzen in WebUntis den <strong>Schlüssel (extern)</strong> zur Schüler-Identifikation.</li>
+    </ul>
+  </div>
+</details>
+
 <p class="text-muted small mt-3">💡 Dieser Workflow wurde aus dem ursprünglichen
-Standalone-Tool <em>AusbilderImporterFlask</em> in das Haupttool integriert
-(Update 3.2).</p>
+Standalone-Tool <em><a href="https://github.com/CmoneBK/AusbilderImporterFlask"
+target="_blank" rel="noopener">AusbilderImporterFlask</a></em> in das Haupttool
+integriert (Update 3.2). Die rechtlichen Erläuterungen stammen aus dessen README.</p>
 """,
     },
 
