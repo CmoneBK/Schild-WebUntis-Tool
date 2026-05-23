@@ -586,6 +586,113 @@ Mails an die zuständigen Klassenlehrkräfte; <em>📨 Emails Senden</em> versch
 """,
     },
 
+    "erzieher_workflow": {
+        "title": "👨‍👩‍👧 Erzieher-Workflow — Schild ↔ WebUntis",
+        "html": """
+<p>SchildNRW speichert Erzieher (Hauptdaten) und zusätzliche Ansprechpartner
+(mit Telefonnummern) in <strong>zwei separaten Datensätzen</strong>. WebUntis
+hingegen erwartet für jeden Erzieher/Ansprechpartner einen eigenen Datensatz
+mit eigener Telefonnummer.</p>
+
+<p>Dieser Workflow überbrückt das, indem er pro „n-tem" Erzieher eines Schülers
+eine eigene WebUntis-Import-CSV erzeugt und alles als ZIP zum Download bereitstellt.</p>
+
+<h6>Vorbereitung</h6>
+<ol>
+  <li><strong>Erzieher-Export aus Schild:</strong> Export-Vorlage mit allen Erzieher-Feldern
+      (Anrede, Briefanrede, Titel, Nachname, Vorname, E-Mail je Erzieher 1…N) UND
+      der „Interne ID-Nummer" der Schüler. Als CSV mit Semikolon-Separator speichern.
+      Datei im Verzeichnis <em>Erzieher-Export-Verzeichnis</em> ablegen.</li>
+  <li><strong>Ansprechpartner-Export aus Schild:</strong> Export-Vorlage mit den Feldern
+      <code>Schüler_ID</code>, <code>Anschluss-Art</code>, <code>Bemerkung</code>,
+      <code>Telefon-Nummer</code>. Datei im Verzeichnis
+      <em>Ansprechpartner-Export-Verzeichnis</em> ablegen.</li>
+  <li><strong>Verzeichnisse konfigurieren</strong> unter <em>⚙️ Einstellungen → Verzeichnisse</em>:
+      <code>erzieher_export_directory</code>, <code>ansprechpartner_export_directory</code>,
+      <code>erzieher_output_directory</code> (für das fertige ZIP).</li>
+</ol>
+
+<h6>Verarbeitung</h6>
+<p>Klick auf <strong>▶️ Verarbeiten &amp; ZIP erzeugen</strong>:</p>
+<ol>
+  <li>Es wird die jeweils <strong>neueste CSV-Datei</strong> in beiden Verzeichnissen genommen.</li>
+  <li>Die Ansprechpartner werden pro Schüler durchnummeriert (Erzieher 1, 2, 3, …).</li>
+  <li>Pro Erzieher-Index entsteht eine CSV (<code>Erzieher_1.csv</code>, <code>Erzieher_2.csv</code>, …)
+      mit jeweils einer Zeile pro Schüler — Erzieher-Hauptdaten + die i-te Telefonnummer.</li>
+  <li>Alle CSVs werden in ein ZIP gepackt und ins Ausgabeverzeichnis geschrieben.</li>
+</ol>
+
+<p>Anschließend kann das ZIP über <strong>⬇️ ZIP herunterladen</strong> auch im
+Browser geholt werden.</p>
+
+<h6>Import in WebUntis</h6>
+<p>In WebUntis pro Erzieher-CSV einen separaten Import-Lauf konfigurieren — so
+landet jeder Erzieher mit seiner spezifischen Telefonnummer als eigenständiger
+Datensatz im System.</p>
+
+<p class="text-muted small mt-3">💡 Dieser Workflow wurde aus dem ursprünglichen
+Standalone-Tool <em>SchildNRW-WebUntis-Erzieher-Konvertierer</em> in das Haupttool
+integriert (Update 3.2).</p>
+""",
+    },
+
+    "ausbilder_workflow": {
+        "title": "🏭 Ausbilder-Workflow — DSGVO-konformer Import (Berufskolleg)",
+        "html": """
+<p>Speziell für <strong>Berufskollegs in NRW</strong>: SchildNRW exportiert für
+jeden Auszubildenden auch die Daten seines Ausbildungsbetriebs / Betreuers.
+Diese sollen in WebUntis gepflegt werden, damit Ausbilder die Fehlstunden ihrer
+Azubis sehen können.</p>
+
+<p>Aus <strong>DSGVO/VO DVI</strong>-Gründen dürfen jedoch nur Datensätze derjenigen
+Azubis übernommen werden, die der Datenverarbeitung <strong>zugestimmt</strong>
+haben. Dieser Workflow filtert den Schild-Export entsprechend:</p>
+<ul>
+  <li><strong>Klassen-Whitelist:</strong> Nur Klassen, in denen Ausbilder-Importe
+      überhaupt sinnvoll sind (z.B. duale Bildungsgänge). Leer = alle Klassen.</li>
+  <li><strong>Schüler-Blacklist:</strong> Schüler ohne Einwilligung werden namentlich
+      ausgeschlossen — dauerhaft, bis sie wieder aktiviert werden.</li>
+</ul>
+
+<h6>Vorbereitung</h6>
+<ol>
+  <li><strong>Schild-Export</strong> mit den Spalten <code>Interne ID-Nummer</code>,
+      <code>Klasse</code>, <code>Vorname</code>, <code>Nachname</code> sowie allen
+      benötigten Ausbilder-/Betreuer-Feldern als CSV mit Semikolon-Separator speichern.
+      Datei im konfigurierten <em>Ausbilder-Eingabeverzeichnis</em> ablegen
+      (Einstellungen → Quelldaten-Verzeichnis).</li>
+  <li>In der Schüler-Tabelle die <strong>Klassen-Whitelist</strong> über die
+      farbigen Klassen-Chips konfigurieren — wird automatisch gespeichert.</li>
+  <li>In der Schüler-Tabelle das <strong>Häkchen</strong> bei jenen Schülern
+      entfernen, die nicht eingewilligt haben. Die Blacklist wird sofort
+      persistent gespeichert.</li>
+</ol>
+
+<h6>Verarbeitung</h6>
+<p>Klick auf <strong>▶️ Verarbeiten &amp; CSV erzeugen</strong>:</p>
+<ol>
+  <li>Die neueste CSV im Eingabeverzeichnis wird geladen.</li>
+  <li>Es werden nur die Zeilen übernommen, deren <em>Klasse</em> in der Whitelist
+      steht (oder: alle, wenn die Whitelist leer ist) <strong>und</strong> deren
+      <em>Interne ID-Nummer</em> nicht auf der Blacklist steht.</li>
+  <li>Die gefilterte CSV wird in das <em>Ausbilder-Ausgabeverzeichnis</em>
+      geschrieben — bereit für den WebUntis-Import.</li>
+</ol>
+
+<p>Anschließend lässt sich die Datei über <strong>⬇️ CSV herunterladen</strong>
+auch im Browser holen.</p>
+
+<h6>Datei-Konfliktauflösung</h6>
+<p>Existiert bereits eine Datei mit demselben Namen im Ausgabeverzeichnis, hängt
+das Tool automatisch einen <code>HHMMSS</code>-Zeitstempel an, statt die alte
+Datei zu überschreiben.</p>
+
+<p class="text-muted small mt-3">💡 Dieser Workflow wurde aus dem ursprünglichen
+Standalone-Tool <em>AusbilderImporterFlask</em> in das Haupttool integriert
+(Update 3.2).</p>
+""",
+    },
+
     "info_mails": {
         "title": "ℹ️ Info-Mails bei Feldänderungen",
         "html": """
@@ -856,6 +963,8 @@ HELP_CATEGORIES = [
         "warnungen",
         "info_mails",
         "sopaed_workflow",
+        "erzieher_workflow",
+        "ausbilder_workflow",
     ]),
     ("📥 Eingabe-Dateien aus Schild", [
         "schild_export",

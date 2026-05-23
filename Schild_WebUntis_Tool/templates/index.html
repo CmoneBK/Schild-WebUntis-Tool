@@ -17,6 +17,22 @@
             </div>
         </div>
 
+        <!-- ===== Top-Level Workflow-Switcher ===== -->
+        <ul class="nav nav-pills nav-fill mt-4" id="workflowTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" data-workflow="schueler" role="tab">👨‍🎓 Schüler-Verarbeitung</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-workflow="erzieher" role="tab">👨‍👩‍👧 Erzieher / Ansprechpartner</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-workflow="ausbilder" role="tab">🏭 Ausbilder / Betreuer</a>
+            </li>
+        </ul>
+
+        <!-- ===== Workflow: Schüler ===== -->
+        <div id="workflow-schueler" class="workflow-section">
+
         <div class="card mt-4">
             <div class="card-header bg-primary text-white">
                 Hauptbereich (und Einstellungen für die aktuelle Ausführung)
@@ -214,9 +230,7 @@
             {% endfor %}
         </ul>
         {% endif %}
-    </div>
 
-    <div class="container mt-5">
         <!-- Navigation Card -->
         <div class="card shadow mt-4 mb-5">
             <div class="card-header bg-primary text-white">
@@ -312,6 +326,280 @@
             </div>
         </div>
 
+        </div>  <!-- ===== Ende Workflow: Schüler ===== -->
+
+        <!-- ===== Workflow: Erzieher ===== -->
+        <div id="workflow-erzieher" class="workflow-section" style="display:none;">
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white">
+                    👨‍👩‍👧 Erzieher / Ansprechpartner — Konvertierung für WebUntis
+                    <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="erzieher_workflow" title="Hilfe zum Erzieher-Workflow" style="font-size:1rem;line-height:1;">ℹ️</button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        SchildNRW speichert Erzieher und zusätzliche Ansprechpartner (mit Telefonnummern)
+                        getrennt. WebUntis erwartet pro Erzieher/Ansprechpartner einen eigenen Datensatz.
+                        Dieses Modul kombiniert beide Exports und erzeugt pro „n-tem" Erzieher eines Schülers
+                        eine eigene Import-CSV — gepackt als ZIP.
+                    </p>
+
+                    <!-- Status / erkannte Dateien -->
+                    <div id="erzieherStatus" class="alert alert-secondary py-2 mb-3" style="font-size:0.9rem;">
+                        Lade Status…
+                    </div>
+
+                    <div class="form-group mb-2">
+                        <label for="erzieherZipNameTemplate" class="mb-1">ZIP-Dateiname (Platzhalter: <code>{datum}</code> <code>{datetime}</code> <code>{zeit}</code> <code>{jahr}</code> <code>{monat}</code> <code>{tag}</code>):</label>
+                        <input type="text" class="form-control" id="erzieherZipNameTemplate" placeholder="Erzieher_Import_{datum}">
+                        <small class="form-text text-muted">Wird beim Verarbeiten als Standard gespeichert.</small>
+                    </div>
+
+                    <div class="d-inline-block">
+                        <button id="erzieherProcess" type="button" class="btn btn-primary mr-2">▶️ Verarbeiten &amp; ZIP erzeugen</button>
+                        <button id="erzieherDownload" type="button" class="btn btn-outline-primary" disabled>⬇️ ZIP herunterladen</button>
+                    </div>
+                    <span id="erzieherResult" class="ml-2 text-muted small"></span>
+                </div>
+            </div>
+
+            <!-- Erzieher-Module / Navigation -->
+            <div class="card shadow mt-4 mb-5">
+                <div class="card-header bg-primary text-white">
+                    🎮 Module &amp; Konfiguration
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <button id="toggle-settings-erzieher" type="button" class="btn btn-primary w-100 shadow-sm">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <span class="mr-2">⚙️</span> Einstellungen
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Erzieher-Settings-Panel (Workflow-spezifisch) -->
+            <div id="erzieherSettingsPanel" class="mt-4" style="display:none;">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <span>⚙️ Einstellungen — Erzieher / Ansprechpartner</span>
+                        <button type="button" class="close text-white" aria-label="Schließen"
+                                onclick="document.getElementById('erzieherSettingsPanel').style.display='none'"
+                                style="opacity:0.9;">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Diese Einstellungen gelten ausschließlich für den Erzieher-/Ansprechpartner-Workflow.
+                            Geteilte Einstellungen (SMTP, Admin-Kontakt etc.) sind im Schüler-Einstellungs-Menü zu finden.
+                        </p>
+                        <form id="form-erzieher-settings">
+
+                            <h5 class="mb-1">Quelldaten-Verzeichnisse</h5>
+                            <p class="text-muted small mb-3">Hier landen die Schild-Exports, die das Tool einliest.</p>
+
+                            <div class="form-group">
+                                <label for="erzieher_export_directory">👨‍👩‍👧 Erzieher-Export-Verzeichnis:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="erzieher_export_directory"
+                                        name="erzieher_export_directory" readonly>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-secondary"
+                                            data-directory-input="erzieher_export_directory">Durchsuchen</button>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">Schild-Export der Erzieher-Hauptdaten (Anrede, Briefanrede, Titel, Nach-/Vorname, E-Mail je Erzieher).</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ansprechpartner_export_directory">📞 Ansprechpartner-Export-Verzeichnis:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="ansprechpartner_export_directory"
+                                        name="ansprechpartner_export_directory" readonly>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-secondary"
+                                            data-directory-input="ansprechpartner_export_directory">Durchsuchen</button>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">Schild-Export der Ansprechpartner (mit Telefonnummern, je Schüler ggf. mehrere).</small>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">Ausgabedateien-Verzeichnis</h5>
+                            <p class="text-muted small mb-3">In dieses Verzeichnis schreibt das Tool die fertige ZIP-Datei.</p>
+
+                            <div class="form-group">
+                                <label for="erzieher_output_directory">📦 Erzieher-Ausgabeverzeichnis:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="erzieher_output_directory"
+                                        name="erzieher_output_directory" readonly>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-secondary"
+                                            data-directory-input="erzieher_output_directory">Durchsuchen</button>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">Eine ZIP-Datei pro Verarbeitungs-Lauf — enthält eine CSV pro „n-tem" Erzieher eines Schülers.</small>
+                            </div>
+
+                        </form>
+                        <button id="saveErzieherSettings" type="button" class="btn btn-primary mt-3">💾 Speichern</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Workflow: Ausbilder / Betreuer (Phase 3) ===== -->
+        <div id="workflow-ausbilder" class="workflow-section" style="display:none;">
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white">
+                    🏭 Ausbilder / Betreuer — Konvertierung für WebUntis (Berufskolleg)
+                    <button type="button" class="help-btn btn btn-link btn-sm text-white p-0 ml-2" data-help="ausbilder_workflow" title="Hilfe zum Ausbilder-Workflow" style="font-size:1rem;line-height:1;">ℹ️</button>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-3">
+                        Filtert den Schild-Ausbilder-Export für WebUntis nach
+                        <strong>DSGVO/VO DVI</strong>-Vorgaben:
+                        Nur Azubis aus den freigegebenen Klassen — und nur solche, die der
+                        Datenverarbeitung zugestimmt haben (Blacklist).
+                        Speziell für Berufskollegs in NRW.
+                    </p>
+
+                    <!-- Status / erkannte CSV -->
+                    <div id="ausbilderStatus" class="alert alert-secondary py-2 mb-3" style="font-size:0.9rem;">
+                        Lade Status…
+                    </div>
+
+                    <!-- Klassen-Whitelist -->
+                    <div class="form-group mb-3">
+                        <label class="mb-1"><strong>Klassen-Whitelist</strong> <small class="text-muted">(leer = alle Klassen werden uebernommen)</small>:</label>
+                        <div id="ausbilderClassChips" class="border rounded p-2" style="min-height:46px;">
+                            <span class="text-muted small">Wird geladen…</span>
+                        </div>
+                        <small class="form-text text-muted">Klick auf eine Klasse aktiviert/deaktiviert sie für den Export.</small>
+                    </div>
+
+                    <!-- Schüler-Tabelle mit Blacklist-Toggle -->
+                    <div class="form-group mb-3">
+                        <label class="mb-1"><strong>Schüler-Liste</strong> (Häkchen entfernen = auf Blacklist setzen, d.h. <em>nicht</em> exportieren):</label>
+                        <div class="d-flex flex-wrap align-items-center mb-2">
+                            <input type="text" id="ausbilderStudentSearch" class="form-control form-control-sm mr-2 mb-1" placeholder="🔍 Filter (Name oder Klasse)…" style="max-width:280px;">
+                            <small class="text-muted mb-1" id="ausbilderStudentCount">—</small>
+                        </div>
+                        <div class="table-responsive border rounded" style="max-height:380px; overflow-y:auto;">
+                            <table class="table table-sm table-hover mb-0" id="ausbilderStudentsTable">
+                                <thead class="thead-light" style="position:sticky; top:0; z-index:1;">
+                                    <tr>
+                                        <th style="width:80px;" class="text-center">Export?</th>
+                                        <th>Klasse</th>
+                                        <th>Nachname</th>
+                                        <th>Vorname</th>
+                                        <th>ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ausbilderStudentsBody">
+                                    <tr><td colspan="5" class="text-center text-muted py-3">Wird geladen…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Ausgabename + Buttons -->
+                    <div class="form-group mb-2">
+                        <label for="ausbilderOutputNameTemplate" class="mb-1">Ausgabe-Dateiname (Platzhalter: <code>{datum}</code> <code>{datetime}</code> <code>{zeit}</code> <code>{jahr}</code> <code>{monat}</code> <code>{tag}</code>):</label>
+                        <input type="text" class="form-control" id="ausbilderOutputNameTemplate" placeholder="WebUntis_Ausbilder_Import_{datetime}">
+                        <small class="form-text text-muted">Wird beim Verarbeiten als Standard gespeichert.</small>
+                    </div>
+
+                    <div class="d-inline-block">
+                        <button id="ausbilderProcess" type="button" class="btn btn-primary mr-2">▶️ Verarbeiten &amp; CSV erzeugen</button>
+                        <button id="ausbilderDownload" type="button" class="btn btn-outline-primary" disabled>⬇️ CSV herunterladen</button>
+                    </div>
+                    <span id="ausbilderResult" class="ml-2 text-muted small"></span>
+                </div>
+            </div>
+
+            <!-- Ausbilder-Module / Navigation -->
+            <div class="card shadow mt-4 mb-5">
+                <div class="card-header bg-primary text-white">
+                    🎮 Module &amp; Konfiguration
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <button id="toggle-settings-ausbilder" type="button" class="btn btn-primary w-100 shadow-sm">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <span class="mr-2">⚙️</span> Einstellungen
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ausbilder-Settings-Panel (Workflow-spezifisch) -->
+            <div id="ausbilderSettingsPanel" class="mt-4" style="display:none;">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <span>⚙️ Einstellungen — Ausbilder / Betreuer</span>
+                        <button type="button" class="close text-white" aria-label="Schließen"
+                                onclick="document.getElementById('ausbilderSettingsPanel').style.display='none'"
+                                style="opacity:0.9;">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Diese Einstellungen gelten ausschließlich für den Ausbilder-/Betreuer-Workflow.
+                            Geteilte Einstellungen (SMTP, Admin-Kontakt etc.) sind im Schüler-Einstellungs-Menü zu finden.
+                        </p>
+                        <form id="form-ausbilder-settings">
+
+                            <h5 class="mb-1">Quelldaten-Verzeichnis</h5>
+                            <p class="text-muted small mb-3">Hier landet der Schild-Export der Auszubildenden inkl. Betreuer-Daten.</p>
+
+                            <div class="form-group">
+                                <label for="ausbilder_input_directory">🏭 Ausbilder-Eingabeverzeichnis:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="ausbilder_input_directory"
+                                        name="ausbilder_input_directory" readonly>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-secondary"
+                                            data-directory-input="ausbilder_input_directory">Durchsuchen</button>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">Schild-Export mit Spalten <code>Interne ID-Nummer</code>, <code>Klasse</code>, <code>Vorname</code>, <code>Nachname</code> sowie Ausbilder-/Betreuer-Feldern.</small>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">Ausgabedateien-Verzeichnis</h5>
+                            <p class="text-muted small mb-3">In dieses Verzeichnis schreibt das Tool die gefilterte WebUntis-Import-CSV.</p>
+
+                            <div class="form-group">
+                                <label for="ausbilder_output_directory">📦 Ausbilder-Ausgabeverzeichnis:</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="ausbilder_output_directory"
+                                        name="ausbilder_output_directory" readonly>
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-secondary"
+                                            data-directory-input="ausbilder_output_directory">Durchsuchen</button>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">Eine CSV pro Verarbeitungs-Lauf — bereits gefiltert nach Klassen-Whitelist und Blacklist.</small>
+                            </div>
+
+                        </form>
+                        <button id="saveAusbilderSettings" type="button" class="btn btn-primary mt-3">💾 Speichern</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Workflow-übergreifende Panels (immer verfügbar) ===== -->
         <!-- Dashboard Panel -->
         <!-- Admin-Check Panel -->
         <div id="adminPanel" class="mt-4" style="display: none;">

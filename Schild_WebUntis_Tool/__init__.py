@@ -231,6 +231,11 @@ def ensure_ini_files_exist():
     default_nachteilsausgleich_excel_directory ="NachteilsausgleichExcel"
     default_foto_directory ="SchuelerFotos"
     default_foto_zip_directory ="SchuelerFotosZips"
+    default_erzieher_export_directory = "ErzieherExport"
+    default_ansprechpartner_export_directory = "AnsprechpartnerExport"
+    default_erzieher_output_directory = "ErzieherImporte"
+    default_ausbilder_input_directory = "AusbilderInput"
+    default_ausbilder_output_directory = "AusbilderImportDateien"
 
     # Standard-Inhalt für settings.ini vorbereiten
     settings_ini_content = f"""[Directories]
@@ -246,6 +251,11 @@ nachteilsausgleich_file_directory = {default_nachteilsausgleich_file_directory}
 nachteilsausgleich_excel_directory = {default_nachteilsausgleich_excel_directory}
 foto_directory = {default_foto_directory}
 foto_zip_directory = {default_foto_zip_directory}
+erzieher_export_directory = {default_erzieher_export_directory}
+ansprechpartner_export_directory = {default_ansprechpartner_export_directory}
+erzieher_output_directory = {default_erzieher_output_directory}
+ausbilder_input_directory = {default_ausbilder_input_directory}
+ausbilder_output_directory = {default_ausbilder_output_directory}
 
 [FotoOptions]
 # Vorlage fuer den ZIP-Dateinamen beim Foto-Export.
@@ -308,6 +318,21 @@ nachteilsausgleich_source = csv
 # Empfänger nur bei Klassenwechsel-Warnungen
 # gültig: old | new | both
 class_change_recipients = both
+
+[Erzieher]
+# Vorlage fuer den ZIP-Dateinamen beim Erzieher-Export.
+# Platzhalter: {{datum}} {{datetime}} {{zeit}} {{jahr}} {{monat}} {{tag}}
+zip_name_template = Erzieher_Import_{{datum}}
+
+[Ausbilder]
+# Vorlage fuer den Dateinamen der Ausbilder-Import-CSV.
+# Platzhalter: {{datum}} {{datetime}} {{zeit}} {{jahr}} {{monat}} {{tag}}
+output_name_template = WebUntis_Ausbilder_Import_{{datetime}}
+# Whitelist der Klassen (Komma-getrennt). Leer = alle Klassen werden uebernommen.
+class_filter =
+# Blacklist der Schueler-IDs (Komma-getrennt). Diese Schueler werden NICHT exportiert
+# (z.B. weil sie der Datenverarbeitung nicht zugestimmt haben).
+blacklist_ids =
 """
 
     # Standard-Inhalt für email_settings.ini vorbereiten
@@ -411,6 +436,21 @@ client_name = Schild-WebUntis-Tool
             if not config.has_option('Directories', 'foto_zip_directory'):
                 config.set('Directories', 'foto_zip_directory', default_foto_zip_directory)
                 updated = True
+            if not config.has_option('Directories', 'erzieher_export_directory'):
+                config.set('Directories', 'erzieher_export_directory', default_erzieher_export_directory)
+                updated = True
+            if not config.has_option('Directories', 'ansprechpartner_export_directory'):
+                config.set('Directories', 'ansprechpartner_export_directory', default_ansprechpartner_export_directory)
+                updated = True
+            if not config.has_option('Directories', 'erzieher_output_directory'):
+                config.set('Directories', 'erzieher_output_directory', default_erzieher_output_directory)
+                updated = True
+            if not config.has_option('Directories', 'ausbilder_input_directory'):
+                config.set('Directories', 'ausbilder_input_directory', default_ausbilder_input_directory)
+                updated = True
+            if not config.has_option('Directories', 'ausbilder_output_directory'):
+                config.set('Directories', 'ausbilder_output_directory', default_ausbilder_output_directory)
+                updated = True
             # FotoOptions
             if not config.has_section('FotoOptions'):
                 config.add_section('FotoOptions')
@@ -423,6 +463,36 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             if not config.has_option('FotoOptions', 'rename_subdir'):
                 config.set('FotoOptions', 'rename_subdir', 'Umbenannt')
+                updated = True
+
+            # Erzieher (Phase 2 — aktiv)
+            if not config.has_section('Erzieher'):
+                config.add_section('Erzieher')
+                updated = True
+            # Veralteten "status = In Vorbereitung"-Eintrag entfernen, falls vorhanden
+            if config.has_option('Erzieher', 'status') and config.get('Erzieher', 'status', fallback='').strip().startswith('In Vorbereitung'):
+                config.remove_option('Erzieher', 'status')
+                updated = True
+            if not config.has_option('Erzieher', 'zip_name_template'):
+                config.set('Erzieher', 'zip_name_template', 'Erzieher_Import_{datum}')
+                updated = True
+
+            # Ausbilder (Phase 3 — aktiv)
+            if not config.has_section('Ausbilder'):
+                config.add_section('Ausbilder')
+                updated = True
+            # Veralteten "status = In Vorbereitung"-Eintrag entfernen, falls vorhanden
+            if config.has_option('Ausbilder', 'status') and config.get('Ausbilder', 'status', fallback='').strip().startswith('In Vorbereitung'):
+                config.remove_option('Ausbilder', 'status')
+                updated = True
+            if not config.has_option('Ausbilder', 'output_name_template'):
+                config.set('Ausbilder', 'output_name_template', 'WebUntis_Ausbilder_Import_{datetime}')
+                updated = True
+            if not config.has_option('Ausbilder', 'class_filter'):
+                config.set('Ausbilder', 'class_filter', '')
+                updated = True
+            if not config.has_option('Ausbilder', 'blacklist_ids'):
+                config.set('Ausbilder', 'blacklist_ids', '')
                 updated = True
 
             if updated:
@@ -505,6 +575,11 @@ client_name = Schild-WebUntis-Tool
         "nachteilsausgleich_excel_directory": default_nachteilsausgleich_excel_directory,
         "foto_directory": default_foto_directory,
         "foto_zip_directory": default_foto_zip_directory,
+        "erzieher_export_directory": default_erzieher_export_directory,
+        "ansprechpartner_export_directory": default_ansprechpartner_export_directory,
+        "erzieher_output_directory": default_erzieher_output_directory,
+        "ausbilder_input_directory": default_ausbilder_input_directory,
+        "ausbilder_output_directory": default_ausbilder_output_directory,
     }
 
     print_section("Verzeichnisse")
@@ -1469,6 +1544,191 @@ def fotos_restore():
         return jsonify({"error": "Dateiname fehlt."}), 400
     ok = foto_manager.restore_archived_foto(filename)
     return jsonify({"ok": ok})
+
+
+# ====================== Erzieher-Workflow (Phase 2) ======================
+
+last_erzieher_zip = None  # {'path', 'name', 'stats'}
+
+
+@app.route('/api/erzieher/status', methods=['GET'])
+def erzieher_status():
+    """Liefert Info über die aktuell erkannten Eingabedateien + Konfig."""
+    import erzieher_processor
+    info = erzieher_processor.status_info()
+    info['last_zip'] = last_erzieher_zip
+    return jsonify(info)
+
+
+@app.route('/api/erzieher/process', methods=['POST'])
+def erzieher_process():
+    """Verarbeitet Erzieher- und Ansprechpartner-Export, schreibt ZIP ins Ausgabeverzeichnis."""
+    global last_erzieher_zip
+    import erzieher_processor
+    data = request.json or {}
+    name_template = (data.get('name_template') or '').strip() or None
+
+    if name_template:
+        try:
+            erzieher_processor.save_zip_name_template(name_template)
+        except Exception:
+            pass
+
+    try:
+        result_files, stats = erzieher_processor.process()
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler bei der Verarbeitung: {e}"}), 500
+
+    if not result_files:
+        return jsonify({"error": "Es wurden keine Erzieher gefunden."}), 400
+
+    try:
+        zip_path, zip_name = erzieher_processor.write_zip(result_files, name_template=name_template)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Schreiben des ZIP: {e}"}), 500
+
+    last_erzieher_zip = {'path': zip_path, 'name': zip_name, 'stats': stats}
+    return jsonify({
+        "success":   True,
+        "name":      zip_name,
+        "path":      zip_path,
+        "directory": erzieher_processor.get_output_dir(),
+        "stats":     stats,
+    })
+
+
+@app.route('/api/erzieher/download', methods=['GET'])
+def erzieher_download():
+    """Lädt das zuletzt erstellte Erzieher-ZIP herunter."""
+    from flask import send_file
+    if not last_erzieher_zip or not os.path.isfile(last_erzieher_zip.get('path', '')):
+        return jsonify({"error": "Es wurde noch kein ZIP erstellt (oder die Datei wurde verschoben/gelöscht)."}), 404
+    return send_file(
+        last_erzieher_zip['path'],
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=last_erzieher_zip['name'],
+    )
+
+
+# ====================== Ausbilder-Workflow (Phase 3) ======================
+# DSGVO/VO DVI: Ausbilder duerfen nur Fehlstunden derjenigen Azubis sehen, die
+# der Datenverarbeitung zugestimmt haben. Tool filtert Schild-Export nach
+# Klassen-Whitelist UND Blacklist (keine Einwilligung) -> WebUntis-Import-CSV.
+
+last_ausbilder_csv = None  # {'path', 'name', 'rows_in', 'rows_out'}
+
+
+@app.route('/api/ausbilder/students', methods=['GET'])
+def ausbilder_students():
+    """Liefert Liste der Schueler aus der neuesten Schild-CSV inkl. Klassen/Blacklist/Filter."""
+    import ausbilder_processor
+    data = ausbilder_processor.list_students()
+    data['last_csv'] = last_ausbilder_csv
+    return jsonify(data)
+
+
+@app.route('/api/ausbilder/save_filter', methods=['POST'])
+def ausbilder_save_filter():
+    """Speichert die Klassen-Whitelist persistent in settings.ini."""
+    import ausbilder_processor
+    data = request.json or {}
+    classes = data.get('classes', [])
+    if not isinstance(classes, list):
+        return jsonify({"error": "Feld 'classes' muss eine Liste sein."}), 400
+    try:
+        ausbilder_processor.save_class_filter(classes)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True, "class_filter": ausbilder_processor.get_class_filter()})
+
+
+@app.route('/api/ausbilder/save_blacklist', methods=['POST'])
+def ausbilder_save_blacklist():
+    """Speichert die komplette Blacklist (Liste von Schueler-IDs)."""
+    import ausbilder_processor
+    data = request.json or {}
+    ids = data.get('ids', [])
+    if not isinstance(ids, list):
+        return jsonify({"error": "Feld 'ids' muss eine Liste sein."}), 400
+    try:
+        ausbilder_processor.save_blacklist(ids)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True, "blacklist": sorted(ausbilder_processor.get_blacklist())})
+
+
+@app.route('/api/ausbilder/blacklist/toggle', methods=['POST'])
+def ausbilder_blacklist_toggle():
+    """Fuegt eine Schueler-ID zur Blacklist hinzu oder entfernt sie."""
+    import ausbilder_processor
+    data = request.json or {}
+    sid = str(data.get('id', '')).strip()
+    add = bool(data.get('add', True))
+    if not sid:
+        return jsonify({"error": "Feld 'id' fehlt."}), 400
+    current = ausbilder_processor.get_blacklist()
+    if add:
+        current.add(sid)
+    else:
+        current.discard(sid)
+    try:
+        ausbilder_processor.save_blacklist(current)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True, "blacklisted": sid in current, "blacklist": sorted(current)})
+
+
+@app.route('/api/ausbilder/process', methods=['POST'])
+def ausbilder_process():
+    """Filtert die Schild-CSV nach Klassen-Whitelist + Blacklist und schreibt die WebUntis-Import-CSV."""
+    global last_ausbilder_csv
+    import ausbilder_processor
+    data = request.json or {}
+    name_template = (data.get('name_template') or '').strip() or None
+
+    if name_template:
+        try:
+            ausbilder_processor.save_output_name_template(name_template)
+        except Exception:
+            pass
+
+    try:
+        out_path, out_name, rows_in, rows_out = ausbilder_processor.filter_and_write(name_template=name_template)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler bei der Verarbeitung: {e}"}), 500
+
+    last_ausbilder_csv = {'path': out_path, 'name': out_name, 'rows_in': rows_in, 'rows_out': rows_out}
+    return jsonify({
+        "success":   True,
+        "name":      out_name,
+        "path":      out_path,
+        "directory": ausbilder_processor.get_output_dir(),
+        "rows_in":   rows_in,
+        "rows_out":  rows_out,
+    })
+
+
+@app.route('/api/ausbilder/download', methods=['GET'])
+def ausbilder_download():
+    """Laedt die zuletzt erstellte Ausbilder-Import-CSV herunter."""
+    from flask import send_file
+    if not last_ausbilder_csv or not os.path.isfile(last_ausbilder_csv.get('path', '')):
+        return jsonify({"error": "Es wurde noch keine CSV erstellt (oder die Datei wurde verschoben/gelöscht)."}), 404
+    return send_file(
+        last_ausbilder_csv['path'],
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=last_ausbilder_csv['name'],
+    )
 
 
 # Route zum Generieren von Info-Mails aus den Feldänderungen des letzten Laufs

@@ -142,6 +142,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     "nachteilsausgleich_excel_directory": "form-directories",
                     "foto_directory": "form-directories",
                     "foto_zip_directory": "form-directories",
+                    // Erzieher-Workflow (eigenes Settings-Panel innerhalb von workflow-erzieher)
+                    "erzieher_export_directory": "form-erzieher-settings",
+                    "ansprechpartner_export_directory": "form-erzieher-settings",
+                    "erzieher_output_directory": "form-erzieher-settings",
+                    // Ausbilder-Workflow (eigenes Settings-Panel innerhalb von workflow-ausbilder)
+                    "ausbilder_input_directory": "form-ausbilder-settings",
+                    "ausbilder_output_directory": "form-ausbilder-settings",
                     // ProcessingOptions
                     "use_abschlussdatum": "form-processing",
                     "create_second_file": "form-processing",
@@ -257,6 +264,11 @@ document.addEventListener("DOMContentLoaded", function () {
             "nachteilsausgleich_excel_directory": "Directories",
             "foto_directory": "Directories",
             "foto_zip_directory": "Directories",
+            "erzieher_export_directory": "Directories",
+            "ansprechpartner_export_directory": "Directories",
+            "erzieher_output_directory": "Directories",
+            "ausbilder_input_directory": "Directories",
+            "ausbilder_output_directory": "Directories",
             // ProcessingOptions
             "use_abschlussdatum": "ProcessingOptions",
             "create_second_file": "ProcessingOptions",
