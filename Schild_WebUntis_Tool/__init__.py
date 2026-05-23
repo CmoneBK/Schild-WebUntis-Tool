@@ -333,6 +333,13 @@ class_filter =
 # Blacklist der Schueler-IDs (Komma-getrennt). Diese Schueler werden NICHT exportiert
 # (z.B. weil sie der Datenverarbeitung nicht zugestimmt haben).
 blacklist_ids =
+# Modus fuer den Firma-Filter: 'whitelist' (nur diese Firmen exportieren) oder
+# 'blacklist' (diese Firmen nie exportieren). Es ist immer nur einer aktiv.
+firma_filter_mode = blacklist
+# Whitelist / Blacklist der Firmen (JSON-Liste). Leer = keine Beschraenkung.
+# JSON, weil Firmen-Namen Kommas enthalten koennen.
+firma_whitelist = []
+firma_blacklist = []
 """
 
     # Standard-Inhalt für email_settings.ini vorbereiten
@@ -493,6 +500,15 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             if not config.has_option('Ausbilder', 'blacklist_ids'):
                 config.set('Ausbilder', 'blacklist_ids', '')
+                updated = True
+            if not config.has_option('Ausbilder', 'firma_whitelist'):
+                config.set('Ausbilder', 'firma_whitelist', '[]')
+                updated = True
+            if not config.has_option('Ausbilder', 'firma_blacklist'):
+                config.set('Ausbilder', 'firma_blacklist', '[]')
+                updated = True
+            if not config.has_option('Ausbilder', 'firma_filter_mode'):
+                config.set('Ausbilder', 'firma_filter_mode', 'blacklist')
                 updated = True
 
             if updated:
@@ -1560,6 +1576,22 @@ def erzieher_status():
     return jsonify(info)
 
 
+@app.route('/api/erzieher/preview', methods=['GET'])
+def erzieher_preview():
+    """Liefert eine Vorschau der Schueler-Erzieher-Zuordnungen + Feld-Mapping
+    fuer die UI (kein ZIP wird erzeugt)."""
+    import erzieher_processor
+    try:
+        data = erzieher_processor.preview()
+        return jsonify(data)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler bei der Vorschau: {e}"}), 500
+
+
 @app.route('/api/erzieher/process', methods=['POST'])
 def erzieher_process():
     """Verarbeitet Erzieher- und Ansprechpartner-Export, schreibt ZIP ins Ausgabeverzeichnis."""
@@ -1660,6 +1692,36 @@ def ausbilder_save_blacklist():
     except Exception as e:
         return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
     return jsonify({"success": True, "blacklist": sorted(ausbilder_processor.get_blacklist())})
+
+
+@app.route('/api/ausbilder/save_firma_whitelist', methods=['POST'])
+def ausbilder_save_firma_whitelist():
+    """Speichert die Firma-Whitelist (JSON-Liste)."""
+    import ausbilder_processor
+    data = request.json or {}
+    firms = data.get('firms', [])
+    if not isinstance(firms, list):
+        return jsonify({"error": "Feld 'firms' muss eine Liste sein."}), 400
+    try:
+        ausbilder_processor.save_firma_whitelist(firms)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True, "firma_whitelist": ausbilder_processor.get_firma_whitelist()})
+
+
+@app.route('/api/ausbilder/save_firma_blacklist', methods=['POST'])
+def ausbilder_save_firma_blacklist():
+    """Speichert die Firma-Blacklist (JSON-Liste)."""
+    import ausbilder_processor
+    data = request.json or {}
+    firms = data.get('firms', [])
+    if not isinstance(firms, list):
+        return jsonify({"error": "Feld 'firms' muss eine Liste sein."}), 400
+    try:
+        ausbilder_processor.save_firma_blacklist(firms)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True, "firma_blacklist": ausbilder_processor.get_firma_blacklist()})
 
 
 @app.route('/api/ausbilder/blacklist/toggle', methods=['POST'])

@@ -238,6 +238,169 @@ def process(erzieher_path=None, ansprechpartner_path=None):
     return result_files, stats
 
 
+def preview(erzieher_path=None, ansprechpartner_path=None):
+    """
+    Liefert eine Vorschau der kombinierten Schueler+Erzieher-Daten ohne ZIP-
+    Generierung. Geeignet, um in der UI sowohl Schueler->Erzieher als auch
+    Erzieher->Schueler (gruppiert) darzustellen.
+
+    Returns dict mit:
+      - students:        Liste[{id, vorname, nachname, klasse, erzieher: [...]}]
+      - erzieher_groups: Liste[{erzieher: {...}, students: [{id, vorname, nachname, klasse, nr}, ...]}]
+      - stats:           {students_count, erzieher_total, max_erzieher, students_without_erzieher}
+      - field_mapping:   {from_erzieher_csv: [{src,target}], from_ansprechpartner_csv: [{src,target}]}
+      - sources:         {erzieher_export_file, ansprechpartner_export_file, headers_*}
+    """
+    erzieher_path = erzieher_path or _latest_csv(get_erzieher_export_dir())
+    ansprechpartner_path = ansprechpartner_path or _latest_csv(get_ansprechpartner_export_dir())
+
+    if not erzieher_path or not os.path.isfile(erzieher_path):
+        raise FileNotFoundError("Keine Erzieher-Export-CSV gefunden. Bitte Verzeichnis pruefen.")
+    if not ansprechpartner_path or not os.path.isfile(ansprechpartner_path):
+        raise FileNotFoundError("Keine Ansprechpartner-Export-CSV gefunden. Bitte Verzeichnis pruefen.")
+
+    erz_rows  = _read_csv_rows(erzieher_path)
+    ansp_rows = _read_csv_rows(ansprechpartner_path)
+    if not erz_rows:
+        raise ValueError("Erzieher-Export ist leer.")
+    if 'Interne ID-Nummer' not in erz_rows[0]:
+        raise ValueError("Spalte 'Interne ID-Nummer' fehlt im Erzieher-Export.")
+    if ansp_rows and 'Schüler_ID' not in ansp_rows[0]:
+        raise ValueError("Spalte 'Schüler_ID' fehlt im Ansprechpartner-Export.")
+
+    # Header der Eingabe-Dateien (fuer die Anzeige im Field-Mapping-Block)
+    erz_header  = list(erz_rows[0].keys())  if erz_rows  else []
+    ansp_header = list(ansp_rows[0].keys()) if ansp_rows else []
+
+    # Ansprechpartner-Zeilen per Schueler-ID sortieren und nummerieren (analog process())
+    ansp_rows.sort(key=lambda r: r.get('Schüler_ID', ''))
+    last_sid, counter = None, 0
+    for row in ansp_rows:
+        sid = row.get('Schüler_ID', '')
+        if sid != last_sid:
+            counter = 1
+            last_sid = sid
+        else:
+            counter += 1
+        row['Erzieher_Nummer'] = counter
+    # Lookup: sid -> [ansp_row sortiert nach Erzieher_Nummer]
+    ansp_by_sid = {}
+    for r in ansp_rows:
+        ansp_by_sid.setdefault(r.get('Schüler_ID', ''), []).append(r)
+    for lst in ansp_by_sid.values():
+        lst.sort(key=lambda r: r.get('Erzieher_Nummer', 0))
+
+    # Maximale Erzieher-Anzahl ueber alle Schueler hinweg ermitteln (aus den
+    # Spalten "Erzieher i: Anrede" o.ae. im Erzieher-Export).
+    max_in_header = 0
+    for col in erz_header:
+        m = re.match(r'Erzieher\s+(\d+):', col)
+        if m:
+            max_in_header = max(max_in_header, int(m.group(1)))
+    # Sicherheits-Fallback, falls Header nichts hergibt
+    if max_in_header == 0:
+        max_in_header = max((len(v) for v in ansp_by_sid.values()), default=0)
+
+    students = []
+    students_without_erzieher = 0
+    for erz_row in erz_rows:
+        sid = erz_row.get('Interne ID-Nummer', '').strip()
+        if not sid:
+            continue
+        ansp_list = ansp_by_sid.get(sid, [])
+        erzieher_list = []
+        for i in range(1, max_in_header + 1):
+            erz_data = {
+                'nr':          i,
+                'anrede':      erz_row.get(f'Erzieher {i}: Anrede',      '').strip(),
+                'briefanrede': erz_row.get(f'Erzieher {i}: Briefanrede', '').strip(),
+                'titel':       erz_row.get(f'Erzieher {i}: Titel',       '').strip(),
+                'nachname':    erz_row.get(f'Erzieher {i}: Nachname',    '').strip(),
+                'vorname':     erz_row.get(f'Erzieher {i}: Vorname',     '').strip(),
+                'email':       erz_row.get(f'Erzieher {i}: E-Mail',      '').strip(),
+            }
+            ansp = ansp_list[i-1] if i-1 < len(ansp_list) else {}
+            erz_data.update({
+                'anschluss': ansp.get('Anschluss-Art',  '').strip(),
+                'bemerkung': ansp.get('Bemerkung',      '').strip(),
+                'telefon':   ansp.get('Telefon-Nummer', '').strip(),
+            })
+            # Leere Erzieher-Slots (nichts in beiden Quellen) ueberspringen
+            if any(v for k, v in erz_data.items() if k != 'nr'):
+                erzieher_list.append(erz_data)
+        if not erzieher_list:
+            students_without_erzieher += 1
+        students.append({
+            'id':       sid,
+            'vorname':  erz_row.get('Vorname',  '').strip(),
+            'nachname': erz_row.get('Nachname', '').strip(),
+            'klasse':   erz_row.get('Klasse',   '').strip(),
+            'erzieher': erzieher_list,
+        })
+    students.sort(key=lambda s: (s['klasse'], s['nachname'], s['vorname']))
+
+    # Erzieher gruppieren ueber alle Schueler (Schluessel: nachname|vorname|email, case-insensitive)
+    groups = {}
+    for s in students:
+        for e in s['erzieher']:
+            key = (e['nachname'].lower(), e['vorname'].lower(), e['email'].lower())
+            if not any(key):
+                continue
+            entry = groups.setdefault(key, {'erzieher': e.copy(), 'students': []})
+            entry['students'].append({
+                'id':       s['id'],
+                'vorname':  s['vorname'],
+                'nachname': s['nachname'],
+                'klasse':   s['klasse'],
+                'nr':       e['nr'],
+            })
+    erzieher_groups = sorted(
+        groups.values(),
+        key=lambda g: (g['erzieher']['nachname'].lower(), g['erzieher']['vorname'].lower()),
+    )
+
+    erzieher_total = sum(len(s['erzieher']) for s in students)
+    max_erzieher   = max((len(s['erzieher']) for s in students), default=0)
+
+    # Feld-Mapping: was wandert aus welcher CSV in die i-te Output-CSV?
+    # 'i' ist Platzhalter; der konkrete Wert haengt vom Output-File ab.
+    from_erzieher = [{'src': 'Interne ID-Nummer', 'target': 'Interne_ID_Nummer'}]
+    for f in ERZIEHER_FIELDS:
+        from_erzieher.append({'src': f'Erzieher i: {f}', 'target': f'Erzieher i: {f}'})
+    from_ansprechpartner = [{'src': 'Schueler_ID', 'target': 'Interne_ID_Nummer (Matching)'}]
+    for src, tgt in ANSPRECHPARTNER_FIELD_MAP.items():
+        from_ansprechpartner.append({'src': src, 'target': f'Erzieher i: {tgt}'})
+
+    return {
+        'students':        students,
+        'erzieher_groups': [
+            {
+                'erzieher': g['erzieher'],
+                'students': sorted(g['students'], key=lambda x: (x['klasse'], x['nachname'], x['vorname'])),
+            }
+            for g in erzieher_groups
+        ],
+        'stats': {
+            'students_count':            len(students),
+            'students_without_erzieher': students_without_erzieher,
+            'erzieher_total':            erzieher_total,
+            'unique_erzieher':           len(erzieher_groups),
+            'max_erzieher':              max_erzieher,
+            'ansprechpartner_rows':      len(ansp_rows),
+        },
+        'field_mapping': {
+            'from_erzieher_csv':        from_erzieher,
+            'from_ansprechpartner_csv': from_ansprechpartner,
+        },
+        'sources': {
+            'erzieher_export_file':        os.path.basename(erzieher_path),
+            'ansprechpartner_export_file': os.path.basename(ansprechpartner_path),
+            'erzieher_headers':            erz_header,
+            'ansprechpartner_headers':     ansp_header,
+        },
+    }
+
+
 def write_zip(result_files, output_dir=None, name_template=None):
     """Schreibt die Ergebnisdateien als ZIP in das Ausgabeverzeichnis.
     Liefert (zip_pfad, zip_name)."""

@@ -15,6 +15,7 @@ Idee:
 import os
 import re
 import csv
+import json
 import configparser
 from datetime import datetime
 
@@ -108,6 +109,77 @@ def save_blacklist(ids):
         config.write(f)
 
 
+# ---------- Firma-Whitelist / -Blacklist ---------------------------------
+# JSON-codiert in settings.ini, weil Firmen-Namen Kommas enthalten koennen
+# ("Mueller, Schmidt & Co. GmbH"). Klassen-Filter + Schueler-Blacklist nutzen
+# weiterhin Komma-Separation, weil dort Kommas faktisch nicht vorkommen.
+
+def _read_json_list(key):
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    raw = config.get('Ausbilder', key, fallback='').strip()
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            return [str(x).strip() for x in data if str(x).strip()]
+    except Exception:
+        pass
+    return []
+
+
+def _write_json_list(key, items):
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Ausbilder'):
+        config.add_section('Ausbilder')
+    cleaned = sorted({str(x).strip() for x in (items or []) if str(x).strip()})
+    config.set('Ausbilder', key, json.dumps(cleaned, ensure_ascii=False))
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+def get_firma_whitelist():
+    """Liefert Liste der zu beruecksichtigenden Firmen (leer = alle)."""
+    return _read_json_list('firma_whitelist')
+
+
+def save_firma_whitelist(firms):
+    _write_json_list('firma_whitelist', firms)
+
+
+def get_firma_blacklist():
+    """Liefert Liste der auszuschliessenden Firmen (leer = keine ausgeschlossen)."""
+    return _read_json_list('firma_blacklist')
+
+
+def save_firma_blacklist(firms):
+    _write_json_list('firma_blacklist', firms)
+
+
+def get_firma_filter_mode():
+    """'whitelist' oder 'blacklist' — bestimmt welche Firma-Liste beim Export wirksam ist.
+    Default: 'blacklist' (haeufigster Use-Case: einzelne Firmen ausschliessen)."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    mode = config.get('Ausbilder', 'firma_filter_mode', fallback='blacklist').strip().lower()
+    return mode if mode in ('whitelist', 'blacklist') else 'blacklist'
+
+
+def save_firma_filter_mode(mode):
+    mode = (mode or '').strip().lower()
+    if mode not in ('whitelist', 'blacklist'):
+        raise ValueError("mode muss 'whitelist' oder 'blacklist' sein.")
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Ausbilder'):
+        config.add_section('Ausbilder')
+    config.set('Ausbilder', 'firma_filter_mode', mode)
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -189,11 +261,15 @@ def list_students():
     out_dir  = get_output_dir()
     tpl      = get_output_name_template()
     csv_path = _latest_csv(in_dir)
-    class_filter = get_class_filter()
-    blacklist = get_blacklist()
+    class_filter      = get_class_filter()
+    blacklist         = get_blacklist()
+    firma_whitelist   = get_firma_whitelist()
+    firma_blacklist   = get_firma_blacklist()
+    firma_filter_mode = get_firma_filter_mode()
 
     students = []
     classes = []
+    firms = []
     if csv_path:
         try:
             _, rows = _read_csv_rows(csv_path)
@@ -207,11 +283,23 @@ def list_students():
                     'vorname':      row.get('Vorname', '').strip(),
                     'nachname':     row.get('Nachname', '').strip(),
                     'klasse':       klasse,
+                    'firma':        row.get('Allg. Adresse: Name1', '').strip(),
                     'blacklisted':  sid in blacklist,
+                    'ausbilder': {
+                        'anrede':    row.get('Allg. Adresse: Betreuer Anrede',    '').strip(),
+                        'titel':     row.get('Allg. Adresse: Betreuer Titel',     '').strip(),
+                        'vorname':   row.get('Allg. Adresse: Betreuer Vorname',   '').strip(),
+                        'nachname':  row.get('Allg. Adresse: Betreuer Name',      '').strip(),
+                        'email':     row.get('Allg. Adresse: Betreuer E-Mail',    '').strip(),
+                        'telefon':   row.get('Allg. Adresse: Betreuer Telefon',   '').strip(),
+                        'abteilung': row.get('Allg. Adresse: Betreuer Abteilung', '').strip(),
+                        'fax':       row.get('Allg. Adresse: Fax-Nr.',            '').strip(),
+                    },
                 })
-            # Sortierung: Klasse, dann Nachname
+            # Default-Sortierung: Klasse, Nachname, Vorname (Frontend kann umsortieren)
             students.sort(key=lambda s: (s['klasse'], s['nachname'], s['vorname']))
             classes = sorted({s['klasse'] for s in students if s['klasse']})
+            firms   = sorted({s['firma']  for s in students if s['firma']})
         except Exception:
             pass
 
@@ -223,22 +311,38 @@ def list_students():
         'csv_path':             csv_path,
         'students':             students,
         'classes':              classes,
+        'firms':                firms,
         'class_filter':         class_filter,
         'blacklist':            sorted(blacklist),
+        'firma_whitelist':      firma_whitelist,
+        'firma_blacklist':      firma_blacklist,
+        'firma_filter_mode':    firma_filter_mode,
     }
 
 
-def filter_and_write(input_path=None, classes=None, blacklist=None, output_dir=None, name_template=None):
+def filter_and_write(input_path=None, classes=None, blacklist=None, output_dir=None,
+                     name_template=None, firma_whitelist=None, firma_blacklist=None,
+                     firma_filter_mode=None):
     """
-    Liest die CSV, filtert nach Klassen-Whitelist UND Blacklist, schreibt
-    eine neue CSV ins Ausgabeverzeichnis.
+    Liest die CSV, filtert nach Klassen-Whitelist, Schueler-Blacklist und (je nach
+    firma_filter_mode) Firma-Whitelist ODER Firma-Blacklist, schreibt eine neue
+    CSV ins Ausgabeverzeichnis.
     Liefert (output_pfad, output_name, anzahl_eingang, anzahl_ausgang).
     """
-    input_path    = input_path or _latest_csv(get_input_dir())
-    classes       = list(classes) if classes is not None else get_class_filter()
-    blacklist_set = set(blacklist) if blacklist is not None else get_blacklist()
-    output_dir    = output_dir or get_output_dir()
-    name_template = name_template or get_output_name_template()
+    input_path        = input_path or _latest_csv(get_input_dir())
+    classes           = list(classes) if classes is not None else get_class_filter()
+    blacklist_set     = set(blacklist) if blacklist is not None else get_blacklist()
+    firma_mode        = (firma_filter_mode or get_firma_filter_mode())
+    # Es ist immer nur EINE der beiden Firma-Listen wirksam (per Mode-Setting).
+    # Die andere bleibt zwar in der INI gespeichert, wirkt aber nicht auf den Export.
+    if firma_mode == 'whitelist':
+        firma_white_set = set(firma_whitelist) if firma_whitelist is not None else set(get_firma_whitelist())
+        firma_black_set = set()
+    else:  # 'blacklist'
+        firma_white_set = set()
+        firma_black_set = set(firma_blacklist) if firma_blacklist is not None else set(get_firma_blacklist())
+    output_dir        = output_dir or get_output_dir()
+    name_template     = name_template or get_output_name_template()
 
     if not input_path or not os.path.isfile(input_path):
         raise FileNotFoundError("Keine CSV-Datei im Ausbilder-Input-Verzeichnis gefunden.")
@@ -248,13 +352,27 @@ def filter_and_write(input_path=None, classes=None, blacklist=None, output_dir=N
         raise ValueError("Eingangsdatei hat keine Spaltenüberschriften.")
 
     klassen_set = {c.strip() for c in classes if c.strip()}
+    # Sentinel '__NONE__': Benutzer hat explizit "keine Klasse aktiv" gewaehlt
+    # (im Gegensatz zur Default-Semantik leer = alle Klassen).
+    none_mode = '__NONE__' in klassen_set
+    if none_mode:
+        klassen_set = set()
     filtered = []
     for row in rows:
+        if none_mode:
+            continue
         sid    = row.get('Interne ID-Nummer', '').strip()
         klasse = row.get('Klasse', '').strip()
+        firma  = row.get('Allg. Adresse: Name1', '').strip()
         if klassen_set and klasse not in klassen_set:
             continue
         if sid in blacklist_set:
+            continue
+        # Firma-Whitelist: wenn gesetzt, muss die Firma drin sein
+        if firma_white_set and firma not in firma_white_set:
+            continue
+        # Firma-Blacklist: wenn die Firma drin steht, raus damit
+        if firma and firma in firma_black_set:
             continue
         filtered.append(row)
 

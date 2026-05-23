@@ -38,6 +38,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Persistieren
         try { localStorage.setItem(STORAGE_KEY, wf); } catch (_) {}
+
+        // Event feuern, damit Workflow-spezifische Scripts ihren Status laden
+        // koennen. Wirkt sowohl beim Tab-Klick als auch beim initialen Restore
+        // aus localStorage (loest den F5-Bug).
+        document.dispatchEvent(new CustomEvent('workflow:shown', { detail: { workflow: wf } }));
     }
 
     // Click-Handler für Tab-Pills

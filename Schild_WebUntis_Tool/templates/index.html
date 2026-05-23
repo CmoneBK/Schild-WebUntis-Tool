@@ -356,9 +356,46 @@
 
                     <div class="d-inline-block">
                         <button id="erzieherProcess" type="button" class="btn btn-primary mr-2">▶️ Verarbeiten &amp; ZIP erzeugen</button>
-                        <button id="erzieherDownload" type="button" class="btn btn-outline-primary" disabled>⬇️ ZIP herunterladen</button>
+                        <button id="erzieherDownload" type="button" class="btn btn-outline-primary mr-2" disabled>⬇️ ZIP herunterladen</button>
+                        <button id="erzieherTogglePreview" type="button" class="btn btn-outline-info">👁️ Vorschau Schüler ↔ Erzieher</button>
                     </div>
                     <span id="erzieherResult" class="ml-2 text-muted small"></span>
+
+                    <!-- Vorschau-Bereich (initial versteckt) -->
+                    <div id="erzieherPreviewArea" class="mt-3" style="display:none;">
+                        <div class="alert alert-secondary py-2 mb-2" id="erzieherPreviewStats">Lade Vorschau…</div>
+
+                        <!-- Feld-Mapping (aufklappbar) -->
+                        <details class="mb-3" id="erzieherFieldMapping">
+                            <summary class="font-weight-bold" style="cursor:pointer;">📋 Feld-Mapping: welche CSV liefert welches Output-Feld?</summary>
+                            <div class="row mt-2">
+                                <div class="col-md-6 mb-2">
+                                    <div class="card border-primary h-100">
+                                        <div class="card-header bg-primary text-white py-1 small"><strong>👨‍👩‍👧 Aus Erzieher-Export-CSV</strong></div>
+                                        <div class="card-body p-2" id="erzieherMappingFromErz"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <div class="card border-info h-100">
+                                        <div class="card-header bg-info text-white py-1 small"><strong>📞 Aus Ansprechpartner-Export-CSV</strong></div>
+                                        <div class="card-body p-2" id="erzieherMappingFromAnsp"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="small text-muted mb-0"><code>i</code> ist die Erzieher-Nummer (1, 2, …) — pro Index entsteht eine eigene Output-CSV. Die Zuordnung zur i-ten Ansprechpartner-Zeile erfolgt nach Schüler-ID und Reihenfolge der Zeilen im Ansprechpartner-Export.</p>
+                        </details>
+
+                        <!-- View-Toggle + Suche -->
+                        <div class="d-flex flex-wrap align-items-center mb-2">
+                            <div class="btn-group btn-group-sm mr-3 mb-1" role="group">
+                                <button type="button" class="btn btn-primary active" data-erz-view="students">👨‍🎓 Nach Schüler</button>
+                                <button type="button" class="btn btn-outline-primary"  data-erz-view="erzieher">👨‍👩‍👧 Nach Erzieher</button>
+                            </div>
+                            <input type="text" id="erzieherPreviewSearch" class="form-control form-control-sm mb-1" placeholder="🔍 Suche (Name, Klasse, E-Mail, Telefon, ID)…" style="max-width:340px;">
+                        </div>
+
+                        <div id="erzieherPreviewList" class="border rounded p-2" style="max-height:480px; overflow-y:auto;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -464,7 +501,7 @@
                         Filtert den Schild-Ausbilder-Export für WebUntis nach
                         <strong>DSGVO/VO DVI</strong>-Vorgaben:
                         Nur Azubis aus den freigegebenen Klassen — und nur solche, die der
-                        Datenverarbeitung zugestimmt haben (Blacklist).
+                        Datenverarbeitung zugestimmt haben (also nicht auf der Blacklist stehen).
                         Speziell für Berufskollegs in NRW.
                     </p>
 
@@ -475,18 +512,51 @@
 
                     <!-- Klassen-Whitelist -->
                     <div class="form-group mb-3">
-                        <label class="mb-1"><strong>Klassen-Whitelist</strong> <small class="text-muted">(leer = alle Klassen werden uebernommen)</small>:</label>
+                        <label class="mb-1"><strong>Klassen-Whitelist</strong> <small class="text-muted">(keine Auswahl = alle Klassen werden übernommen)</small>:</label>
                         <div id="ausbilderClassChips" class="border rounded p-2" style="min-height:46px;">
                             <span class="text-muted small">Wird geladen…</span>
                         </div>
-                        <small class="form-text text-muted">Klick auf eine Klasse aktiviert/deaktiviert sie für den Export.</small>
+                        <small class="form-text text-muted">
+                            Klick auf eine Klasse aktiviert/deaktiviert sie.
+                            <span class="badge badge-success">Grün</span> = auf Whitelist (wird exportiert),
+                            <span class="badge badge-light border">grau</span> = ausgeschlossen.
+                            <em>„Alle wählen / Alle abwählen"</em> schaltet zwischen beiden Extremen um.
+                        </small>
+                    </div>
+
+                    <!-- Firmen-Filter (Modus per Einstellungen: Whitelist ODER Blacklist) -->
+                    <div class="form-group mb-3">
+                        <label class="mb-1">
+                            <strong>🏢 Firmen-<span id="ausbilderFirmaModeLabel">Filter</span></strong>
+                            <small class="text-muted" id="ausbilderFirmaModeHint">(Modus wird in den Einstellungen festgelegt)</small>
+                        </label>
+                        <div class="d-flex flex-wrap align-items-center mb-2">
+                            <input type="text" id="ausbilderFirmaSearch" class="form-control form-control-sm mr-2 mb-1" placeholder="🔍 Firma suchen…" style="max-width:300px;">
+                            <small class="text-muted mb-1" id="ausbilderFirmaCount">—</small>
+                        </div>
+                        <div id="ausbilderFirmaChips" class="border rounded p-2" style="max-height:220px; overflow-y:auto;">
+                            <span class="text-muted small">Wird geladen…</span>
+                        </div>
+                        <small class="form-text text-muted">
+                            Klick auf einen Firma-Chip aktiviert/deaktiviert ihn auf der Liste — wird sofort gespeichert.
+                            <span id="ausbilderFirmaInteractHint"></span>
+                        </small>
+                    </div>
+
+                    <!-- Aktuelle Blacklist (kompakte Übersicht über der Tabelle) -->
+                    <div id="ausbilderBlacklistPanel" class="form-group mb-3" style="display:none;">
+                        <label class="mb-1">
+                            <strong>🚫 Aktuell auf Blacklist</strong>
+                            <small class="text-muted">(diese Schüler werden <em>nicht</em> exportiert — Klick auf <code>✕</code> = wieder aktivieren)</small>
+                        </label>
+                        <div id="ausbilderBlacklistChips" class="border rounded p-2" style="background:#fff5f5;"></div>
                     </div>
 
                     <!-- Schüler-Tabelle mit Blacklist-Toggle -->
                     <div class="form-group mb-3">
-                        <label class="mb-1"><strong>Schüler-Liste</strong> (Häkchen entfernen = auf Blacklist setzen, d.h. <em>nicht</em> exportieren):</label>
+                        <label class="mb-1"><strong>Schüler-Liste</strong> (Häkchen entfernen = auf Blacklist setzen, d.h. <em>nicht</em> exportieren — Klick auf die Zeile zeigt Ausbilder-/Betreuer-Daten):</label>
                         <div class="d-flex flex-wrap align-items-center mb-2">
-                            <input type="text" id="ausbilderStudentSearch" class="form-control form-control-sm mr-2 mb-1" placeholder="🔍 Filter (Name oder Klasse)…" style="max-width:280px;">
+                            <input type="text" id="ausbilderStudentSearch" class="form-control form-control-sm mr-2 mb-1" placeholder="🔍 Filter (Name, Klasse, Firma, ID)…" style="max-width:300px;">
                             <small class="text-muted mb-1" id="ausbilderStudentCount">—</small>
                         </div>
                         <div class="table-responsive border rounded" style="max-height:380px; overflow-y:auto;">
@@ -494,14 +564,15 @@
                                 <thead class="thead-light" style="position:sticky; top:0; z-index:1;">
                                     <tr>
                                         <th style="width:80px;" class="text-center">Export?</th>
-                                        <th>Klasse</th>
-                                        <th>Nachname</th>
-                                        <th>Vorname</th>
-                                        <th>ID</th>
+                                        <th class="ausb-sort" data-sort-col="klasse"   style="cursor:pointer;" title="Klick zum Sortieren">Klasse <span class="ausb-sort-ind text-muted small"></span></th>
+                                        <th class="ausb-sort" data-sort-col="nachname" style="cursor:pointer;" title="Klick zum Sortieren">Nachname <span class="ausb-sort-ind text-muted small"></span></th>
+                                        <th class="ausb-sort" data-sort-col="vorname"  style="cursor:pointer;" title="Klick zum Sortieren">Vorname <span class="ausb-sort-ind text-muted small"></span></th>
+                                        <th class="ausb-sort" data-sort-col="firma"    style="cursor:pointer;" title="Klick zum Sortieren">Firma <span class="ausb-sort-ind text-muted small"></span></th>
+                                        <th class="ausb-sort" data-sort-col="id"       style="cursor:pointer;" title="Klick zum Sortieren">ID <span class="ausb-sort-ind text-muted small"></span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="ausbilderStudentsBody">
-                                    <tr><td colspan="5" class="text-center text-muted py-3">Wird geladen…</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted py-3">Wird geladen…</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -590,6 +661,24 @@
                                     </div>
                                 </div>
                                 <small class="form-text text-muted">Eine CSV pro Verarbeitungs-Lauf — bereits gefiltert nach Klassen-Whitelist und Blacklist.</small>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">🏢 Firmen-Filter</h5>
+                            <p class="text-muted small mb-2">Bei bis zu hunderten Firmen ist nur ein Modus gleichzeitig aktiv. Die jeweils andere Liste bleibt zwar in der <code>settings.ini</code> erhalten, wirkt aber nicht.</p>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="firma_filter_mode" id="firma_filter_mode_blacklist" value="blacklist">
+                                <label class="form-check-label" for="firma_filter_mode_blacklist">
+                                    <span class="text-danger"><strong>Blacklist</strong></span> — bestimmte Firmen <em>nie</em> exportieren (empfohlen)
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="firma_filter_mode" id="firma_filter_mode_whitelist" value="whitelist">
+                                <label class="form-check-label" for="firma_filter_mode_whitelist">
+                                    <span class="text-success"><strong>Whitelist</strong></span> — nur ausgewählte Firmen exportieren (z.B. Pilotphase)
+                                </label>
                             </div>
 
                         </form>

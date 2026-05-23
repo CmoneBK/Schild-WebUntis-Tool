@@ -101,17 +101,189 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Status laden, sobald der Erzieher-Workflow sichtbar wird
-    // (initial-Load: nur wenn dieser Workflow aktiv ist; sonst beim Tab-Wechsel)
-    const erzieherSection = document.getElementById("workflow-erzieher");
-    if (erzieherSection) {
-        // Klick auf den Erzieher-Tab triggert das Laden
-        document.querySelectorAll('#workflowTabs .nav-link[data-workflow="erzieher"]').forEach(a => {
-            a.addEventListener("click", () => setTimeout(loadStatus, 50));
-        });
-        // Initial: wenn Workflow beim Seiten-Start aktiv ist
-        if (erzieherSection.style.display !== "none") loadStatus();
+    // -------------------------------------------------------------------
+    // Vorschau Schueler <-> Erzieher
+    // -------------------------------------------------------------------
+    const previewBtn   = document.getElementById("erzieherTogglePreview");
+    const previewArea  = document.getElementById("erzieherPreviewArea");
+    const previewStats = document.getElementById("erzieherPreviewStats");
+    const previewList  = document.getElementById("erzieherPreviewList");
+    const previewSearch= document.getElementById("erzieherPreviewSearch");
+    const mappingErzEl = document.getElementById("erzieherMappingFromErz");
+    const mappingAnpEl = document.getElementById("erzieherMappingFromAnsp");
+
+    let previewData = null;
+    let previewView = 'students';  // 'students' oder 'erzieher'
+
+    function escHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
     }
+
+    function renderFieldMapping(fm) {
+        if (!fm) return;
+        const renderRow = m =>
+            `<div class="d-flex small mb-1">
+                <code class="mr-2" style="min-width:200px;">${escHtml(m.src)}</code>
+                <span class="text-muted mr-2">→</span>
+                <code>${escHtml(m.target)}</code>
+            </div>`;
+        if (mappingErzEl) mappingErzEl.innerHTML = (fm.from_erzieher_csv || []).map(renderRow).join('');
+        if (mappingAnpEl) mappingAnpEl.innerHTML = (fm.from_ansprechpartner_csv || []).map(renderRow).join('');
+    }
+
+    function studentMatches(s, q) {
+        if (!q) return true;
+        q = q.toLowerCase();
+        if ((s.nachname||'').toLowerCase().includes(q)) return true;
+        if ((s.vorname||'').toLowerCase().includes(q))  return true;
+        if ((s.klasse||'').toLowerCase().includes(q))   return true;
+        if ((s.id||'').toLowerCase().includes(q))       return true;
+        return (s.erzieher||[]).some(e =>
+            (e.nachname||'').toLowerCase().includes(q) ||
+            (e.vorname||'').toLowerCase().includes(q)  ||
+            (e.email||'').toLowerCase().includes(q)    ||
+            (e.telefon||'').toLowerCase().includes(q));
+    }
+
+    function groupMatches(g, q) {
+        if (!q) return true;
+        q = q.toLowerCase();
+        const e = g.erzieher || {};
+        if ((e.nachname||'').toLowerCase().includes(q)) return true;
+        if ((e.vorname||'').toLowerCase().includes(q))  return true;
+        if ((e.email||'').toLowerCase().includes(q))    return true;
+        if ((e.telefon||'').toLowerCase().includes(q))  return true;
+        return (g.students||[]).some(s =>
+            (s.nachname||'').toLowerCase().includes(q) ||
+            (s.vorname||'').toLowerCase().includes(q)  ||
+            (s.klasse||'').toLowerCase().includes(q)   ||
+            (s.id||'').toLowerCase().includes(q));
+    }
+
+    function renderErzieherCard(e) {
+        const name = `${escHtml(e.vorname)} ${escHtml(e.nachname)}`.trim() || '<em>(ohne Name)</em>';
+        const bits = [];
+        if (e.anrede || e.titel) bits.push(`<span class="text-muted small">${escHtml([e.anrede, e.titel].filter(Boolean).join(' '))}</span>`);
+        if (e.email)    bits.push(`📧 <a href="mailto:${escHtml(e.email)}" class="small">${escHtml(e.email)}</a>`);
+        if (e.telefon)  bits.push(`📞 <span class="small">${escHtml(e.telefon)}</span>`);
+        if (e.anschluss)bits.push(`<span class="badge badge-light border">${escHtml(e.anschluss)}</span>`);
+        if (e.bemerkung)bits.push(`<span class="text-muted small">${escHtml(e.bemerkung)}</span>`);
+        return `<div class="ml-3 mb-1 pl-2 border-left border-info">
+                    <strong>Erzieher ${e.nr}:</strong> ${name}
+                    <div class="ml-3">${bits.join(' · ')}</div>
+                </div>`;
+    }
+
+    function renderListByStudents(q) {
+        const list = (previewData.students || []).filter(s => studentMatches(s, q));
+        if (!list.length) return '<p class="text-muted small m-0">Keine Treffer.</p>';
+        return list.map(s => {
+            const hdr = `<div><strong>${escHtml(s.nachname)}, ${escHtml(s.vorname)}</strong>
+                        <span class="text-muted small">· Klasse ${escHtml(s.klasse) || '—'} · ID <code>${escHtml(s.id)}</code></span></div>`;
+            const erz = (s.erzieher || []);
+            const body = erz.length
+                ? erz.map(renderErzieherCard).join('')
+                : `<div class="ml-3 small text-warning">⚠️ Keine Erzieher in den Quelldaten.</div>`;
+            return `<div class="mb-2 pb-2 border-bottom">${hdr}${body}</div>`;
+        }).join('');
+    }
+
+    function renderListByErzieher(q) {
+        const list = (previewData.erzieher_groups || []).filter(g => groupMatches(g, q));
+        if (!list.length) return '<p class="text-muted small m-0">Keine Treffer.</p>';
+        return list.map(g => {
+            const e = g.erzieher;
+            const name = `${escHtml(e.vorname)} ${escHtml(e.nachname)}`.trim() || '<em>(ohne Name)</em>';
+            const meta = [];
+            if (e.email)   meta.push(`📧 <a href="mailto:${escHtml(e.email)}">${escHtml(e.email)}</a>`);
+            if (e.telefon) meta.push(`📞 ${escHtml(e.telefon)}`);
+            const cnt = g.students.length;
+            const studentsHtml = g.students.map(s =>
+                `<li><strong>${escHtml(s.nachname)}, ${escHtml(s.vorname)}</strong>
+                  <span class="text-muted small">· Klasse ${escHtml(s.klasse) || '—'} · ID <code>${escHtml(s.id)}</code> · Erzieher Nr. ${s.nr}</span></li>`
+            ).join('');
+            return `<div class="mb-2 pb-2 border-bottom">
+                <div><strong>${name}</strong>
+                  <span class="badge badge-info ml-1">${cnt} Schüler</span>
+                  <div class="ml-3 small">${meta.join(' · ')}</div>
+                </div>
+                <ul class="mb-0 mt-1">${studentsHtml}</ul>
+            </div>`;
+        }).join('');
+    }
+
+    function renderPreviewList() {
+        if (!previewList || !previewData) return;
+        const q = (previewSearch?.value || '').trim();
+        previewList.innerHTML = previewView === 'students'
+            ? renderListByStudents(q)
+            : renderListByErzieher(q);
+    }
+
+    function renderPreviewStats() {
+        if (!previewStats || !previewData) return;
+        const s = previewData.stats || {};
+        const src = previewData.sources || {};
+        const noErz = s.students_without_erzieher
+            ? ` · <span class="text-warning">${s.students_without_erzieher} ohne Erzieher</span>`
+            : '';
+        previewStats.innerHTML =
+            `<strong>${s.students_count}</strong> Schüler · <strong>${s.unique_erzieher}</strong> verschiedene Erzieher `
+            + `(${s.erzieher_total} Zuordnungen, max. ${s.max_erzieher} pro Schüler)${noErz}<br>`
+            + `<span class="small text-muted">Quellen: <code>${escHtml(src.erzieher_export_file || '')}</code> + `
+            + `<code>${escHtml(src.ansprechpartner_export_file || '')}</code> · ${s.ansprechpartner_rows} Ansprechpartner-Zeilen</span>`;
+    }
+
+    async function loadPreview() {
+        if (!previewArea) return;
+        previewArea.style.display = '';
+        if (previewStats) previewStats.textContent = "Lade Vorschau…";
+        if (previewList)  previewList.innerHTML = '';
+        try {
+            const r = await fetch('/api/erzieher/preview');
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || r.statusText);
+            previewData = d;
+            renderPreviewStats();
+            renderFieldMapping(d.field_mapping);
+            renderPreviewList();
+        } catch (e) {
+            if (previewStats) {
+                previewStats.className = "alert alert-danger py-2 mb-2";
+                previewStats.textContent = "Fehler beim Laden der Vorschau: " + e;
+            }
+        }
+    }
+
+    previewBtn?.addEventListener('click', () => {
+        const willShow = previewArea && (previewArea.style.display === 'none' || !previewArea.style.display);
+        if (willShow) loadPreview();
+        else if (previewArea) previewArea.style.display = 'none';
+    });
+
+    previewSearch?.addEventListener('input', renderPreviewList);
+
+    document.querySelectorAll('#erzieherPreviewArea [data-erz-view]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            previewView = btn.dataset.erzView;
+            document.querySelectorAll('#erzieherPreviewArea [data-erz-view]').forEach(b => {
+                const active = b.dataset.erzView === previewView;
+                b.classList.toggle('btn-primary',  active);
+                b.classList.toggle('btn-outline-primary', !active);
+                b.classList.toggle('active', active);
+            });
+            renderPreviewList();
+        });
+    });
+
+    // Status laden, sobald der Erzieher-Workflow sichtbar wird.
+    // workflow_switcher.js dispatcht 'workflow:shown' sowohl beim Tab-Klick
+    // als auch beim initialen Restore aus localStorage (F5).
+    document.addEventListener('workflow:shown', (e) => {
+        if (e.detail?.workflow === 'erzieher') loadStatus();
+    });
 
     // Toggle: eigenes Erzieher-Settings-Panel
     document.getElementById("toggle-settings-erzieher")?.addEventListener("click", () => {
