@@ -19,9 +19,11 @@ HELP_CONTENT = {
     # ALLGEMEIN
     # =====================================================================
     "general_workflow": {
-        "title": "🔄 Hauptbereich — Verarbeitung, Mails, Fotos",
+        "title": "🔄 Schüler-Verarbeitung — Verarbeitung, Mails, Fotos",
         "html": """
-<p>Der Hauptbereich oben enthält die wichtigsten Aktionen für den täglichen Ablauf.
+<p>Der Schüler-Verarbeitungs-Bereich oben enthält die wichtigsten Aktionen für den
+täglichen Ablauf — und die <em>Einstellungen für die aktuelle Ausführung</em>
+(dauerhafte Einstellungen liegen im ⚙️ Einstellungs-Panel).
 Hier ein Überblick, was die einzelnen Buttons tun:</p>
 
 <h6>▶️ Verarbeiten <em>(Hauptfunktion)</em></h6>
@@ -1147,7 +1149,7 @@ weiteren Modulen des Tools. Hier ein Überblick, was sich wo verbirgt:</p>
       direkt über den Browser in die Verzeichnisse hochladen, ohne Datei-System-Zugriff.</li>
 </ul>
 
-<p><strong>Hinweis:</strong> Die <em>Hauptbereich-Funktionen</em> (Verarbeiten, Dateien
+<p><strong>Hinweis:</strong> Die <em>Schüler-Verarbeitungs-Funktionen</em> (Verarbeiten, Dateien
 prüfen, E-Mails, Fotos managen) sind oben über dem Navigationsbereich zu finden —
 mit eigener Hilfe (ℹ️-Button neben den Action-Buttons).</p>
 """,

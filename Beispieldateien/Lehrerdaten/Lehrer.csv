@@ -1,0 +1,9 @@
+name	longName	foreName	title	birthDate	pnr	address.email	address.phone	address.mobile	address.street	address.postCode	address.city
+MUE	Müller	Maria	Dr.	12.05.1975	12345	maria.mueller@example.com	0123-4567	0151-1111111	Lehrerstraße 1	12345	Musterstadt
+SCH	Schmidt	Stefan		22.08.1980	12346	stefan.schmidt@example.com	0123-4568	0151-2222222	Lehrerweg 2	12345	Musterstadt
+BEI	Beispiel	Bernd		03.11.1972	12347	bernd.beispiel@example.com	0123-4569	0151-3333333	Schulplatz 3	12345	Musterstadt
+MUS	Muster	Monika		18.02.1985	12348	monika.muster@example.com	0123-4570	0151-4444444	Bildungsallee 4	12345	Musterstadt
+PRO	Probst	Pia		07.04.1978	12349	pia.probst@example.com	0123-4571	0151-5555555	Schulring 5	12345	Musterstadt
+DEM	Demoster	Dieter		14.10.1969	12350	dieter.demoster@example.com	0123-4572	0151-6666666	Lehrweg 6	12345	Musterstadt
+SAM	Sampleberg	Sandra	Dr.	29.06.1982	12351	sandra.sampleberg@example.com	0123-4573	0151-7777777	Bildungsstraße 7	12345	Musterstadt
+TES	Testmann	Theodor		11.01.1965	12352	theodor.testmann@example.com	0123-4574	0151-8888888	Schulhof 8	12345	Musterstadt

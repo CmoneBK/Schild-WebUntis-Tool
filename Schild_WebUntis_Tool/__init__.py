@@ -761,7 +761,7 @@ def index():
     warnings_messages = []  # Liste für nicht-blockierende Warnungen
 
     if request.method == 'GET':
-        print_info("🌐 Weboberfläche: Hauptbereich geöffnet.")
+        print_info("🌐 Weboberfläche: Schüler-Verarbeitung geöffnet.")
 
     # Zugriff auf die globalen CLI-Argumente
     global cli_args
