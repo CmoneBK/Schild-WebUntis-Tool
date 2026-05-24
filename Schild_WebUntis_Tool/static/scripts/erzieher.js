@@ -17,6 +17,23 @@ document.addEventListener("DOMContentLoaded", function () {
             const r = await fetch("/api/erzieher/status");
             const d = await r.json();
             if (tplInput && !tplInput.value) tplInput.value = d.zip_name_template || "Erzieher_Import_{datum}";
+            // Settings-Checkboxes aus Backend uebernehmen
+            const smartCb = document.getElementById('erzieher_smart_match');
+            if (smartCb && typeof d.smart_match === 'boolean') smartCb.checked = d.smart_match;
+            const volljCb = document.getElementById('erzieher_filter_volljaehrig');
+            if (volljCb && typeof d.filter_volljaehrig === 'boolean') volljCb.checked = d.filter_volljaehrig;
+            const emailCb = document.getElementById('erzieher_require_email');
+            if (emailCb && typeof d.require_email === 'boolean') emailCb.checked = d.require_email;
+            const dummyCb = document.getElementById('erzieher_fill_dummies');
+            if (dummyCb && typeof d.fill_dummies === 'boolean') dummyCb.checked = d.fill_dummies;
+            const liftCb  = document.getElementById('erzieher_lift_limit');
+            if (liftCb  && typeof d.lift_limit === 'boolean') liftCb.checked = d.lift_limit;
+            const phoneCb = document.getElementById('erzieher_phone_from_erz_first');
+            if (phoneCb && typeof d.phone_from_erz_first === 'boolean') phoneCb.checked = d.phone_from_erz_first;
+            const eltCb   = document.getElementById('erzieher_assign_eltern_ids');
+            if (eltCb && typeof d.assign_eltern_ids === 'boolean') eltCb.checked = d.assign_eltern_ids;
+            // Eltern-ID-DB-Status nachladen, wenn das Settings-Panel offen ist
+            loadElternIdStats();
 
             const haveE = !!d.latest_erzieher_export;
             const haveA = !!d.latest_ansprechpartner_export;
@@ -167,11 +184,35 @@ document.addEventListener("DOMContentLoaded", function () {
         const bits = [];
         if (e.anrede || e.titel) bits.push(`<span class="text-muted small">${escHtml([e.anrede, e.titel].filter(Boolean).join(' '))}</span>`);
         if (e.email)    bits.push(`📧 <a href="mailto:${escHtml(e.email)}" class="small">${escHtml(e.email)}</a>`);
-        if (e.telefon)  bits.push(`📞 <span class="small">${escHtml(e.telefon)}</span>`);
+        if (e.telefon) {
+            const src = e.telefon_from_erz
+                ? ` <span class="badge badge-success" title="primäre Telefonnummer aus Erzieher-Export">Erz</span>`
+                : ``;
+            bits.push(`📞 <span class="small">${escHtml(e.telefon)}</span>${src}`);
+        }
         if (e.anschluss)bits.push(`<span class="badge badge-light border">${escHtml(e.anschluss)}</span>`);
         if (e.bemerkung)bits.push(`<span class="text-muted small">${escHtml(e.bemerkung)}</span>`);
-        return `<div class="ml-3 mb-1 pl-2 border-left border-info">
-                    <strong>Erzieher ${e.nr}:</strong> ${name}
+        // Dummy-Vorschau (welche Felder wuerden beim Export mit DUMMY gefuellt?)
+        if (e.dummies && Object.keys(e.dummies).length) {
+            const dummyText = Object.entries(e.dummies)
+                .map(([k, v]) => `${k}=<code>${escHtml(v)}</code>`).join(' · ');
+            bits.push(`<span class="text-info small">🧪 Dummy: ${dummyText}</span>`);
+        }
+        // Flags
+        const flags = [];
+        if (e.virtual) flags.push(`<span class="badge badge-info">virtuell</span>`);
+        if (e.would_skip_email) flags.push(`<span class="badge badge-warning">würde übersprungen (keine E-Mail)</span>`);
+        if (e.eltern_id) {
+            const cls = e.eltern_id_status === 'new' ? 'badge-warning' : 'badge-primary';
+            const ttl = e.eltern_id_status === 'new'
+                ? 'Eltern-ID wird beim nächsten Verarbeiten neu vergeben'
+                : 'Eltern-ID bereits in der DB';
+            flags.push(`<span class="badge ${cls}" title="${ttl}">🆔 ${escHtml(e.eltern_id)}</span>`);
+        }
+        const flagHtml = flags.length ? ` ${flags.join(' ')}` : '';
+        const borderCls = e.virtual ? 'border-info' : (e.would_skip_email ? 'border-warning' : 'border-info');
+        return `<div class="ml-3 mb-1 pl-2 border-left ${borderCls}">
+                    <strong>Erzieher ${e.nr}:</strong> ${name}${flagHtml}
                     <div class="ml-3">${bits.join(' · ')}</div>
                 </div>`;
     }
@@ -229,11 +270,92 @@ document.addEventListener("DOMContentLoaded", function () {
         const noErz = s.students_without_erzieher
             ? ` · <span class="text-warning">${s.students_without_erzieher} ohne Erzieher</span>`
             : '';
+
+        // Smart-Match-Block
+        let matchBlock = '';
+        const ms = s.match_stats || {};
+        if (s.match_mode === 'smart') {
+            const gender   = ms.gender || 0;
+            const pos      = ms.positional || 0;
+            const orph_a   = s.orphan_anspr_count || ms.orphan_anspr || 0;
+            const orph_e   = ms.orphan_erz || 0;
+            const total    = gender + pos;
+            const pct      = total > 0 ? Math.round(100 * gender / total) : 0;
+            matchBlock = `<br><span class="small">
+                <strong>🧠 Smart-Match:</strong>
+                <span class="text-success">${gender} per Anschluss-Art (${pct}%)</span> ·
+                <span class="text-muted">${pos} positional (neutrale Anschluss-Arten)</span> ·
+                ${orph_a > 0 ? `<span class="text-warning">${orph_a} Telefon-Zeilen ohne Erzieher-Slot</span>` : '0 Telefon-Zeilen unzugeordnet'} ·
+                ${orph_e > 0 ? `<span class="text-warning">${orph_e} Erzieher ohne Telefon</span>` : '0 Erzieher ohne Telefon'}
+            </span>`;
+        } else if (s.match_mode === 'positional') {
+            matchBlock = `<br><span class="small text-muted">
+                <strong>⚙️ Positionales Matching</strong> (Smart-Match in den Einstellungen aktivieren, um Telefon ↔ Erzieher per Anschluss-Art zu mappen)
+            </span>`;
+        }
+
+        const volljBlock = (s.filter_volljaehrig && s.volljaehrig_filtered)
+            ? ` · <span class="text-info">🔞 ${s.volljaehrig_filtered} volljährige Schüler herausgefiltert</span>`
+            : '';
+        const emailBlock = (s.require_email && s.skipped_no_email)
+            ? ` · <span class="text-warning">📧 ${s.skipped_no_email} Erzieher-Slots ohne E-Mail würden übersprungen</span>`
+            : '';
+        const dummyBlock = (s.fill_dummies && s.dummy_fills)
+            ? ` · <span class="text-info">🧪 ${s.dummy_fills} leere Felder mit Dummies gefüllt</span>`
+            : '';
+        const virtBlock = (s.lift_limit && (s.match_stats?.virtual || 0))
+            ? ` · <span class="text-info">♾️ ${s.match_stats.virtual} überzählige Telefon-Zeilen als virtuelle Slots (3, 4, …)</span>`
+            : '';
+        const phoneBlock = s.phone_from_erz_first
+            ? ` · <span class="text-success">📞 ${s.phone_from_erz_used || 0} primäre Telefon-Nrn aus Erzieher-Export`
+              + (s.phone_from_erz_duplicates ? `, ${s.phone_from_erz_duplicates} Duplikat(e) gefiltert` : '')
+              + `</span>`
+            : '';
+        const elternBlock = s.assign_eltern_ids
+            ? ` · <span class="text-primary">🆔 ${s.eltern_id_total || 0} Erzieher mit Eltern-ID `
+              + `(${s.eltern_id_known || 0} bekannt, ${s.eltern_id_would_new || 0} würden neu vergeben)</span>`
+            : '';
+
         previewStats.innerHTML =
             `<strong>${s.students_count}</strong> Schüler · <strong>${s.unique_erzieher}</strong> verschiedene Erzieher `
-            + `(${s.erzieher_total} Zuordnungen, max. ${s.max_erzieher} pro Schüler)${noErz}<br>`
+            + `(${s.erzieher_total} Zuordnungen, max. ${s.max_erzieher} pro Schüler)${noErz}${volljBlock}${emailBlock}${dummyBlock}${virtBlock}${phoneBlock}${elternBlock}<br>`
             + `<span class="small text-muted">Quellen: <code>${escHtml(src.erzieher_export_file || '')}</code> + `
-            + `<code>${escHtml(src.ansprechpartner_export_file || '')}</code> · ${s.ansprechpartner_rows} Ansprechpartner-Zeilen</span>`;
+            + `<code>${escHtml(src.ansprechpartner_export_file || '')}</code> · ${s.ansprechpartner_rows} Ansprechpartner-Zeilen</span>`
+            + matchBlock;
+    }
+
+    function renderOrphanList() {
+        const cont = document.getElementById('erzieherOrphanArea');
+        if (!cont || !previewData) return;
+        const s = previewData.stats || {};
+        const rows = s.orphan_anspr_rows || [];
+        if (!rows.length) {
+            cont.style.display = 'none';
+            return;
+        }
+        cont.style.display = '';
+        const cap = s.orphan_anspr_count > rows.length
+            ? ` <span class="text-muted small">(zeige erste ${rows.length} von ${s.orphan_anspr_count})</span>`
+            : '';
+        const items = rows.map(r => `<tr>
+            <td><code>${escHtml(r.student_id)}</code></td>
+            <td>${escHtml(r.student_name)} <span class="text-muted small">(${escHtml(r.klasse)})</span></td>
+            <td><span class="badge badge-light border">${escHtml(r.anschluss || '—')}</span></td>
+            <td class="small text-muted">${escHtml(r.bemerkung)}</td>
+            <td><code>${escHtml(r.telefon)}</code></td>
+        </tr>`).join('');
+        cont.innerHTML = `<details class="mt-2">
+            <summary class="text-warning" style="cursor:pointer;">
+                ⚠️ ${s.orphan_anspr_count} Telefon-Zeile(n) ohne Erzieher-Slot${cap}
+            </summary>
+            <p class="small text-muted mt-2 mb-1">Diese Telefon-Zeilen passen zu keinem im Erzieher-Export hinterlegten Erzieher (z. B. weitere Telefone für Mutter/Vater, Oma, Notfallnummern). Sie werden beim Export <em>nicht</em> in die WebUntis-CSV übernommen.</p>
+            <div class="table-responsive" style="max-height:240px; overflow-y:auto;">
+                <table class="table table-sm mb-0">
+                    <thead class="thead-light"><tr><th>ID</th><th>Schüler</th><th>Anschluss-Art</th><th>Bemerkung</th><th>Telefon</th></tr></thead>
+                    <tbody>${items}</tbody>
+                </table>
+            </div>
+        </details>`;
     }
 
     async function loadPreview() {
@@ -247,6 +369,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!r.ok) throw new Error(d.error || r.statusText);
             previewData = d;
             renderPreviewStats();
+            renderOrphanList();
             renderFieldMapping(d.field_mapping);
             renderPreviewList();
         } catch (e) {
@@ -258,9 +381,125 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     previewBtn?.addEventListener('click', () => {
-        const willShow = previewArea && (previewArea.style.display === 'none' || !previewArea.style.display);
-        if (willShow) loadPreview();
-        else if (previewArea) previewArea.style.display = 'none';
+        if (!previewArea) return;
+        // 'display' kann '', 'none' oder konkrete Werte sein. Sichtbar = ALLES ausser 'none'.
+        const isVisible = previewArea.style.display !== 'none';
+        if (isVisible) previewArea.style.display = 'none';
+        else           loadPreview();
+    });
+
+    // -------------------------------------------------------------------
+    // Quelldateien-Viewer (Rohinhalte der beiden Schild-CSVs)
+    // -------------------------------------------------------------------
+    const rawBtn      = document.getElementById('erzieherToggleRawSource');
+    const rawArea     = document.getElementById('erzieherRawSourceArea');
+    const rawStats    = document.getElementById('erzieherRawSourceStats');
+    const rawSearch   = document.getElementById('erzieherRawSourceSearch');
+    const rawTable    = document.getElementById('erzieherRawSourceTable');
+    let rawData = null;
+    let rawWhich = 'erzieher';   // 'erzieher' oder 'ansprechpartner'
+
+    function activeRawFile() {
+        return rawWhich === 'erzieher' ? rawData?.erzieher : rawData?.ansprechpartner;
+    }
+    function activeUsedCols() {
+        return new Set(rawWhich === 'erzieher'
+            ? (rawData?.used_erzieher_cols || [])
+            : (rawData?.used_ansprechpartner_cols || []));
+    }
+
+    function renderRawTable() {
+        if (!rawTable || !rawData) return;
+        const file = activeRawFile();
+        if (!file) {
+            rawTable.querySelector('thead').innerHTML = '';
+            rawTable.querySelector('tbody').innerHTML = '<tr><td class="text-muted small p-3">Keine CSV gefunden.</td></tr>';
+            return;
+        }
+        const used = activeUsedCols();
+        const q = (rawSearch?.value || '').trim().toLowerCase();
+        const cols = file.columns;
+        // Spaltenkopf — genutzte Spalten gruen markiert
+        const ths = cols.map(c => {
+            const isUsed = used.has(c);
+            const badge = isUsed ? ' style="background:#d4edda;"' : '';
+            return `<th${badge} title="${escHtml(c)}">${escHtml(c)}</th>`;
+        }).join('');
+        rawTable.querySelector('thead').innerHTML = `<tr><th class="text-muted small">#</th>${ths}</tr>`;
+        // Zeilen filtern
+        let rows = file.rows;
+        if (q) {
+            rows = rows.filter(r => r.some(v => String(v).toLowerCase().includes(q)));
+        }
+        if (!rows.length) {
+            rawTable.querySelector('tbody').innerHTML = '<tr><td class="text-muted small p-3" colspan="' + (cols.length + 1) + '">Keine Treffer.</td></tr>';
+            return;
+        }
+        // Cap fuer Performance bei sehr breiten/vielen Zeilen
+        const VIEW_CAP = 1000;
+        const view = rows.slice(0, VIEW_CAP);
+        const trs = view.map((r, idx) => {
+            const tds = r.map((v, ci) => {
+                const isUsed = used.has(cols[ci]);
+                const cls = isUsed ? '' : ' class="text-muted"';
+                return `<td${cls}>${escHtml(v)}</td>`;
+            }).join('');
+            return `<tr><td class="text-muted small">${idx + 1}</td>${tds}</tr>`;
+        }).join('');
+        const more = rows.length > VIEW_CAP
+            ? `<tr><td colspan="${cols.length + 1}" class="text-muted small text-center py-2">… weitere ${rows.length - VIEW_CAP} Zeilen ausgeblendet (Suche eingrenzen)</td></tr>`
+            : '';
+        rawTable.querySelector('tbody').innerHTML = trs + more;
+    }
+
+    function renderRawStats() {
+        if (!rawStats || !rawData) return;
+        const e = rawData.erzieher;
+        const a = rawData.ansprechpartner;
+        const lines = [];
+        if (e) lines.push(`<strong>Erzieher-Export</strong>: <code>${escHtml(e.file)}</code> · ${e.rows_total} Zeile(n) · ${e.columns.length} Spalten` + (e.rows_shown < e.rows_total ? ` <span class="text-warning">(zeige erste ${e.rows_shown})</span>` : ''));
+        else   lines.push(`<span class="text-warning"><strong>Erzieher-Export</strong>: keine CSV gefunden.</span>`);
+        if (a) lines.push(`<strong>Ansprechpartner-Export</strong>: <code>${escHtml(a.file)}</code> · ${a.rows_total} Zeile(n) · ${a.columns.length} Spalten` + (a.rows_shown < a.rows_total ? ` <span class="text-warning">(zeige erste ${a.rows_shown})</span>` : ''));
+        else   lines.push(`<span class="text-warning"><strong>Ansprechpartner-Export</strong>: keine CSV gefunden.</span>`);
+        rawStats.innerHTML = lines.join('<br>');
+    }
+
+    async function loadRawSource() {
+        if (!rawArea) return;
+        rawArea.style.display = '';
+        if (rawStats) rawStats.textContent = "Lade Quelldateien…";
+        try {
+            const r = await fetch('/api/erzieher/raw_source');
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || r.statusText);
+            rawData = d;
+            renderRawStats();
+            renderRawTable();
+        } catch (e) {
+            if (rawStats) {
+                rawStats.className = "alert alert-danger py-2 mb-2";
+                rawStats.textContent = "Fehler: " + e;
+            }
+        }
+    }
+
+    rawBtn?.addEventListener('click', () => {
+        if (!rawArea) return;
+        const isVisible = rawArea.style.display !== 'none';
+        if (isVisible) rawArea.style.display = 'none';
+        else           loadRawSource();
+    });
+
+    rawSearch?.addEventListener('input', renderRawTable);
+
+    document.querySelectorAll('#erzieherRawSourceTabs [data-raw-which]').forEach(a => {
+        a.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            rawWhich = a.dataset.rawWhich;
+            document.querySelectorAll('#erzieherRawSourceTabs [data-raw-which]').forEach(x =>
+                x.classList.toggle('active', x.dataset.rawWhich === rawWhich));
+            renderRawTable();
+        });
     });
 
     previewSearch?.addEventListener('input', renderPreviewList);
@@ -276,6 +515,266 @@ document.addEventListener("DOMContentLoaded", function () {
             });
             renderPreviewList();
         });
+    });
+
+    // -------------------------------------------------------------------
+    // Eltern-ID-Datenbank: Stats anzeigen + Reset
+    // -------------------------------------------------------------------
+    async function loadElternIdStats() {
+        const el = document.getElementById('erzieher_eltern_id_stats');
+        if (!el) return;
+        try {
+            const r = await fetch('/api/erzieher/eltern_ids/status');
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || r.statusText);
+            const lines = [];
+            if (d.exists) {
+                lines.push(`<strong>📁 ${escHtml(d.path)}</strong> · <strong>${d.total_ids}</strong> ID(s) vergeben · nächste: <code>${escHtml(d.next_id)}</code>`);
+                if (d.modified) lines.push(`<span class="text-muted">Letzte Änderung: ${escHtml(d.modified.replace('T', ' '))}</span>`);
+            } else {
+                lines.push(`<span class="text-muted">📁 <code>${escHtml(d.path)}</code> existiert noch nicht — wird beim ersten Verarbeitungslauf mit aktivierter Option erzeugt.</span>`);
+            }
+            el.innerHTML = lines.join('<br>');
+        } catch (e) {
+            el.innerHTML = `<span class="text-danger">Fehler: ${escHtml(String(e))}</span>`;
+        }
+    }
+    document.getElementById('erzieher_eltern_id_reset')?.addEventListener('click', async () => {
+        if (!confirm('Eltern-ID-Datenbank wirklich KOMPLETT löschen?\n\nNach dem Reset werden beim nächsten Verarbeitungslauf alle IDs neu vergeben — bestehende WebUntis-Verknüpfungen brechen damit.')) return;
+        try {
+            const r = await fetch('/api/erzieher/eltern_ids/reset', { method: 'POST' });
+            const d = await r.json();
+            if (!r.ok || !d.success) throw new Error(d.error || r.statusText);
+            if (typeof showToast === 'function') showToast(d.removed ? 'Eltern-ID-Datenbank gelöscht.' : 'Keine Datenbank vorhanden.');
+            loadElternIdStats();
+        } catch (e) {
+            alert('Fehler beim Zurücksetzen: ' + e);
+        }
+    });
+
+    // -------------------------------------------------------------------
+    // Missing-Erzieher-Report (klassenweise Auswertung)
+    // -------------------------------------------------------------------
+    const missingBtn      = document.getElementById('erzieherToggleMissing');
+    const missingArea     = document.getElementById('erzieherMissingArea');
+    const missingStats    = document.getElementById('erzieherMissingStats');
+    const missingList     = document.getElementById('erzieherMissingList');
+    const missingExport   = document.getElementById('erzieherMissingExport');
+    const missingDownload = document.getElementById('erzieherMissingDownload');
+    const missingResult   = document.getElementById('erzieherMissingResult');
+    const missingSelAll   = document.getElementById('erzieherMissingSelectAll');
+    const missingSelNone  = document.getElementById('erzieherMissingSelectNone');
+    const missingCritBox  = document.getElementById('erzieherMissingCriteriaBox');
+    let missingData = null;
+    let missingZipReady = false;
+    let missingCritInited = false;
+    const DEFAULT_MISSING_CRIT = ['no_erzieher'];
+
+    function getMissingCriteria() {
+        return Array.from(missingCritBox?.querySelectorAll('.miss-crit-cb:checked') || [])
+            .map(cb => cb.dataset.key);
+    }
+    function getMissingMode() {
+        return document.querySelector('input[name="missing_mode"]:checked')?.value || 'any';
+    }
+    function renderMissingCriteria(available, used) {
+        if (!missingCritBox) return;
+        missingCritBox.innerHTML = (available || []).map(c => {
+            const id = `miss_crit_${c.key}`;
+            const checked = used.includes(c.key) ? 'checked' : '';
+            return `<div class="form-check form-check-inline">
+                <input class="form-check-input miss-crit-cb" type="checkbox" id="${id}" data-key="${c.key}" ${checked}>
+                <label class="form-check-label small" for="${id}">${escHtml(c.label)}</label>
+            </div>`;
+        }).join('');
+        missingCritBox.querySelectorAll('.miss-crit-cb').forEach(cb => {
+            cb.addEventListener('change', () => {
+                // Mindestens ein Kriterium muss aktiv sein
+                if (getMissingCriteria().length === 0) {
+                    cb.checked = true;
+                    return;
+                }
+                loadMissing();
+            });
+        });
+    }
+    document.querySelectorAll('input[name="missing_mode"]').forEach(r => {
+        r.addEventListener('change', () => {
+            if (missingArea && missingArea.style.display !== 'none') loadMissing();
+        });
+    });
+
+    function renderMissingStats() {
+        if (!missingStats || !missingData) return;
+        if (missingData.total_students === 0) {
+            missingStats.className = "alert alert-success py-2 mb-2";
+            missingStats.innerHTML = `✅ Keine minderjährigen Schüler ohne Erzieher-Daten gefunden — alles vollständig.<br>`
+                + `<span class="small text-muted">Quelle: <code>${escHtml(missingData.source_file || '')}</code></span>`;
+        } else {
+            missingStats.className = "alert alert-warning py-2 mb-2";
+            missingStats.innerHTML = `<strong>${missingData.total_students}</strong> minderjährige Schüler in `
+                + `<strong>${missingData.total_classes}</strong> Klasse(n) ohne hinterlegte Erzieher-Daten.<br>`
+                + `<span class="small text-muted">Quelle: <code>${escHtml(missingData.source_file || '')}</code></span>`;
+        }
+    }
+
+    function renderMissingList() {
+        if (!missingList || !missingData) return;
+        const classes = missingData.classes || [];
+        if (!classes.length) {
+            missingList.innerHTML = '<p class="text-muted small m-0">Keine Treffer.</p>';
+            if (missingExport) missingExport.disabled = true;
+            return;
+        }
+        // Lookup: criterion key -> label
+        const critLabels = {};
+        (missingData.available_criteria || []).forEach(c => critLabels[c.key] = c.label);
+        const html = classes.map(c => {
+            const id = `miss_cls_${c.klasse.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+            const studs = c.students.map(s => {
+                const reasons = (s.reasons || []).map(k =>
+                    `<span class="badge badge-light border ml-1">${escHtml(critLabels[k] || k)}</span>`
+                ).join('');
+                return `<li><strong>${escHtml(s.nachname)}, ${escHtml(s.vorname)}</strong>
+                  <span class="text-muted small">· ID <code>${escHtml(s.id)}</code></span>${reasons}</li>`;
+            }).join('');
+            return `<div class="mb-2 pb-2 border-bottom">
+                <div class="form-check">
+                    <input class="form-check-input miss-cls-cb" type="checkbox" id="${id}" data-klasse="${escHtml(c.klasse)}" checked>
+                    <label class="form-check-label font-weight-bold" for="${id}">
+                        Klasse <code>${escHtml(c.klasse)}</code>
+                        <span class="badge badge-warning ml-1">${c.count} Schüler</span>
+                    </label>
+                </div>
+                <ul class="mb-0 mt-1">${studs}</ul>
+            </div>`;
+        }).join('');
+        missingList.innerHTML = html;
+        missingList.querySelectorAll('.miss-cls-cb').forEach(cb => {
+            cb.addEventListener('change', updateMissingExportBtn);
+        });
+        updateMissingExportBtn();
+    }
+
+    function selectedMissingClasses() {
+        return Array.from(missingList?.querySelectorAll('.miss-cls-cb:checked') || [])
+            .map(cb => cb.dataset.klasse);
+    }
+    function updateMissingExportBtn() {
+        if (!missingExport) return;
+        missingExport.disabled = selectedMissingClasses().length === 0;
+    }
+
+    async function loadMissing() {
+        if (!missingArea) return;
+        missingArea.style.display = '';
+        if (missingStats) {
+            missingStats.className = "alert alert-secondary py-2 mb-2";
+            missingStats.textContent = "Lade Klassen-Auswertung…";
+        }
+        if (missingList) missingList.innerHTML = '';
+        // Beim ersten Aufruf gibts noch keine Checkboxes -> Default-Kriterien senden
+        const crit = missingCritInited ? getMissingCriteria() : DEFAULT_MISSING_CRIT;
+        const mode = getMissingMode();
+        const qs = new URLSearchParams({
+            criteria: (crit && crit.length ? crit : DEFAULT_MISSING_CRIT).join(','),
+            mode,
+        });
+        try {
+            const r = await fetch('/api/erzieher/missing_report?' + qs.toString());
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || r.statusText);
+            missingData = d;
+            // Kriterien-UI nach erstem Call befuellen (nur einmal — sonst werden
+            // die User-Auswahlen bei jedem Reload ueberschrieben)
+            if (!missingCritInited) {
+                renderMissingCriteria(d.available_criteria || [], d.criteria_used || DEFAULT_MISSING_CRIT);
+                missingCritInited = true;
+            }
+            renderMissingStats();
+            renderMissingList();
+        } catch (e) {
+            if (missingStats) {
+                missingStats.className = "alert alert-danger py-2 mb-2";
+                missingStats.textContent = "Fehler: " + e;
+            }
+        }
+    }
+
+    missingBtn?.addEventListener('click', () => {
+        if (!missingArea) return;
+        const isVisible = missingArea.style.display !== 'none';
+        if (isVisible) missingArea.style.display = 'none';
+        else           loadMissing();
+    });
+
+    missingSelAll?.addEventListener('click', () => {
+        missingList?.querySelectorAll('.miss-cls-cb').forEach(cb => cb.checked = true);
+        updateMissingExportBtn();
+    });
+    missingSelNone?.addEventListener('click', () => {
+        missingList?.querySelectorAll('.miss-cls-cb').forEach(cb => cb.checked = false);
+        updateMissingExportBtn();
+    });
+
+    missingExport?.addEventListener('click', async () => {
+        const classes = selectedMissingClasses();
+        if (!classes.length) return;
+        missingExport.disabled = true;
+        const orig = missingExport.textContent;
+        missingExport.textContent = "⌛ Exportiere…";
+        if (missingResult) missingResult.textContent = '';
+        try {
+            const r = await fetch('/api/erzieher/missing_export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    classes,
+                    criteria: getMissingCriteria(),
+                    mode:     getMissingMode(),
+                }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) {
+                if (missingResult) missingResult.innerHTML = `<span class="text-danger">❌ ${d.error || r.statusText}</span>`;
+                return;
+            }
+            missingZipReady = true;
+            if (missingDownload) missingDownload.disabled = false;
+            if (missingResult) {
+                missingResult.innerHTML = `✅ <code>${d.name}</code> in <code>${d.directory}</code> · `
+                    + `${d.counts.classes} Klasse(n), ${d.counts.students} Schüler.`;
+            }
+            if (typeof showToast === 'function') showToast(`Missing-ZIP erstellt: ${d.counts.classes} Klasse(n).`);
+        } catch (e) {
+            if (missingResult) missingResult.innerHTML = `<span class="text-danger">❌ ${e}</span>`;
+        } finally {
+            missingExport.disabled = false; missingExport.textContent = orig;
+            updateMissingExportBtn();
+        }
+    });
+
+    missingDownload?.addEventListener('click', async () => {
+        if (!missingZipReady) { alert("Bitte zuerst exportieren."); return; }
+        try {
+            const r = await fetch('/api/erzieher/missing_download');
+            if (!r.ok) {
+                const err = await r.json().catch(() => ({}));
+                alert("Fehler: " + (err.error || r.statusText));
+                return;
+            }
+            const blob = await r.blob();
+            let fname = "FehlendeErzieher.zip";
+            const cd = r.headers.get("Content-Disposition") || "";
+            const m = cd.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+            if (m) fname = decodeURIComponent(m[1]);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = fname; document.body.appendChild(a); a.click();
+            a.remove(); URL.revokeObjectURL(url);
+        } catch (e) {
+            alert("Fehler beim Herunterladen: " + e);
+        }
     });
 
     // Status laden, sobald der Erzieher-Workflow sichtbar wird.
@@ -296,24 +795,50 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Save: nur die Erzieher-spezifischen Felder speichern
+    // Save: Directories + [Erzieher].smart_match speichern
     document.getElementById("saveErzieherSettings")?.addEventListener("click", async () => {
         const form = document.getElementById("form-erzieher-settings");
         if (!form) return;
         const btn = document.getElementById("saveErzieherSettings");
         btn.disabled = true; const orig = btn.textContent; btn.textContent = "⌛ Speichere…";
         try {
+            // Felder nach Section aufteilen. Checkboxen werden direkt per .checked
+            // gelesen, weil FormData unchecked-Boxen weglaesst (waeren sonst nicht
+            // auf False zu setzen).
             const directories = {};
-            new FormData(form).forEach((value, key) => { directories[key] = value; });
+            const erzieher = {};
+            const smartCb = document.getElementById('erzieher_smart_match');
+            if (smartCb) erzieher.smart_match = smartCb.checked ? 'True' : 'False';
+            const volljCb = document.getElementById('erzieher_filter_volljaehrig');
+            if (volljCb) erzieher.filter_volljaehrig = volljCb.checked ? 'True' : 'False';
+            const emailCb = document.getElementById('erzieher_require_email');
+            if (emailCb) erzieher.require_email = emailCb.checked ? 'True' : 'False';
+            const dummyCb = document.getElementById('erzieher_fill_dummies');
+            if (dummyCb) erzieher.fill_dummies = dummyCb.checked ? 'True' : 'False';
+            const liftCb  = document.getElementById('erzieher_lift_limit');
+            if (liftCb)  erzieher.lift_limit = liftCb.checked ? 'True' : 'False';
+            const phoneCb = document.getElementById('erzieher_phone_from_erz_first');
+            if (phoneCb) erzieher.phone_from_erz_first = phoneCb.checked ? 'True' : 'False';
+            const eltCb   = document.getElementById('erzieher_assign_eltern_ids');
+            if (eltCb)   erzieher.assign_eltern_ids = eltCb.checked ? 'True' : 'False';
+            const erzCbKeys = new Set(['smart_match', 'filter_volljaehrig',
+                                       'require_email', 'fill_dummies', 'lift_limit',
+                                       'phone_from_erz_first', 'assign_eltern_ids']);
+            new FormData(form).forEach((value, key) => {
+                if (erzCbKeys.has(key)) return;  // schon oben behandelt
+                directories[key] = value;
+            });
+            const sections = {};
+            if (Object.keys(directories).length) sections.Directories = directories;
+            if (Object.keys(erzieher).length)    sections.Erzieher    = erzieher;
             const r = await fetch("/save-settings", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ settings: { Directories: directories } }),
+                body: JSON.stringify({ settings: sections }),
             });
             const d = await r.json().catch(() => ({}));
             if (r.ok && d.status === "success") {
                 if (typeof showToast === "function") showToast("Erzieher-Einstellungen gespeichert.");
-                // Status neu laden — zeigt ob nun in den neuen Verzeichnissen Dateien gefunden werden
                 setTimeout(loadStatus, 100);
             } else {
                 alert("Fehler beim Speichern: " + (d.error || r.statusText));

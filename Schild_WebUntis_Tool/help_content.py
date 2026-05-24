@@ -591,46 +591,255 @@ Mails an die zuständigen Klassenlehrkräfte; <em>📨 Emails Senden</em> versch
     "erzieher_workflow": {
         "title": "👨‍👩‍👧 Erzieher-Workflow — Schild ↔ WebUntis",
         "html": """
+<style>
+details.erz-detail { margin: 10px 0; border-left: 4px solid #6f42c1; padding: 4px 0 4px 10px; background: #f8f6fc; border-radius: 0 4px 4px 0; }
+details.erz-detail[open] { background: #eee6f7; }
+details.erz-detail > summary { cursor: pointer; font-weight: 600; padding: 6px 0; outline: none; list-style: none; }
+details.erz-detail > summary::-webkit-details-marker { display: none; }
+details.erz-detail > summary::before { content: '▶ '; color: #6f42c1; font-size: 0.8rem; margin-right: 4px; }
+details.erz-detail[open] > summary::before { content: '▼ '; }
+details.erz-detail .erz-body { padding: 0 4px 4px 4px; }
+body.dark-mode details.erz-detail { background: #2a1f3d; border-left-color: #9b7ed4; }
+body.dark-mode details.erz-detail[open] { background: #36284e; }
+table.col-table { width: 100%; font-size: 0.85rem; margin-bottom: 8px; }
+table.col-table td { padding: 3px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+table.col-table td:first-child { white-space: nowrap; }
+body.dark-mode table.col-table td { border-bottom-color: #444; }
+</style>
+
 <p>SchildNRW speichert Erzieher (Hauptdaten) und zusätzliche Ansprechpartner
-(mit Telefonnummern) in <strong>zwei separaten Datensätzen</strong>. WebUntis
+(mit Telefonnummern) in <strong>zwei separaten Exports</strong>. WebUntis
 hingegen erwartet für jeden Erzieher/Ansprechpartner einen eigenen Datensatz
-mit eigener Telefonnummer.</p>
+inklusive Telefonnummer.</p>
 
 <p>Dieser Workflow überbrückt das, indem er pro „n-tem" Erzieher eines Schülers
-eine eigene WebUntis-Import-CSV erzeugt und alles als ZIP zum Download bereitstellt.</p>
+eine eigene WebUntis-Import-CSV erzeugt (<code>Erzieher_1.csv</code>,
+<code>Erzieher_2.csv</code>, …) und alles als ZIP zum Download bereitstellt.</p>
 
-<h6>Vorbereitung</h6>
+<h6>Schnellstart</h6>
 <ol>
-  <li><strong>Erzieher-Export aus Schild:</strong> Export-Vorlage mit allen Erzieher-Feldern
-      (Anrede, Briefanrede, Titel, Nachname, Vorname, E-Mail je Erzieher 1…N) UND
-      der „Interne ID-Nummer" der Schüler. Als CSV mit Semikolon-Separator speichern.
-      Datei im Verzeichnis <em>Erzieher-Export-Verzeichnis</em> ablegen.</li>
-  <li><strong>Ansprechpartner-Export aus Schild:</strong> Export-Vorlage mit den Feldern
-      <code>Schüler_ID</code>, <code>Anschluss-Art</code>, <code>Bemerkung</code>,
-      <code>Telefon-Nummer</code>. Datei im Verzeichnis
-      <em>Ansprechpartner-Export-Verzeichnis</em> ablegen.</li>
-  <li><strong>Verzeichnisse konfigurieren</strong> unter <em>⚙️ Einstellungen → Verzeichnisse</em>:
-      <code>erzieher_export_directory</code>, <code>ansprechpartner_export_directory</code>,
-      <code>erzieher_output_directory</code> (für das fertige ZIP).</li>
+  <li>Erzieher-Export aus Schild → in <em>Erzieher-Export-Verzeichnis</em> ablegen.</li>
+  <li>Ansprechpartner-Export aus Schild → in <em>Ansprechpartner-Export-Verzeichnis</em> ablegen.</li>
+  <li><strong>▶️ Verarbeiten &amp; ZIP erzeugen</strong> klicken — fertig.</li>
 </ol>
 
-<h6>Verarbeitung</h6>
-<p>Klick auf <strong>▶️ Verarbeiten &amp; ZIP erzeugen</strong>:</p>
-<ol>
-  <li>Es wird die jeweils <strong>neueste CSV-Datei</strong> in beiden Verzeichnissen genommen.</li>
-  <li>Die Ansprechpartner werden pro Schüler durchnummeriert (Erzieher 1, 2, 3, …).</li>
-  <li>Pro Erzieher-Index entsteht eine CSV (<code>Erzieher_1.csv</code>, <code>Erzieher_2.csv</code>, …)
-      mit jeweils einer Zeile pro Schüler — Erzieher-Hauptdaten + die i-te Telefonnummer.</li>
-  <li>Alle CSVs werden in ein ZIP gepackt und ins Ausgabeverzeichnis geschrieben.</li>
-</ol>
+<p>Vorab empfiehlt sich ein Klick auf <strong>👁️ Vorschau Schüler ↔ Erzieher</strong>
+oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüfen.</p>
 
-<p>Anschließend kann das ZIP über <strong>⬇️ ZIP herunterladen</strong> auch im
-Browser geholt werden.</p>
+<hr>
+<h6>📚 Weiterführende Informationen</h6>
+<p class="small text-muted mb-2">Die folgenden Abschnitte lassen sich einzeln ausklappen.</p>
 
-<h6>Import in WebUntis</h6>
-<p>In WebUntis pro Erzieher-CSV einen separaten Import-Lauf konfigurieren — so
-landet jeder Erzieher mit seiner spezifischen Telefonnummer als eigenständiger
-Datensatz im System.</p>
+<details class="erz-detail" open>
+  <summary>📋 Benötigte Spalten — Erzieher-Export</summary>
+  <div class="erz-body">
+    <p>Schild-Export mit Semikolon-Separator (UTF-8 mit BOM, CRLF). Aus der
+    Schild-Export-Vorlage <em>„Erzieher-Daten"</em> typischerweise diese Spalten:</p>
+    <table class="col-table">
+      <tr><td><strong>Pflicht</strong></td><td></td></tr>
+      <tr><td><code>Interne ID-Nummer</code></td><td>Schüler-ID — Verknüpfung mit Ansprechpartner-Export</td></tr>
+      <tr><td><code>Erzieher i: Nachname</code></td><td>i = 1, 2, … (so viele Erzieher-Slots wie Schild exportiert, i. d. R. 2)</td></tr>
+      <tr><td><code>Erzieher i: Vorname</code></td><td>siehe oben</td></tr>
+      <tr><td><code>Erzieher i: E-Mail</code></td><td>siehe oben (leer = wird ggf. per E-Mail-Filter ausgesondert)</td></tr>
+      <tr><td><strong>Empfohlen</strong></td><td></td></tr>
+      <tr><td><code>Erzieher i: Anrede</code></td><td><em>Frau / Herr</em> — wird für Smart-Match (Telefon ↔ Erzieher) benötigt</td></tr>
+      <tr><td><code>Erzieher i: Briefanrede</code></td><td>WebUntis-Darstellung</td></tr>
+      <tr><td><code>Erzieher i: Titel</code></td><td>z. B. Dr.</td></tr>
+      <tr><td><code>Erzieher: Art (Klartext)</code></td><td>für den <strong>Volljährig-Filter</strong> — Schild markiert hier <em>„Schüler/in ist volljährig"</em></td></tr>
+      <tr><td><code>Telefon-Nummern: Telefon-Nummer</code></td><td>für <strong>„Telefon aus Erzieher-Export primär"</strong> — die primäre Telefonnummer pro Schüler</td></tr>
+      <tr><td><code>Telefon-Nummern: Anschluss-Art</code></td><td>Mutter / Vater / Notfallnummer / … — bestimmt mit Smart-Match den passenden Erzieher-Slot</td></tr>
+      <tr><td><code>Telefon-Nummern: Bemerkung</code></td><td>optional</td></tr>
+    </table>
+    <p class="small text-muted mb-0">💡 Die <strong>Schüler-Stammdaten</strong>
+    (Name, Klasse) liefert dieser Export <em>nicht</em> — sie werden für die
+    UI-Darstellung aus dem Ansprechpartner-Export (Spalten <code>Schüler-Klasse</code>
+    / <code>Schüler-Vorname</code> / <code>Schüler-Nachname</code>) hinzugejoint.</p>
+  </div>
+</details>
+
+<details class="erz-detail" open>
+  <summary>📋 Benötigte Spalten — Ansprechpartner-Export</summary>
+  <div class="erz-body">
+    <p>Schild-Export mit Semikolon-Separator (UTF-8 mit BOM). Pro Schüler
+    typischerweise eine Zeile pro hinterlegter Telefonnummer (also häufig mehrere
+    Zeilen pro Schüler):</p>
+    <table class="col-table">
+      <tr><td><strong>Pflicht</strong></td><td></td></tr>
+      <tr><td><code>Schüler_ID</code></td><td>Verknüpfung mit dem Erzieher-Export (<code>Interne ID-Nummer</code>)</td></tr>
+      <tr><td><code>Telefon-Nummer</code></td><td>die eigentliche Nummer</td></tr>
+      <tr><td><strong>Empfohlen</strong></td><td></td></tr>
+      <tr><td><code>Anschluss-Art</code></td><td>Mutter / Vater / Notfallnummer / … — Basis für Smart-Match</td></tr>
+      <tr><td><code>Bemerkung</code></td><td>z. B. <em>„Handy Mutter"</em> — wird in WebUntis übernommen</td></tr>
+      <tr><td><code>Schüler-Klasse</code></td><td>nur für die UI-Vorschau / Missing-Report — wird nicht in den Export geschrieben</td></tr>
+      <tr><td><code>Schüler-Vorname</code></td><td>wie oben</td></tr>
+      <tr><td><code>Schüler-Nachname</code></td><td>wie oben</td></tr>
+    </table>
+  </div>
+</details>
+
+<details class="erz-detail">
+  <summary>⚙️ Verarbeitungs-Optionen im Detail</summary>
+  <div class="erz-body">
+    <p>Alle Optionen unter <em>⚙️ Einstellungen — Erzieher / Ansprechpartner</em>.
+    Defaults sind so gewählt, dass bestehende Workflows ohne Änderung weiterlaufen.</p>
+
+    <p><strong>🧠 Smart-Match</strong> <em>(Default: an)</em><br>
+    Telefonnummern werden per <code>Anschluss-Art</code> dem passenden Erzieher-Slot
+    zugeordnet — <em>Mutter</em> → Frau-Erzieher, <em>Vater</em> → Herr-Erzieher.
+    Neutrale Werte (<em>Eltern / Notfallnummer / …</em>) fallen positional auf
+    freie Slots zurück. <strong>Ohne</strong> Smart-Match wird rein nach Reihenfolge
+    zugeordnet — bei zwei Erziehern landet dann ggf. Vaters Telefon bei der Mutter.</p>
+
+    <p><strong>🔞 Volljährig-Filter</strong> <em>(Default: aus)</em><br>
+    Schüler mit <code>Erzieher: Art (Klartext)</code> = <em>„Schüler/in ist volljährig"</em>
+    werden komplett aus dem Export entfernt. Bei volljährigen Azubis ist meist kein
+    echter Erzieher mehr gepflegt — sie sind ihre eigenen Ansprechpartner.</p>
+
+    <p><strong>📧 E-Mail-Pflicht</strong> <em>(Default: aus)</em><br>
+    Erzieher ohne E-Mail werden aus den Output-CSVs gestrichen — sie können sich in
+    WebUntis ohnehin nicht anmelden. Nützlich, wenn man die Datenbasis sauber halten
+    will und die Erzieher-Datensätze sonst keinen anderen Zweck in WebUntis erfüllen.</p>
+
+    <p><strong>🧪 Dummy-Felder für fehlende Daten</strong> <em>(Default: aus)</em><br>
+    Leere Erzieher-Felder werden mit eindeutig erkennbaren Platzhaltern gefüllt
+    (Vorname/Nachname/Briefanrede = <code>DUMMY</code>, E-Mail =
+    <code>dummy@invalid.local</code>, Telefon = <code>000</code>). So bleibt der
+    WebUntis-Import auch bei Pflichtfeld-Lücken erfolgreich, und Dummies können in
+    WebUntis nachträglich gefiltert werden.</p>
+
+    <p><strong>♾️ Limit von 2 Erziehern aufheben</strong> <em>(Default: aus)</em><br>
+    Schild liefert in der Standardvorlage 2 Erzieher-Slots. Hat ein Schüler im
+    Ansprechpartner-Export mehr Telefon-Zeilen (z. B. Oma, Notfallnummer,
+    Pflegeeltern), gehen die sonst beim Export verloren. Mit dieser Option entstehen
+    <code>Erzieher_3.csv</code>, <code>Erzieher_4.csv</code> usw. — Stammdaten ggf.
+    per Dummy-Fill.</p>
+
+    <p><strong>📞 Telefon aus Erzieher-Export primär</strong> <em>(Default: an)</em><br>
+    Die im Erzieher-Export hinterlegte primäre Telefonnummer
+    (<code>Telefon-Nummern: …</code>) wird als <em>prioritäre</em> Pseudo-
+    Ansprechpartner-Zeile behandelt — sie bekommt damit Vorrang beim Smart-Match-
+    Slot-Mapping. Duplikate gegenüber dem Ansprechpartner-Export werden gefiltert.</p>
+
+    <p><strong>🆔 Eindeutige Eltern-IDs vergeben</strong> <em>(Default: aus)</em><br>
+    Schild hat keine schul-/personeneindeutige Eltern-ID — bei Geschwistern legt
+    Schild für jedes Kind einen separaten Erzieher-Datensatz an, ohne diese als
+    „dieselbe Person" zu markieren. WebUntis kann (sofern aktiv) eine schulweit
+    eindeutige Eltern-ID als Matching-Key auswerten, damit derselbe Erzieher-
+    Account über mehrere Kinder hinweg verbunden ist. Diese Option vergibt solche
+    IDs persistent — siehe eigenen Abschnitt unten.</p>
+  </div>
+</details>
+
+<details class="erz-detail">
+  <summary>🆔 Eindeutige Eltern-IDs — wie funktioniert das?</summary>
+  <div class="erz-body">
+    <p>Aktiviert man die Option <strong>Eltern-IDs vergeben</strong>, bekommt jeder
+    Erzieher eine schulweit eindeutige ID der Form <code>E00001</code>,
+    <code>E00002</code>, … Die Zuordnung wird im Arbeitsverzeichnis als
+    <code>eltern_ids.json</code> gespeichert und über alle Verarbeitungsläufe
+    hinweg <strong>wiederverwendet</strong>.</p>
+
+    <p><strong>Identitäts-Schlüssel:</strong> Zwei Erzieher gelten als
+    „dieselbe Person", wenn alle drei Felder übereinstimmen (jeweils
+    case-insensitive):</p>
+    <ul>
+      <li><code>Vorname</code></li>
+      <li><code>Nachname</code></li>
+      <li><code>E-Mail</code></li>
+    </ul>
+    <p>Bei leerer E-Mail wird auf <code>Vorname + Nachname</code> heruntergebrochen.
+    <strong>Dummy-Erzieher</strong> (Nachname oder Vorname = <code>DUMMY</code>,
+    E-Mail endet auf <code>@invalid.local</code>) bekommen <em>keine</em> ID — sie
+    sind Platzhalter für fehlende Daten.</p>
+
+    <p><strong>Output:</strong> In jedem <code>Erzieher_N.csv</code> kommt eine
+    zusätzliche Spalte <code>Erzieher N: Eltern-ID</code> ans Ende. Die ID ist über
+    alle Erzieher_N-Dateien hinweg konsistent — Mutter und Vater eines Geschwister-
+    Paares bekommen also dieselbe ID, egal ob sie bei Kind 1 in <code>Erzieher_1.csv</code>
+    und bei Kind 2 in <code>Erzieher_2.csv</code> landen.</p>
+
+    <p><strong>Datenbank-Verwaltung:</strong> Im Settings-Panel zeigt ein Info-Block
+    den aktuellen Stand (Anzahl IDs, nächste ID, letzte Änderung). Über
+    <em>🗑️ ID-Datenbank zurücksetzen</em> lässt sich die Datei löschen — danach
+    werden beim nächsten Verarbeiten alle IDs neu vergeben. Achtung: bestehende
+    WebUntis-Verknüpfungen brechen damit auf.</p>
+
+    <p class="text-muted small mb-0">💡 Da der WebUntis-Import-Layer die Eltern-ID-
+    Spalte derzeit (Stand: Mai 2026) ohnehin als optional behandelt — er nutzt
+    Vorname, Nachname und E-Mail als primären Matching-Key — kann man die Option
+    sicher aktivieren, ohne Imports zu brechen. Sie wird relevant, sobald WebUntis
+    Eltern-IDs offiziell unterstützt.</p>
+  </div>
+</details>
+
+<details class="erz-detail">
+  <summary>👁️ Vorschau, 📄 Quelldateien, ⚠️ Klassen-Report</summary>
+  <div class="erz-body">
+    <p><strong>👁️ Vorschau Schüler ↔ Erzieher:</strong> Zeigt das Ergebnis der
+    Zuordnung pro Schüler oder pro Erzieher (Gruppen-Sicht — gleicher Erzieher
+    bei mehreren Kindern). Mit Suche, Field-Mapping, Smart-Match-Statistik und
+    Orphan-Liste (Telefon-Zeilen ohne Erzieher-Slot).</p>
+
+    <p><strong>📄 Quelldateien anzeigen:</strong> Roher Blick auf die beiden CSVs —
+    Tab-Umschaltung Erzieher ↔ Ansprechpartner, mit Such-Filter und farblicher
+    Markierung der Spalten, die der Workflow nutzt (grün) bzw. ignoriert (grau).
+    Hilfreich, um schnell zu verifizieren, dass der Schild-Export die richtigen
+    Spalten enthält.</p>
+
+    <p><strong>⚠️ Fehlende Erzieher (Klassen):</strong> Klassenweise Liste der
+    <strong>nicht-volljährigen Schüler</strong>, bei denen Erzieher-Daten unvollständig
+    sind. Die Kriterien sind konfigurierbar:</p>
+    <ul>
+      <li>Kein Erzieher hinterlegt</li>
+      <li>Mind. ein Erzieher ohne Nachname / Vorname / E-Mail</li>
+    </ul>
+    <p>Verknüpfung wahlweise mit <em>ODER</em> (mindestens eines) oder <em>UND</em>
+    (alle aktivierten). Selektion erfolgt per Klassen-Checkbox; Export erzeugt eine
+    CSV pro Klasse mit Schüler-ID, Klasse, Name und Begründungs-Spalte. Praktisch,
+    um Klassenlehrer:innen gezielt auf nachzupflegende Daten anzusprechen.</p>
+  </div>
+</details>
+
+<details class="erz-detail">
+  <summary>📥 Import in WebUntis</summary>
+  <div class="erz-body">
+    <p>Pro Erzieher-CSV im ZIP einen separaten Import-Lauf in WebUntis konfigurieren —
+    so landet jeder Erzieher als eigenständiger Datensatz im System.</p>
+
+    <p class="alert alert-info py-2 px-2 small mb-3">
+      ⚠️ <strong>Wichtig zu wissen — was WebUntis tatsächlich verarbeitet</strong><br>
+      Der WebUntis-Erzieher-Import wertet derzeit (Stand: Mai 2026) nur einen
+      Bruchteil der Spalten aus. Die übrigen Spalten exportieren wir trotzdem,
+      damit der Import nicht angepasst werden muss, falls WebUntis das in Zukunft
+      ändert.
+    </p>
+
+    <h6>Tatsächlich von WebUntis verwendet</h6>
+    <table class="col-table">
+      <tr><td><code>Interne_ID_Nummer</code></td><td>→ <strong>Schüler-ID (Matching)</strong> — Pflicht</td></tr>
+      <tr><td><code>Erzieher i: Vorname</code></td><td>→ <strong>Stammdaten</strong></td></tr>
+      <tr><td><code>Erzieher i: Nachname</code></td><td>→ <strong>Stammdaten</strong></td></tr>
+      <tr><td><code>Erzieher i: E-Mail</code></td><td>→ <strong>Stammdaten / Account-Anlage</strong></td></tr>
+      <tr><td><code>Erzieher i: Eltern-ID</code></td><td>→ <em>(optional)</em> schulweit eindeutige ID — nur falls Spalte vorhanden</td></tr>
+    </table>
+
+    <h6>Mit-Exportiert, aber von WebUntis derzeit ignoriert</h6>
+    <p class="text-muted small">Diese Spalten sind im Export enthalten, um vorbereitet
+    zu sein, falls WebUntis die Auswertung erweitert. Sie verursachen keinen Fehler,
+    werden aber aktuell nicht in WebUntis übernommen:</p>
+    <table class="col-table">
+      <tr><td><code>Erzieher i: Anrede</code></td><td>(ignored)</td></tr>
+      <tr><td><code>Erzieher i: Briefanrede</code></td><td>(ignored)</td></tr>
+      <tr><td><code>Erzieher i: Titel</code></td><td>(ignored)</td></tr>
+      <tr><td><code>Erzieher i: Anschluss Art</code></td><td>(ignored)</td></tr>
+      <tr><td><code>Erzieher i: Bemerkung</code></td><td>(ignored)</td></tr>
+      <tr><td><code>Erzieher i: Telefon-Nummer</code></td><td>(ignored)</td></tr>
+    </table>
+    <p class="text-muted small mb-0">💡 Wer den Export schlanker haben möchte, kann
+    die nicht genutzten Spalten manuell vor dem WebUntis-Import löschen — die vier
+    relevanten Spalten reichen aus.</p>
+  </div>
+</details>
 
 <p class="text-muted small mt-3">💡 Dieser Workflow wurde aus dem ursprünglichen
 Standalone-Tool <em>SchildNRW-WebUntis-Erzieher-Konvertierer</em> in das Haupttool

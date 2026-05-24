@@ -38,6 +38,50 @@ ANSPRECHPARTNER_FIELD_MAP = {
     'Telefon-Nummer': 'Telefon-Nummer',
 }
 
+# Spalten der "primaeren" Telefonnummer im Erzieher-Export (eine pro Schueler)
+ERZ_PHONE_COLS = {
+    'Anschluss-Art':  'Telefon-Nummern: Anschluss-Art',
+    'Bemerkung':      'Telefon-Nummern: Bemerkung',
+    'Telefon-Nummer': 'Telefon-Nummern: Telefon-Nummer',
+}
+
+# ---------------------------------------------------------------------------
+# Smart-Match: Anschluss-Art -> Geschlecht/Rolle (zur Zuordnung an Erzieher i)
+# ---------------------------------------------------------------------------
+# Werte basieren auf einer Analyse von >2000 echten Schild-Ansprechpartner-
+# Zeilen: Mutter/Vater + Varianten sind die haeufigsten typisierten Werte.
+
+_ANSCHLUSS_FEMININ = {
+    'mutter', 'mama', 'mami',
+    'handy mutter', 'arbeit mutter',
+    'oma', 'oma handy', 'großmutter', 'grossmutter',
+    'schwester', 'tante', 'pflegemutter',
+}
+_ANSCHLUSS_MASKULIN = {
+    'vater', 'papa', 'papi',
+    'handy vater', 'arbeit vater',
+    'opa', 'großvater', 'grossvater',
+    'bruder', 'onkel', 'pflegevater',
+}
+# Alle anderen Werte (Eltern, Notfallnummer, Vormund, Pflegeeltern, Ehepartner(in),
+# sonstiges, ...) bleiben "neutral" und werden nach Position zugeordnet.
+
+
+def _gender_from_anschluss(art):
+    """Liefert 'w' / 'm' / None aus dem Anschluss-Art-Feld."""
+    a = (art or '').strip().lower()
+    if a in _ANSCHLUSS_FEMININ:  return 'w'
+    if a in _ANSCHLUSS_MASKULIN: return 'm'
+    return None
+
+
+def _gender_from_anrede(anrede):
+    """Liefert 'w' / 'm' / None aus dem Anrede-Feld des Erziehers."""
+    a = (anrede or '').strip().lower()
+    if a in ('frau', 'fr.', 'fr'):  return 'w'
+    if a in ('herr', 'hr.', 'hr'):  return 'm'
+    return None
+
 
 def safe_read_config(config, path):
     try:
@@ -82,6 +126,256 @@ def save_zip_name_template(template):
     config.set('Erzieher', 'zip_name_template', template)
     with open('settings.ini', 'w', encoding='utf-8-sig') as f:
         config.write(f)
+
+
+def get_smart_match():
+    """True = Telefonnummern werden per Anschluss-Art an Erzieher gemappt
+    (Mutter -> Frau-Erzieher, Vater -> Herr-Erzieher); Output enthaelt nur
+    so viele Erzieher-CSVs wie der Erzieher-Export Slots hergibt.
+    False = altes Verhalten: positional, kann "Geister-Erzieher" mit leeren
+    Stammdaten erzeugen, wenn mehr Anspr-Zeilen als Erzieher existieren."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'smart_match', fallback=True)
+
+
+def save_smart_match(value):
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Erzieher'):
+        config.add_section('Erzieher')
+    config.set('Erzieher', 'smart_match', 'True' if value else 'False')
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+def get_filter_volljaehrig():
+    """True = Schueler, deren Erzieher-Art (Klartext) 'volljaehrig' enthaelt,
+    werden komplett aus dem Erzieher-Export herausgefiltert (kein
+    sinnvoller Erzieher-Datensatz fuer self-Ansprechpartner)."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'filter_volljaehrig', fallback=False)
+
+
+def save_filter_volljaehrig(value):
+    _set_erz_bool('filter_volljaehrig', value)
+
+
+def get_require_email():
+    """True = Erzieher ohne E-Mail-Adresse werden nicht exportiert
+    (sie koennen sich in WebUntis ohnehin nicht anmelden)."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'require_email', fallback=False)
+
+
+def save_require_email(value):
+    _set_erz_bool('require_email', value)
+
+
+def get_fill_dummies():
+    """True = leere Erzieher-Felder werden mit eindeutig erkennbaren Dummy-
+    Werten (DUMMY / dummy@invalid.local / 000) gefuellt, damit WebUntis nicht
+    auf Pflichtfeldern stolpert und Dummies nachtraeglich gefiltert werden
+    koennen."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'fill_dummies', fallback=False)
+
+
+def save_fill_dummies(value):
+    _set_erz_bool('fill_dummies', value)
+
+
+def get_assign_eltern_ids():
+    """True = jedem Erzieher wird eine schulweit eindeutige Eltern-ID zugewiesen
+    (persistent in eltern_ids.json), damit WebUntis denselben Erzieher ueber
+    Geschwister hinweg als denselben Account erkennt."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'assign_eltern_ids', fallback=False)
+
+
+def save_assign_eltern_ids(value):
+    _set_erz_bool('assign_eltern_ids', value)
+
+
+def get_phone_from_erz_first():
+    """True = die im Erzieher-Export hinterlegte primaere Telefonnummer
+    (Spaltengruppe 'Telefon-Nummern: ...') wird als ZUSAETZLICHE erste
+    Anspr-Pseudozeile pro Schueler behandelt — bekommt damit Vorrang beim
+    Slot-Mapping. Duplikate gegenueber dem Anspr-Export werden gefiltert."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'phone_from_erz_first', fallback=True)
+
+
+def save_phone_from_erz_first(value):
+    _set_erz_bool('phone_from_erz_first', value)
+
+
+def get_lift_limit():
+    """True = Anzahl Erzieher pro Schueler ist nicht mehr auf die Slots im
+    Schild-Erzieher-Export begrenzt. Ueberzaehlige Ansprechpartner-Telefonzeilen
+    werden zu zusaetzlichen Erzieher_N.csv-Slots (Stammdaten ggf. Dummy)."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'lift_limit', fallback=False)
+
+
+def save_lift_limit(value):
+    _set_erz_bool('lift_limit', value)
+
+
+def _set_erz_bool(key, value):
+    """Helper: bool in [Erzieher] speichern (idempotent, legt Section ggf. an)."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Erzieher'):
+        config.add_section('Erzieher')
+    config.set('Erzieher', key, 'True' if value else 'False')
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+def _is_self_volljaehrig(erz_row):
+    """True wenn der Schueler im Erzieher-Export als 'volljaehrig' markiert ist
+    (Self-Ansprechpartner statt echter Eltern)."""
+    art = (erz_row.get('Erzieher: Art (Klartext)', '') or '').lower()
+    return 'volljährig' in art or 'volljaehrig' in art
+
+
+# ---------------------------------------------------------------------------
+# Dummy-Fuellwerte (eindeutig erkennbar — leicht in WebUntis filterbar)
+# ---------------------------------------------------------------------------
+DUMMY_VALUES = {
+    'Anrede':         '',
+    'Briefanrede':    'DUMMY',
+    'Titel':          '',
+    'Nachname':       'DUMMY',
+    'Vorname':        'DUMMY',
+    'E-Mail':         'dummy@invalid.local',
+    'Anschluss Art':  'DUMMY',
+    'Bemerkung':      'DUMMY (automatisch ergaenzt)',
+    'Telefon-Nummer': '000',
+}
+
+
+def _normalize_phone(num):
+    """Normalisiert eine Telefonnummer fuer Duplikat-Erkennung — alle Nicht-
+    Ziffern entfernen, fuehrende Nullen / +49 vereinheitlichen ist OPTIONAL und
+    macht zu viele falsch-positive Treffer; daher nur Leerzeichen/Trenner weg."""
+    return re.sub(r'[^0-9+]', '', (num or '').strip())
+
+
+def _erz_phone_pseudo(erz_row):
+    """Liefert eine Pseudo-Anspr-Zeile aus den 'Telefon-Nummern: ...'-Spalten
+    des Erzieher-Exports — oder None, wenn keine Telefonnummer gepflegt ist."""
+    nr = (erz_row.get(ERZ_PHONE_COLS['Telefon-Nummer'], '') or '').strip()
+    if not nr:
+        return None
+    return {
+        'Anschluss-Art':  (erz_row.get(ERZ_PHONE_COLS['Anschluss-Art'],  '') or '').strip(),
+        'Bemerkung':      (erz_row.get(ERZ_PHONE_COLS['Bemerkung'],      '') or '').strip(),
+        'Telefon-Nummer': nr,
+        '_from_erz':      True,   # Marker fuer Stats / UI
+    }
+
+
+def _merge_phone_sources(erz_phone, anspr_list):
+    """Fuegt die Erzieher-Export-Pseudozeile als ERSTES Element in die Liste
+    ein und entfernt Duplikate (gleiche normalisierte Nummer) — die aus dem
+    Erzieher-Export hat Vorrang, Duplikate aus dem Anspr-Export werden
+    geloescht."""
+    if not erz_phone:
+        return list(anspr_list)
+    key = _normalize_phone(erz_phone['Telefon-Nummer'])
+    deduped = [a for a in anspr_list
+               if _normalize_phone(a.get('Telefon-Nummer', '')) != key]
+    return [erz_phone] + deduped
+
+
+def _apply_dummies(row_out, i):
+    """Fuellt leere Werte in einer Output-Zeile mit Dummy-Werten. Mutates+returns."""
+    for col in list(row_out.keys()):
+        if col == 'Interne_ID_Nummer':
+            continue
+        if row_out[col]:
+            continue
+        prefix = f'Erzieher {i}: '
+        if not col.startswith(prefix):
+            continue
+        short = col[len(prefix):]
+        if short in DUMMY_VALUES:
+            row_out[col] = DUMMY_VALUES[short]
+    return row_out
+
+
+def _smart_match_student(erz_row, anspr_list, max_slots, lift_limit=False):
+    """Ordnet Anspr-Zeilen den i-ten Erzieher-Slots zu — primaer per
+    Anschluss-Art-Gender, Fallback per Position fuer neutrale / unklare Faelle.
+
+    Wenn lift_limit=True werden uebrig gebliebene Anspr-Zeilen auf virtuelle
+    Slots oberhalb von max_slots verteilt (statt zu Orphans zu werden).
+
+    Returns:
+        assigned: {erz_idx (1..N): anspr_dict}
+        stats:    {'gender': N, 'positional': N, 'virtual': N, 'orphan_anspr': N, 'orphan_erz': N}
+    """
+    # Echte Erzieher-Slots (gefuellt) ermitteln
+    erz_slots = []  # [(idx, gender_or_None)]
+    for i in range(1, max_slots + 1):
+        vor  = (erz_row.get(f'Erzieher {i}: Vorname',  '') or '').strip()
+        nach = (erz_row.get(f'Erzieher {i}: Nachname', '') or '').strip()
+        if not (vor or nach):
+            continue
+        erz_slots.append((i, _gender_from_anrede(erz_row.get(f'Erzieher {i}: Anrede', ''))))
+
+    assigned = {}
+    used = set()
+    stats = {'gender': 0, 'positional': 0, 'virtual': 0, 'orphan_anspr': 0, 'orphan_erz': 0}
+
+    # Phase 1: Anspr mit klarem Gender auf passenden Erzieher legen
+    for j, anspr in enumerate(anspr_list):
+        ag = _gender_from_anschluss(anspr.get('Anschluss-Art', ''))
+        if ag is None:
+            continue
+        for idx, eg in erz_slots:
+            if idx in assigned or eg != ag:
+                continue
+            assigned[idx] = anspr
+            used.add(j)
+            stats['gender'] += 1
+            break
+
+    # Phase 2: alle uebrigen Anspr-Zeilen positional auf freie Slots
+    for j, anspr in enumerate(anspr_list):
+        if j in used:
+            continue
+        for idx, _eg in erz_slots:
+            if idx in assigned:
+                continue
+            assigned[idx] = anspr
+            used.add(j)
+            stats['positional'] += 1
+            break
+
+    # Phase 3 (optional): Rest auf virtuelle Slots oberhalb des Schild-Headers
+    if lift_limit:
+        used_idx = max((idx for idx, _ in erz_slots), default=0)
+        next_slot = max(max_slots, used_idx) + 1
+        for j, anspr in enumerate(anspr_list):
+            if j in used:
+                continue
+            assigned[next_slot] = anspr
+            used.add(j)
+            stats['virtual'] += 1
+            next_slot += 1
+
+    stats['orphan_anspr'] = len(anspr_list) - len(used)
+    stats['orphan_erz']   = sum(1 for idx, _ in erz_slots if idx not in assigned)
+    return assigned, stats
 
 
 # ---------------------------------------------------------------------------
@@ -148,6 +442,13 @@ def status_info():
         'ansprechpartner_export_directory': ansp_dir,
         'output_directory':                 out_dir,
         'zip_name_template':                get_zip_name_template(),
+        'smart_match':                      get_smart_match(),
+        'filter_volljaehrig':               get_filter_volljaehrig(),
+        'require_email':                    get_require_email(),
+        'fill_dummies':                     get_fill_dummies(),
+        'lift_limit':                       get_lift_limit(),
+        'phone_from_erz_first':             get_phone_from_erz_first(),
+        'assign_eltern_ids':                get_assign_eltern_ids(),
         'latest_erzieher_export':           os.path.basename(erz_file) if erz_file else None,
         'latest_ansprechpartner_export':    os.path.basename(ansp_file) if ansp_file else None,
         'erzieher_export_path':             erz_file,
@@ -155,12 +456,32 @@ def status_info():
     }
 
 
-def process(erzieher_path=None, ansprechpartner_path=None):
+def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
+            filter_volljaehrig=None, require_email=None, fill_dummies=None,
+            lift_limit=None, phone_from_erz_first=None, assign_eltern_ids=None):
     """
-    Verarbeitet die zwei CSVs und liefert (result_files, stats):
-      result_files: {dateiname_ohne_ext: [row_dict, ...]}
-      stats: {'erzieher_rows', 'ansprechpartner_rows', 'max_erzieher', 'output_files'}
+    Verarbeitet die zwei CSVs und liefert (result_files, stats).
+
+    Optionen (default = jeweiliges Setting in settings.ini):
+      smart_match          — Telefon ↔ Erzieher-Slot per Anschluss-Art (Mutter/Vater/...)
+      filter_volljaehrig   — Schueler mit Self-Ansprechpartner ("volljaehrig") rauswerfen
+      require_email        — Erzieher ohne E-Mail nicht exportieren
+      fill_dummies         — Leere Erzieher-Felder mit eindeutigen Dummies fuellen
+      lift_limit           — Limit von 2 Erziehern pro Schueler aufheben (zusaetzliche
+                             Telefon-Zeilen landen in Erzieher_3.csv, _4.csv, ...)
+      phone_from_erz_first — Telefonnummer aus dem Erzieher-Export (Spalten
+                             'Telefon-Nummern: ...') wird als zusaetzliche, prioritaere
+                             Pseudo-Anspr-Zeile pro Schueler behandelt; Duplikate
+                             gegenueber dem Anspr-Export werden gefiltert.
     """
+    if smart_match is None:        smart_match = get_smart_match()
+    if filter_volljaehrig is None: filter_volljaehrig = get_filter_volljaehrig()
+    if require_email is None:      require_email = get_require_email()
+    if fill_dummies is None:       fill_dummies = get_fill_dummies()
+    if lift_limit is None:         lift_limit = get_lift_limit()
+    if phone_from_erz_first is None: phone_from_erz_first = get_phone_from_erz_first()
+    if assign_eltern_ids is None:    assign_eltern_ids = get_assign_eltern_ids()
+
     erzieher_path = erzieher_path or _latest_csv(get_erzieher_export_dir())
     ansprechpartner_path = ansprechpartner_path or _latest_csv(get_ansprechpartner_export_dir())
 
@@ -176,64 +497,166 @@ def process(erzieher_path=None, ansprechpartner_path=None):
         raise ValueError("Erzieher-Export ist leer.")
     if not ansp_rows:
         raise ValueError("Ansprechpartner-Export ist leer.")
-
-    # Spalten-Validierung
     if 'Interne ID-Nummer' not in erz_rows[0]:
         raise ValueError("Spalte 'Interne ID-Nummer' fehlt im Erzieher-Export.")
     if 'Schüler_ID' not in ansp_rows[0]:
         raise ValueError("Spalte 'Schüler_ID' fehlt im Ansprechpartner-Export.")
 
-    # Ansprechpartner: nach Schüler-ID sortieren und Erzieher_Nummer (1..N) je Schüler zuweisen
-    ansp_rows.sort(key=lambda r: r.get('Schüler_ID', ''))
-    last_sid, counter = None, 0
-    for row in ansp_rows:
-        sid = row.get('Schüler_ID', '')
-        if sid != last_sid:
-            counter = 1
-            last_sid = sid
-        else:
-            counter += 1
-        row['Erzieher_Nummer'] = counter
+    # Volljaehrige Schueler filtern + Stats
+    volljaehrig_filtered = 0
+    if filter_volljaehrig:
+        before = len(erz_rows)
+        erz_rows = [r for r in erz_rows if not _is_self_volljaehrig(r)]
+        volljaehrig_filtered = before - len(erz_rows)
 
-    max_erzieher = max((r['Erzieher_Nummer'] for r in ansp_rows), default=0)
+    # Anspr-Zeilen pro Schueler-ID sammeln (Reihenfolge der CSV bewahrt)
+    ansp_by_sid = {}
+    for r in ansp_rows:
+        ansp_by_sid.setdefault(r.get('Schüler_ID', ''), []).append(r)
+
+    # Maximale Erzieher-Slot-Nummer aus dem Erzieher-CSV-Header ableiten
+    max_slots_in_csv = 0
+    for col in (erz_rows[0].keys() if erz_rows else []):
+        m = re.match(r'Erzieher\s+(\d+):', col)
+        if m:
+            max_slots_in_csv = max(max_slots_in_csv, int(m.group(1)))
+
+    # Pro Schueler die Anspr-Zuordnung berechnen
+    match_stats_total = {'gender': 0, 'positional': 0, 'virtual': 0,
+                         'orphan_anspr': 0, 'orphan_erz': 0}
+    assignment_by_sid = {}  # sid -> {erz_idx: anspr_dict}
+    phone_from_erz_used      = 0  # wie oft pseudo-Zeile uebernommen wurde
+    phone_from_erz_duplicates = 0  # wie oft Duplikate im Anspr-Export gefiltert wurden
+    for erz_row in erz_rows:
+        sid = erz_row.get('Interne ID-Nummer', '').strip()
+        if not sid:
+            continue
+        anspr_list = ansp_by_sid.get(sid, [])
+        if phone_from_erz_first:
+            erz_phone = _erz_phone_pseudo(erz_row)
+            if erz_phone:
+                before = len(anspr_list)
+                anspr_list = _merge_phone_sources(erz_phone, anspr_list)
+                phone_from_erz_used += 1
+                # +1 fuer die neue Pseudo-Zeile; Differenz = entfernte Duplikate
+                phone_from_erz_duplicates += (before + 1) - len(anspr_list)
+        if smart_match:
+            assigned, st = _smart_match_student(erz_row, anspr_list, max_slots_in_csv,
+                                                lift_limit=lift_limit)
+            for k in match_stats_total:
+                match_stats_total[k] += st[k]
+        else:
+            # Positional: i-te Anspr-Zeile -> Erzieher i (lift_limit ist hier ohnehin
+            # implizit aktiv, da nicht durch max_slots_in_csv begrenzt)
+            assigned = {i + 1: anspr_list[i] for i in range(len(anspr_list))}
+        assignment_by_sid[sid] = assigned
+
+    # max_erzieher (= Anzahl Output-CSVs) aus den tatsaechlich getroffenen
+    # Zuweisungen + gefuellten Stammdaten-Slots ableiten
+    max_erzieher = 0
+    for er in erz_rows:
+        sid = er.get('Interne ID-Nummer', '').strip()
+        # Gefuellte Stammdaten-Slots
+        upper_for_stamm = max_slots_in_csv
+        for i in range(1, upper_for_stamm + 1):
+            if (er.get(f'Erzieher {i}: Vorname', '') or er.get(f'Erzieher {i}: Nachname', '')).strip():
+                max_erzieher = max(max_erzieher, i)
+        # Zugeordnete Slots (inkl. virtueller bei lift_limit)
+        for idx in assignment_by_sid.get(sid, {}).keys():
+            max_erzieher = max(max_erzieher, idx)
+
+    # Eltern-ID-DB einmal laden (Batch-Modus), spaeter atomar speichern
+    eltern_db        = None
+    eltern_id_new    = 0
+    eltern_id_reused = 0
+    if assign_eltern_ids:
+        import eltern_id_manager
+        eltern_db = eltern_id_manager.load_db()
 
     # Pro Erzieher-Index eine Ergebnisdatei bauen
     result_files = {}
+    skipped_no_email = 0
+    dummy_fills      = 0
     for i in range(1, max_erzieher + 1):
-        # Nur die i-ten Ansprechpartner je Schüler-ID
-        ansp_by_sid = {
-            r['Schüler_ID']: r for r in ansp_rows if r['Erzieher_Nummer'] == i
-        }
-
-        # Header dynamisch erzeugen
         header = ['Interne_ID_Nummer']
         for field in ERZIEHER_FIELDS:
             header.append(f'Erzieher {i}: {field}')
         for src in ANSPRECHPARTNER_FIELD_MAP.values():
             header.append(f'Erzieher {i}: {src}')
+        if assign_eltern_ids:
+            header.append(f'Erzieher {i}: Eltern-ID')
 
-        # Zeilen aufbauen — eine pro Schüler aus Erzieher-Export
         result_rows = []
         for erz_row in erz_rows:
             sid = erz_row.get('Interne ID-Nummer', '').strip()
             if not sid:
                 continue
-            ansp = ansp_by_sid.get(sid, {})
+            ansp = assignment_by_sid.get(sid, {}).get(i, {})
+            stamm = {fld: (erz_row.get(f'Erzieher {i}: {fld}', '') or '').strip()
+                     for fld in ERZIEHER_FIELDS}
+            has_stamm = any(stamm.values())
+            has_ansp  = any((ansp.get(c, '') or '').strip() for c in ANSPRECHPARTNER_FIELD_MAP)
+            if not (has_stamm or has_ansp):
+                continue  # leerer Slot fuer diesen Schueler -> nicht exportieren
+            if require_email and not stamm.get('E-Mail', ''):
+                skipped_no_email += 1
+                continue
+
             row_out = {'Interne_ID_Nummer': sid}
             for field in ERZIEHER_FIELDS:
-                col_in = f'Erzieher {i}: {field}'
-                row_out[f'Erzieher {i}: {field}'] = erz_row.get(col_in, '')
-            for src_col, target_col_short in ANSPRECHPARTNER_FIELD_MAP.items():
-                row_out[f'Erzieher {i}: {target_col_short}'] = ansp.get(src_col, '')
+                row_out[f'Erzieher {i}: {field}'] = stamm[field]
+            for src_col, tgt_col_short in ANSPRECHPARTNER_FIELD_MAP.items():
+                row_out[f'Erzieher {i}: {tgt_col_short}'] = ansp.get(src_col, '')
+
+            # Eltern-ID auf Basis der ECHTEN Stammdaten (vor Dummy-Fill) holen
+            if assign_eltern_ids:
+                import eltern_id_manager
+                key = eltern_id_manager._key(stamm['Vorname'], stamm['Nachname'],
+                                             stamm['E-Mail'])
+                existed = key in eltern_db['mappings']
+                eid = eltern_id_manager.get_or_assign(
+                    stamm['Vorname'], stamm['Nachname'], stamm['E-Mail'],
+                    db=eltern_db)
+                row_out[f'Erzieher {i}: Eltern-ID'] = eid or ''
+                if eid is not None:
+                    if existed: eltern_id_reused += 1
+                    else:       eltern_id_new    += 1
+
+            if fill_dummies:
+                before = sum(1 for v in row_out.values() if not v)
+                _apply_dummies(row_out, i)
+                after  = sum(1 for v in row_out.values() if not v)
+                dummy_fills += (before - after)
+
             result_rows.append(row_out)
 
         result_files[f'Erzieher_{i}'] = {'header': header, 'rows': result_rows}
+
+    # Eltern-ID-DB persistieren (atomar)
+    if assign_eltern_ids and eltern_db is not None:
+        import eltern_id_manager
+        eltern_id_manager.save_db(eltern_db)
 
     stats = {
         'erzieher_rows':        len(erz_rows),
         'ansprechpartner_rows': len(ansp_rows),
         'max_erzieher':         max_erzieher,
         'output_files':         list(result_files.keys()),
+        'match_mode':           'smart' if smart_match else 'positional',
+        'match_stats':          match_stats_total,
+        'filter_volljaehrig':       filter_volljaehrig,
+        'volljaehrig_filtered':     volljaehrig_filtered,
+        'require_email':            require_email,
+        'skipped_no_email':         skipped_no_email,
+        'fill_dummies':             fill_dummies,
+        'dummy_fills':              dummy_fills,
+        'lift_limit':               lift_limit,
+        'phone_from_erz_first':         phone_from_erz_first,
+        'phone_from_erz_used':          phone_from_erz_used,
+        'phone_from_erz_duplicates':    phone_from_erz_duplicates,
+        'assign_eltern_ids':            assign_eltern_ids,
+        'eltern_id_new':                eltern_id_new,
+        'eltern_id_reused':             eltern_id_reused,
     }
     return result_files, stats
 
@@ -272,44 +695,109 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
     erz_header  = list(erz_rows[0].keys())  if erz_rows  else []
     ansp_header = list(ansp_rows[0].keys()) if ansp_rows else []
 
-    # Ansprechpartner-Zeilen per Schueler-ID sortieren und nummerieren (analog process())
-    ansp_rows.sort(key=lambda r: r.get('Schüler_ID', ''))
-    last_sid, counter = None, 0
-    for row in ansp_rows:
-        sid = row.get('Schüler_ID', '')
-        if sid != last_sid:
-            counter = 1
-            last_sid = sid
-        else:
-            counter += 1
-        row['Erzieher_Nummer'] = counter
-    # Lookup: sid -> [ansp_row sortiert nach Erzieher_Nummer]
-    ansp_by_sid = {}
-    for r in ansp_rows:
-        ansp_by_sid.setdefault(r.get('Schüler_ID', ''), []).append(r)
-    for lst in ansp_by_sid.values():
-        lst.sort(key=lambda r: r.get('Erzieher_Nummer', 0))
+    # Volljaehrige Schueler optional rausfiltern
+    filter_volljaehrig = get_filter_volljaehrig()
+    volljaehrig_filtered = 0
+    if filter_volljaehrig:
+        before = len(erz_rows)
+        erz_rows = [r for r in erz_rows if not _is_self_volljaehrig(r)]
+        volljaehrig_filtered = before - len(erz_rows)
 
-    # Maximale Erzieher-Anzahl ueber alle Schueler hinweg ermitteln (aus den
-    # Spalten "Erzieher i: Anrede" o.ae. im Erzieher-Export).
+    # Ansprechpartner-Zeilen pro Schueler-ID gruppieren (Reihenfolge aus CSV bewahrt).
+    # Ausserdem Schueler-Stammdaten-Lookup bauen — der Erzieher-Export enthaelt sie
+    # nicht, der Anspr-Export aber sehr wohl (Spalten 'Schueler-Klasse/-Vorname/-Nachname').
+    ansp_by_sid = {}
+    student_lookup = {}
+    for r in ansp_rows:
+        sid = r.get('Schüler_ID', '')
+        ansp_by_sid.setdefault(sid, []).append(r)
+        if sid and sid not in student_lookup:
+            student_lookup[sid] = {
+                'klasse':   (r.get('Schüler-Klasse',   '') or '').strip(),
+                'vorname':  (r.get('Schüler-Vorname',  '') or '').strip(),
+                'nachname': (r.get('Schüler-Nachname', '') or '').strip(),
+            }
+
+    # Maximale Erzieher-Slot-Nummer aus dem Header ableiten
     max_in_header = 0
     for col in erz_header:
         m = re.match(r'Erzieher\s+(\d+):', col)
         if m:
             max_in_header = max(max_in_header, int(m.group(1)))
-    # Sicherheits-Fallback, falls Header nichts hergibt
     if max_in_header == 0:
         max_in_header = max((len(v) for v in ansp_by_sid.values()), default=0)
 
+    smart_match          = get_smart_match()
+    require_email        = get_require_email()
+    fill_dummies         = get_fill_dummies()
+    lift_limit           = get_lift_limit()
+    phone_from_erz_first = get_phone_from_erz_first()
+    assign_eltern_ids    = get_assign_eltern_ids()
+    # Eltern-IDs in der Preview NUR lesen — Vergabe erst beim Verarbeiten
+    eltern_db_preview = None
+    eltern_id_total      = 0
+    eltern_id_known      = 0
+    eltern_id_would_new  = 0
+    if assign_eltern_ids:
+        import eltern_id_manager
+        eltern_db_preview = eltern_id_manager.load_db()
+
     students = []
     students_without_erzieher = 0
+    skipped_no_email = 0
+    dummy_fills      = 0
+    match_stats = {'gender': 0, 'positional': 0, 'virtual': 0,
+                   'orphan_anspr': 0, 'orphan_erz': 0}
+    orphan_anspr_rows = []   # fuer detaillierte Anzeige in der Preview
+    phone_from_erz_used       = 0
+    phone_from_erz_duplicates = 0
+    # Pro Student max-Slot ermitteln, damit virtuelle Slots (lift_limit) sichtbar werden
+    assignments = {}
     for erz_row in erz_rows:
         sid = erz_row.get('Interne ID-Nummer', '').strip()
         if not sid:
             continue
-        ansp_list = ansp_by_sid.get(sid, [])
+        anspr_list = ansp_by_sid.get(sid, [])
+        if phone_from_erz_first:
+            erz_phone = _erz_phone_pseudo(erz_row)
+            if erz_phone:
+                before = len(anspr_list)
+                anspr_list = _merge_phone_sources(erz_phone, anspr_list)
+                phone_from_erz_used += 1
+                phone_from_erz_duplicates += (before + 1) - len(anspr_list)
+        if smart_match:
+            assigned, st = _smart_match_student(erz_row, anspr_list, max_in_header,
+                                                lift_limit=lift_limit)
+            for k in match_stats:
+                match_stats[k] += st[k]
+            if not lift_limit:
+                used_anspr = set(id(v) for v in assigned.values())
+                for a in anspr_list:
+                    if id(a) not in used_anspr:
+                        stamm_o = student_lookup.get(sid, {})
+                        orphan_anspr_rows.append({
+                            'student_id':   sid,
+                            'student_name': f"{stamm_o.get('nachname','')}, {stamm_o.get('vorname','')}".strip(', '),
+                            'klasse':       stamm_o.get('klasse', ''),
+                            'anschluss':    (a.get('Anschluss-Art')  or '').strip(),
+                            'bemerkung':    (a.get('Bemerkung')      or '').strip(),
+                            'telefon':      (a.get('Telefon-Nummer') or '').strip(),
+                            'from_erz':     bool(a.get('_from_erz')),
+                        })
+        else:
+            assigned = {i + 1: anspr_list[i] for i in range(len(anspr_list))}
+        assignments[sid] = assigned
+
+    for erz_row in erz_rows:
+        sid = erz_row.get('Interne ID-Nummer', '').strip()
+        if not sid:
+            continue
+        assigned = assignments.get(sid, {})
+        # Anzeige bis max. (Header-Slots) plus alle virtuellen Slots
+        max_for_student = max([max_in_header] + list(assigned.keys()), default=max_in_header)
+
         erzieher_list = []
-        for i in range(1, max_in_header + 1):
+        for i in range(1, max_for_student + 1):
             erz_data = {
                 'nr':          i,
                 'anrede':      erz_row.get(f'Erzieher {i}: Anrede',      '').strip(),
@@ -319,22 +807,73 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
                 'vorname':     erz_row.get(f'Erzieher {i}: Vorname',     '').strip(),
                 'email':       erz_row.get(f'Erzieher {i}: E-Mail',      '').strip(),
             }
-            ansp = ansp_list[i-1] if i-1 < len(ansp_list) else {}
+            ansp = assigned.get(i, {})
             erz_data.update({
-                'anschluss': ansp.get('Anschluss-Art',  '').strip(),
-                'bemerkung': ansp.get('Bemerkung',      '').strip(),
-                'telefon':   ansp.get('Telefon-Nummer', '').strip(),
+                'anschluss':       (ansp.get('Anschluss-Art')  or '').strip(),
+                'bemerkung':       (ansp.get('Bemerkung')      or '').strip(),
+                'telefon':         (ansp.get('Telefon-Nummer') or '').strip(),
+                'telefon_from_erz': bool(ansp.get('_from_erz')),
             })
-            # Leere Erzieher-Slots (nichts in beiden Quellen) ueberspringen
-            if any(v for k, v in erz_data.items() if k != 'nr'):
-                erzieher_list.append(erz_data)
+            has_anything = any(v for k, v in erz_data.items()
+                               if k not in ('nr', 'telefon_from_erz'))
+            if not has_anything:
+                continue
+            # Flags fuer die UI
+            erz_data['virtual']           = i > max_in_header
+            erz_data['would_skip_email']  = bool(require_email and not erz_data['email'])
+            # Eltern-ID-Preview (nur lookup, ohne neue zu erzeugen)
+            if assign_eltern_ids and not erz_data['would_skip_email']:
+                import eltern_id_manager
+                if not eltern_id_manager.is_dummy(erz_data['vorname'],
+                                                  erz_data['nachname'],
+                                                  erz_data['email']) and \
+                   (erz_data['vorname'] or erz_data['nachname']):
+                    key = eltern_id_manager._key(erz_data['vorname'],
+                                                  erz_data['nachname'],
+                                                  erz_data['email'])
+                    existing = eltern_db_preview['mappings'].get(key)
+                    if existing is not None:
+                        erz_data['eltern_id']        = eltern_id_manager._format_id(existing)
+                        erz_data['eltern_id_status'] = 'known'
+                        eltern_id_known += 1
+                    else:
+                        erz_data['eltern_id']        = '(neu)'
+                        erz_data['eltern_id_status'] = 'new'
+                        eltern_id_would_new += 1
+                    eltern_id_total += 1
+            # Dummy-Vorschau (vor allem fuer virtuelle Slots interessant)
+            if fill_dummies:
+                erz_data['dummies'] = {}
+                for short, dummy in DUMMY_VALUES.items():
+                    if short == 'E-Mail':
+                        key = 'email'
+                    elif short == 'Telefon-Nummer':
+                        key = 'telefon'
+                    elif short == 'Anschluss Art':
+                        key = 'anschluss'
+                    else:
+                        key = short.lower()
+                    if key in erz_data and not erz_data[key]:
+                        erz_data['dummies'][key] = dummy
+                # Zaehler aktualisieren — fuer Stats
+                if erz_data.get('would_skip_email'):
+                    pass  # wird ja eh nicht exportiert
+                else:
+                    dummy_fills += len(erz_data['dummies'])
+            erzieher_list.append(erz_data)
+
+        # Stats: wuerde dieser Slot wegen E-Mail rausfliegen?
+        if require_email:
+            skipped_no_email += sum(1 for e in erzieher_list if e.get('would_skip_email'))
+
         if not erzieher_list:
             students_without_erzieher += 1
+        stamm = student_lookup.get(sid, {})
         students.append({
             'id':       sid,
-            'vorname':  erz_row.get('Vorname',  '').strip(),
-            'nachname': erz_row.get('Nachname', '').strip(),
-            'klasse':   erz_row.get('Klasse',   '').strip(),
+            'vorname':  stamm.get('vorname')  or (erz_row.get('Vorname',  '') or '').strip(),
+            'nachname': stamm.get('nachname') or (erz_row.get('Nachname', '') or '').strip(),
+            'klasse':   stamm.get('klasse')   or (erz_row.get('Klasse',   '') or '').strip(),
             'erzieher': erzieher_list,
         })
     students.sort(key=lambda s: (s['klasse'], s['nachname'], s['vorname']))
@@ -387,6 +926,24 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
             'unique_erzieher':           len(erzieher_groups),
             'max_erzieher':              max_erzieher,
             'ansprechpartner_rows':      len(ansp_rows),
+            'match_mode':                'smart' if smart_match else 'positional',
+            'match_stats':               match_stats,
+            'orphan_anspr_rows':         orphan_anspr_rows[:200],  # Cap fuer UI
+            'orphan_anspr_count':        len(orphan_anspr_rows),
+            'filter_volljaehrig':        filter_volljaehrig,
+            'volljaehrig_filtered':      volljaehrig_filtered,
+            'require_email':             require_email,
+            'skipped_no_email':          skipped_no_email,
+            'fill_dummies':              fill_dummies,
+            'dummy_fills':               dummy_fills,
+            'lift_limit':                lift_limit,
+            'phone_from_erz_first':         phone_from_erz_first,
+            'phone_from_erz_used':          phone_from_erz_used,
+            'phone_from_erz_duplicates':    phone_from_erz_duplicates,
+            'assign_eltern_ids':            assign_eltern_ids,
+            'eltern_id_total':              eltern_id_total,
+            'eltern_id_known':              eltern_id_known,
+            'eltern_id_would_new':          eltern_id_would_new,
         },
         'field_mapping': {
             'from_erzieher_csv':        from_erzieher,
@@ -398,6 +955,291 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
             'erzieher_headers':            erz_header,
             'ansprechpartner_headers':     ansp_header,
         },
+    }
+
+
+def raw_source(max_rows=500):
+    """Liefert die ersten max_rows beider Quell-CSVs als tabular dicts fuer
+    die UI — damit der Nutzer schnell verifizieren kann, dass der Schild-Export
+    so aussieht wie erwartet. Markiert auch welche Spalten der Workflow
+    tatsaechlich liest."""
+    erz_path = _latest_csv(get_erzieher_export_dir())
+    anp_path = _latest_csv(get_ansprechpartner_export_dir())
+
+    def _capped(path):
+        if not path or not os.path.isfile(path):
+            return None
+        rows = _read_csv_rows(path)
+        headers = list(rows[0].keys()) if rows else []
+        sample = rows[:max_rows]
+        return {
+            'file':       os.path.basename(path),
+            'columns':    headers,
+            'rows_total': len(rows),
+            'rows_shown': len(sample),
+            'rows':       [[r.get(h, '') for h in headers] for r in sample],
+        }
+
+    # Welche Spalten werden vom Workflow tatsaechlich genutzt?
+    # Aus dem Erzieher-Export: 'Interne ID-Nummer' + 'Erzieher i: <Field>' fuer i=1..max
+    used_erz = {'Interne ID-Nummer'}
+    if erz_path and os.path.isfile(erz_path):
+        # Max-Slot aus dem Header lesen
+        max_slot = 0
+        with open(erz_path, 'r', encoding='utf-8-sig', newline='') as f:
+            for col in (csv.DictReader(f, delimiter=';').fieldnames or []):
+                m = re.match(r'Erzieher\s+(\d+):', (col or '').strip())
+                if m:
+                    max_slot = max(max_slot, int(m.group(1)))
+        for i in range(1, max_slot + 1):
+            for fld in ERZIEHER_FIELDS:
+                used_erz.add(f'Erzieher {i}: {fld}')
+    # Erzieher-Export-Telefon (Pseudo-Anspr-Zeile fuer phone_from_erz_first)
+    used_erz.update(ERZ_PHONE_COLS.values())
+    # Klasse + Volljaehrig-Flag (fuer Missing-Report)
+    used_erz.update({'Klasse', 'Erzieher: Art (Klartext)', 'Vorname', 'Nachname'})
+    used_anp = set(ANSPRECHPARTNER_FIELD_MAP.keys()) | {'Schüler_ID'}
+
+    return {
+        'erzieher':        _capped(erz_path),
+        'ansprechpartner': _capped(anp_path),
+        'used_erzieher_cols':        sorted(used_erz),
+        'used_ansprechpartner_cols': sorted(used_anp),
+        'cap':             max_rows,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Missing-Erzieher-Report (Klassenweise Auswertung minderjaehriger Schueler
+# ohne hinterlegte Erzieher-Daten)
+# ---------------------------------------------------------------------------
+
+def _is_minor(erz_row):
+    """Heuristik: Schueler gilt als minderjaehrig, wenn er NICHT explizit als
+    volljaehrig markiert ist. (Schild hat keine separate Volljaehrig-Spalte;
+    wir nutzen denselben Proxy wie _is_self_volljaehrig.)"""
+    return not _is_self_volljaehrig(erz_row)
+
+
+# Kriterien fuer den Missing-Report: Key -> (Label, Test-Funktion)
+# Jede Test-Funktion bekommt (erz_row, max_slots) und liefert True, wenn der
+# Schueler nach DIESEM Kriterium als "fehlend" gilt.
+MISSING_CRITERIA = {
+    'no_erzieher': {
+        'label': 'Kein Erzieher hinterlegt',
+        'test':  lambda er, n: all(
+            not (er.get(f'Erzieher {i}: {f}', '') or '').strip()
+            for i in range(1, n + 1)
+            for f in ('Vorname', 'Nachname', 'E-Mail')
+        ),
+    },
+    'no_nachname': {
+        'label': 'Mind. ein Erzieher ohne Nachname',
+        'test':  lambda er, n: any(
+            _slot_used(er, i) and not (er.get(f'Erzieher {i}: Nachname', '') or '').strip()
+            for i in range(1, n + 1)
+        ),
+    },
+    'no_vorname': {
+        'label': 'Mind. ein Erzieher ohne Vorname',
+        'test':  lambda er, n: any(
+            _slot_used(er, i) and not (er.get(f'Erzieher {i}: Vorname', '') or '').strip()
+            for i in range(1, n + 1)
+        ),
+    },
+    'no_email': {
+        'label': 'Mind. ein Erzieher ohne E-Mail',
+        'test':  lambda er, n: any(
+            _slot_used(er, i) and not (er.get(f'Erzieher {i}: E-Mail', '') or '').strip()
+            for i in range(1, n + 1)
+        ),
+    },
+}
+
+
+def _slot_used(erz_row, i):
+    """True wenn Erzieher-Slot i ueberhaupt benutzt wird (mind. ein Feld gefuellt)."""
+    for f in ('Anrede', 'Briefanrede', 'Titel', 'Nachname', 'Vorname', 'E-Mail'):
+        if (erz_row.get(f'Erzieher {i}: {f}', '') or '').strip():
+            return True
+    return False
+
+
+def _student_lookup_from_anspr(anspr_path=None):
+    """Liefert {sid: {'klasse','vorname','nachname'}} aus dem Anspr-Export.
+
+    Der Schild-Erzieher-Export enthaelt keine Schueler-Stammdaten (Name/Klasse),
+    der Anspr-Export aber sehr wohl als 'Schueler-Klasse/-Nachname/-Vorname'.
+    Wenn der Anspr-Export nicht erreichbar ist -> leerer Lookup."""
+    anspr_path = anspr_path or _latest_csv(get_ansprechpartner_export_dir())
+    if not anspr_path or not os.path.isfile(anspr_path):
+        return {}
+    try:
+        rows = _read_csv_rows(anspr_path)
+    except Exception:
+        return {}
+    lookup = {}
+    for r in rows:
+        sid = (r.get('Schüler_ID', '') or '').strip()
+        if not sid or sid in lookup:
+            continue
+        lookup[sid] = {
+            'klasse':   (r.get('Schüler-Klasse',   '') or '').strip(),
+            'vorname':  (r.get('Schüler-Vorname',  '') or '').strip(),
+            'nachname': (r.get('Schüler-Nachname', '') or '').strip(),
+        }
+    return lookup
+
+
+def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any'):
+    """Liefert pro Klasse die Liste der minderjaehrigen Schueler, die nach
+    mindestens einem (match_mode='any') oder allen (match_mode='all')
+    aktivierten Kriterien als "fehlend" gelten.
+
+    criteria: Liste der aktivierten Kriterien-Keys aus MISSING_CRITERIA.
+              None oder leer -> ['no_erzieher'] (Default = bisheriges Verhalten).
+    match_mode: 'any' (Default) oder 'all' — Verknuepfung der Kriterien.
+
+    Returns:
+        {
+          'classes': [
+              {'klasse': 'BK01A', 'count': 3,
+               'students': [{id, vorname, nachname, reasons: [keys]}, ...]},
+              ...
+          ],
+          'total_classes':   N,
+          'total_students':  N,
+          'source_file':     'ErzieherExport.csv',
+          'criteria_used':   [keys],
+          'available_criteria': [{'key':..., 'label':...}, ...],
+          'match_mode':      'any' | 'all',
+        }
+    """
+    if not criteria:
+        criteria = ['no_erzieher']
+    # Unbekannte Keys aussortieren
+    criteria = [c for c in criteria if c in MISSING_CRITERIA]
+    if not criteria:
+        criteria = ['no_erzieher']
+
+    erzieher_path = erzieher_path or _latest_csv(get_erzieher_export_dir())
+    available = [{'key': k, 'label': v['label']} for k, v in MISSING_CRITERIA.items()]
+    if not erzieher_path or not os.path.isfile(erzieher_path):
+        raise FileNotFoundError("Keine Erzieher-Export-CSV gefunden.")
+    erz_rows = _read_csv_rows(erzieher_path)
+    if not erz_rows:
+        return {'classes': [], 'total_classes': 0, 'total_students': 0,
+                'source_file': os.path.basename(erzieher_path),
+                'criteria_used': criteria,
+                'available_criteria': available,
+                'match_mode': match_mode}
+
+    max_slots = 0
+    for col in erz_rows[0].keys():
+        m = re.match(r'Erzieher\s+(\d+):', col)
+        if m:
+            max_slots = max(max_slots, int(m.group(1)))
+
+    # Schueler-Stammdaten (Name/Klasse) aus Anspr-Export joinen, weil sie im
+    # Erzieher-Export fehlen
+    student_lookup = _student_lookup_from_anspr()
+
+    by_class = {}
+    total = 0
+    students_unknown = 0   # Schueler nicht im Anspr-Lookup gefunden
+    for er in erz_rows:
+        if not _is_minor(er):
+            continue
+        # Pro Kriterium pruefen + Gruende sammeln
+        hits = [k for k in criteria if MISSING_CRITERIA[k]['test'](er, max_slots)]
+        if not hits:
+            continue
+        if match_mode == 'all' and len(hits) != len(criteria):
+            continue
+        sid = (er.get('Interne ID-Nummer', '') or '').strip()
+        stamm = student_lookup.get(sid)
+        if stamm:
+            klasse  = stamm['klasse']  or '(ohne Klasse)'
+            vorname = stamm['vorname']
+            nachname = stamm['nachname']
+        else:
+            klasse   = (er.get('Klasse', '')  or '').strip() or '(ohne Klasse)'
+            vorname  = (er.get('Vorname', '') or '').strip()
+            nachname = (er.get('Nachname','') or '').strip()
+            if not (vorname or nachname or klasse != '(ohne Klasse)'):
+                students_unknown += 1
+        by_class.setdefault(klasse, []).append({
+            'id':       sid,
+            'vorname':  vorname,
+            'nachname': nachname,
+            'reasons':  hits,
+        })
+        total += 1
+
+    classes = []
+    for k in sorted(by_class.keys()):
+        students = sorted(by_class[k], key=lambda s: (s['nachname'].lower(), s['vorname'].lower()))
+        classes.append({'klasse': k, 'count': len(students), 'students': students})
+
+    return {
+        'classes':            classes,
+        'total_classes':      len(classes),
+        'total_students':     total,
+        'students_unknown':   students_unknown,
+        'source_file':        os.path.basename(erzieher_path),
+        'criteria_used':      criteria,
+        'available_criteria': available,
+        'match_mode':         match_mode,
+    }
+
+
+def write_missing_report_zip(selected_classes=None, output_dir=None,
+                             criteria=None, match_mode='any'):
+    """Schreibt pro ausgewaehlter Klasse eine CSV mit den minderjaehrigen
+    Schuelern ohne Erzieher-Daten und packt alles in ein ZIP.
+
+    selected_classes: Liste der Klassennamen, die ins ZIP sollen.
+                      None oder leer = alle.
+
+    Returns: (zip_pfad, zip_name, count_dict)
+    """
+    output_dir = output_dir or get_output_dir()
+    os.makedirs(output_dir, exist_ok=True)
+
+    report = missing_erzieher_report(criteria=criteria, match_mode=match_mode)
+    sel = set(selected_classes) if selected_classes else None
+    chosen = [c for c in report['classes'] if (sel is None or c['klasse'] in sel)]
+    if not chosen:
+        raise ValueError("Keine Klassen ausgewaehlt oder keine Datensaetze vorhanden.")
+
+    name = f"FehlendeErzieher_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.zip"
+    zip_path = os.path.join(output_dir, name)
+
+    # Labels fuer Gruende, kommagetrennt im CSV
+    label_by_key = {k: v['label'] for k, v in MISSING_CRITERIA.items()}
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for c in chosen:
+            csv_buf = io.StringIO()
+            writer = csv.writer(csv_buf, delimiter=';')
+            writer.writerow(['Interne_ID_Nummer', 'Klasse', 'Nachname',
+                             'Vorname', 'Gruende'])
+            for s in c['students']:
+                gruende = ', '.join(label_by_key.get(r, r) for r in s.get('reasons', []))
+                writer.writerow([s['id'], c['klasse'], s['nachname'],
+                                 s['vorname'], gruende])
+            safe_klasse = re.sub(r'[<>:"/\\|?*]', '_', c['klasse'])
+            zf.writestr(f"FehlendeErzieher_{safe_klasse}.csv",
+                        csv_buf.getvalue().encode('utf-8-sig'))
+    with open(zip_path, 'wb') as f:
+        f.write(buf.getvalue())
+
+    return zip_path, name, {
+        'classes':  len(chosen),
+        'students': sum(c['count'] for c in chosen),
+        'criteria_used': report['criteria_used'],
+        'match_mode':    report['match_mode'],
     }
 
 

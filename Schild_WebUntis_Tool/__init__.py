@@ -323,6 +323,32 @@ class_change_recipients = both
 # Vorlage fuer den ZIP-Dateinamen beim Erzieher-Export.
 # Platzhalter: {{datum}} {{datetime}} {{zeit}} {{jahr}} {{monat}} {{tag}}
 zip_name_template = Erzieher_Import_{{datum}}
+# Smart-Match: Anspr-Zeilen werden per Anschluss-Art (Mutter/Vater/...)
+# an passende Erzieher-Slots zugewiesen — verhindert dass Vater versehentlich
+# Mutters Telefon bekommt. False = altes positional-Matching.
+smart_match = True
+# Volljaehrig-Filter: Schueler mit Erzieher-Art "Schueler/in ist volljaehrig"
+# (Self-Ansprechpartner) werden nicht in den Erzieher-Import uebernommen.
+filter_volljaehrig = False
+# E-Mail-Pflicht: Erzieher ohne E-Mail-Adresse werden nicht exportiert
+# (sie koennen sich in WebUntis ohnehin nicht anmelden).
+require_email = False
+# Dummy-Fill: leere Erzieher-Felder werden mit eindeutigen Dummy-Werten
+# (DUMMY / dummy@invalid.local / 000) gefuellt, damit Pflichtfelder belegt sind
+# und Dummies nachtraeglich in WebUntis filterbar bleiben.
+fill_dummies = False
+# Lift-Limit: Limit von 2 Erziehern pro Schueler aufheben. Ueberzaehlige
+# Telefon-Zeilen aus dem Ansprechpartner-Export landen in Erzieher_3.csv,
+# Erzieher_4.csv ... (Stammdaten ggf. Dummy, wenn fill_dummies aktiv).
+lift_limit = False
+# Telefon-Quelle: Telefonnummer aus dem Erzieher-Export (Spalten
+# 'Telefon-Nummern: ...') wird als prioritaere Pseudo-Ansprechpartner-Zeile
+# behandelt; Duplikate gegenueber dem Ansprechpartner-Export werden gefiltert.
+phone_from_erz_first = True
+# Eltern-IDs: jedem Erzieher wird eine schulweit eindeutige ID zugewiesen
+# (persistent in eltern_ids.json), damit WebUntis denselben Erzieher ueber
+# Geschwister hinweg als denselben Account erkennt.
+assign_eltern_ids = False
 
 [Ausbilder]
 # Vorlage fuer den Dateinamen der Ausbilder-Import-CSV.
@@ -482,6 +508,27 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             if not config.has_option('Erzieher', 'zip_name_template'):
                 config.set('Erzieher', 'zip_name_template', 'Erzieher_Import_{datum}')
+                updated = True
+            if not config.has_option('Erzieher', 'smart_match'):
+                config.set('Erzieher', 'smart_match', 'True')
+                updated = True
+            if not config.has_option('Erzieher', 'filter_volljaehrig'):
+                config.set('Erzieher', 'filter_volljaehrig', 'False')
+                updated = True
+            if not config.has_option('Erzieher', 'require_email'):
+                config.set('Erzieher', 'require_email', 'False')
+                updated = True
+            if not config.has_option('Erzieher', 'fill_dummies'):
+                config.set('Erzieher', 'fill_dummies', 'False')
+                updated = True
+            if not config.has_option('Erzieher', 'lift_limit'):
+                config.set('Erzieher', 'lift_limit', 'False')
+                updated = True
+            if not config.has_option('Erzieher', 'phone_from_erz_first'):
+                config.set('Erzieher', 'phone_from_erz_first', 'True')
+                updated = True
+            if not config.has_option('Erzieher', 'assign_eltern_ids'):
+                config.set('Erzieher', 'assign_eltern_ids', 'False')
                 updated = True
 
             # Ausbilder (Phase 3 — aktiv)
@@ -1592,6 +1639,21 @@ def erzieher_preview():
         return jsonify({"error": f"Fehler bei der Vorschau: {e}"}), 500
 
 
+@app.route('/api/erzieher/raw_source', methods=['GET'])
+def erzieher_raw_source():
+    """Liefert die Roh-Inhalte beider Quell-CSVs als Tabular-Daten fuer die UI."""
+    import erzieher_processor
+    try:
+        max_rows = int(request.args.get('max', '500'))
+    except Exception:
+        max_rows = 500
+    max_rows = max(10, min(5000, max_rows))
+    try:
+        return jsonify(erzieher_processor.raw_source(max_rows=max_rows))
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Laden der Quelldateien: {e}"}), 500
+
+
 @app.route('/api/erzieher/process', methods=['POST'])
 def erzieher_process():
     """Verarbeitet Erzieher- und Ansprechpartner-Export, schreibt ZIP ins Ausgabeverzeichnis."""
@@ -1644,6 +1706,89 @@ def erzieher_download():
         mimetype='application/zip',
         as_attachment=True,
         download_name=last_erzieher_zip['name'],
+    )
+
+
+# Klassenweise Auswertung: minderjaehrige Schueler ohne Erzieher-Daten
+last_erzieher_missing_zip = None  # {'path', 'name'}
+
+
+@app.route('/api/erzieher/missing_report', methods=['GET'])
+def erzieher_missing_report():
+    """Liefert die Klassen-Auswertung minderjaehriger Schueler nach den
+    angegebenen Kriterien. Query: ?criteria=a,b,c&mode=any|all"""
+    import erzieher_processor
+    crit_str = request.args.get('criteria', '').strip()
+    criteria = [c.strip() for c in crit_str.split(',') if c.strip()] if crit_str else None
+    mode = (request.args.get('mode') or 'any').strip().lower()
+    if mode not in ('any', 'all'):
+        mode = 'any'
+    try:
+        return jsonify(erzieher_processor.missing_erzieher_report(
+            criteria=criteria, match_mode=mode))
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Erstellen des Reports: {e}"}), 500
+
+
+@app.route('/api/erzieher/missing_export', methods=['POST'])
+def erzieher_missing_export():
+    """Schreibt CSVs (eine pro ausgewaehlter Klasse) als ZIP ins Ausgabeverzeichnis."""
+    global last_erzieher_missing_zip
+    import erzieher_processor
+    data = request.json or {}
+    classes = data.get('classes')  # Liste oder None
+    criteria = data.get('criteria')  # Liste oder None
+    mode = (data.get('mode') or 'any').strip().lower()
+    if mode not in ('any', 'all'):
+        mode = 'any'
+    try:
+        zip_path, zip_name, counts = erzieher_processor.write_missing_report_zip(
+            classes, criteria=criteria, match_mode=mode)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Schreiben des ZIP: {e}"}), 500
+    last_erzieher_missing_zip = {'path': zip_path, 'name': zip_name}
+    return jsonify({
+        "success":   True,
+        "name":      zip_name,
+        "path":      zip_path,
+        "directory": erzieher_processor.get_output_dir(),
+        "counts":    counts,
+    })
+
+
+@app.route('/api/erzieher/eltern_ids/status', methods=['GET'])
+def erzieher_eltern_ids_status():
+    """Statistik der persistenten Eltern-ID-Datenbank."""
+    import eltern_id_manager
+    return jsonify(eltern_id_manager.stats())
+
+
+@app.route('/api/erzieher/eltern_ids/reset', methods=['POST'])
+def erzieher_eltern_ids_reset():
+    """Loescht die Eltern-ID-Datenbank komplett (irreversibel)."""
+    import eltern_id_manager
+    removed = eltern_id_manager.reset()
+    return jsonify({"success": True, "removed": removed,
+                    "stats": eltern_id_manager.stats()})
+
+
+@app.route('/api/erzieher/missing_download', methods=['GET'])
+def erzieher_missing_download():
+    """Lädt das zuletzt erstellte 'Fehlende Erzieher'-ZIP herunter."""
+    from flask import send_file
+    if not last_erzieher_missing_zip or not os.path.isfile(last_erzieher_missing_zip.get('path', '')):
+        return jsonify({"error": "Es wurde noch kein Missing-ZIP erstellt."}), 404
+    return send_file(
+        last_erzieher_missing_zip['path'],
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=last_erzieher_missing_zip['name'],
     )
 
 

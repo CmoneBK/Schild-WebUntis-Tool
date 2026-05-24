@@ -340,7 +340,8 @@
                         SchildNRW speichert Erzieher und zusätzliche Ansprechpartner (mit Telefonnummern)
                         getrennt. WebUntis erwartet pro Erzieher/Ansprechpartner einen eigenen Datensatz.
                         Dieses Modul kombiniert beide Exports und erzeugt pro „n-tem" Erzieher eines Schülers
-                        eine eigene Import-CSV — gepackt als ZIP.
+                        eine eigene Import-CSV — gepackt als ZIP.<br>
+                        <span class="text-info">ℹ️ WebUntis nutzt aktuell nur Vorname/Nachname/E-Mail/Schüler-ID (+ optional Eltern-ID). Die übrigen Spalten werden mit-exportiert, falls sich das ändert — Details im ℹ️-Help oben.</span>
                     </p>
 
                     <!-- Status / erkannte Dateien -->
@@ -357,13 +358,77 @@
                     <div class="d-inline-block">
                         <button id="erzieherProcess" type="button" class="btn btn-primary mr-2">▶️ Verarbeiten &amp; ZIP erzeugen</button>
                         <button id="erzieherDownload" type="button" class="btn btn-outline-primary mr-2" disabled>⬇️ ZIP herunterladen</button>
-                        <button id="erzieherTogglePreview" type="button" class="btn btn-outline-info">👁️ Vorschau Schüler ↔ Erzieher</button>
+                        <button id="erzieherTogglePreview" type="button" class="btn btn-outline-info mr-2">👁️ Vorschau Schüler ↔ Erzieher</button>
+                        <button id="erzieherToggleRawSource" type="button" class="btn btn-outline-secondary mr-2">📄 Quelldateien anzeigen</button>
+                        <button id="erzieherToggleMissing" type="button" class="btn btn-outline-warning">⚠️ Fehlende Erzieher (Klassen)</button>
                     </div>
                     <span id="erzieherResult" class="ml-2 text-muted small"></span>
+
+                    <!-- Quelldateien-Viewer (initial versteckt) -->
+                    <div id="erzieherRawSourceArea" class="mt-3" style="display:none;">
+                        <div class="alert alert-info py-2 mb-2" id="erzieherRawSourceStats">Lade Quelldateien…</div>
+                        <ul class="nav nav-pills mb-2" id="erzieherRawSourceTabs">
+                            <li class="nav-item"><a class="nav-link active" href="#" data-raw-which="erzieher">👨‍👩‍👧 Erzieher-Export</a></li>
+                            <li class="nav-item"><a class="nav-link"        href="#" data-raw-which="ansprechpartner">📞 Ansprechpartner-Export</a></li>
+                        </ul>
+                        <input type="text" id="erzieherRawSourceSearch" class="form-control form-control-sm mb-2" placeholder="🔍 In allen Zeilen suchen…" style="max-width:340px;">
+                        <div class="table-responsive border rounded" style="max-height:480px; overflow:auto;">
+                            <table class="table table-sm table-hover table-striped mb-0" id="erzieherRawSourceTable">
+                                <thead class="thead-light" style="position:sticky; top:0; z-index:1;"></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <p class="small text-muted mt-1 mb-0">
+                            <span class="badge badge-success">grün</span> = Spalte wird vom Workflow genutzt,
+                            <span class="badge badge-light border">grau</span> = Spalte wird ignoriert.
+                        </p>
+                    </div>
+
+                    <!-- Missing-Erzieher-Bereich (initial versteckt) -->
+                    <div id="erzieherMissingArea" class="mt-3" style="display:none;">
+                        <div class="alert alert-warning py-2 mb-2" id="erzieherMissingStats">Lade Klassen-Auswertung…</div>
+                        <p class="small text-muted mb-2">
+                            Klassenweise Liste der <strong>nicht-volljährigen Schüler</strong>, bei denen die unten gewählten Kriterien zutreffen.
+                            „Nicht volljährig" = Erzieher-Art enthält nicht <em>„volljährig"</em> — derselbe Proxy wie der Volljährig-Filter.
+                        </p>
+                        <!-- Konfigurierbare Kriterien -->
+                        <div class="card border-warning mb-2">
+                            <div class="card-body p-2">
+                                <div class="d-flex flex-wrap align-items-center">
+                                    <strong class="mr-2 mb-1">Kriterien:</strong>
+                                    <div id="erzieherMissingCriteriaBox" class="d-flex flex-wrap"></div>
+                                </div>
+                                <div class="mt-1">
+                                    <small class="text-muted mr-2">Verknüpfung:</small>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="missing_mode" id="missing_mode_any" value="any" checked>
+                                        <label class="form-check-label small" for="missing_mode_any">Mindestens eines (ODER)</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="missing_mode" id="missing_mode_all" value="all">
+                                        <label class="form-check-label small" for="missing_mode_all">Alle (UND)</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center mb-2">
+                            <div class="btn-group btn-group-sm mr-3 mb-1" role="group">
+                                <button type="button" class="btn btn-outline-secondary" id="erzieherMissingSelectAll">✓ Alle wählen</button>
+                                <button type="button" class="btn btn-outline-secondary" id="erzieherMissingSelectNone">✗ Keine</button>
+                            </div>
+                            <button type="button" id="erzieherMissingExport" class="btn btn-warning btn-sm mr-2 mb-1" disabled>📥 Ausgewählte als ZIP exportieren</button>
+                            <button type="button" id="erzieherMissingDownload" class="btn btn-outline-warning btn-sm mb-1" disabled>⬇️ Letztes Missing-ZIP herunterladen</button>
+                        </div>
+                        <div id="erzieherMissingList" class="border rounded p-2" style="max-height:480px; overflow-y:auto;"></div>
+                        <span id="erzieherMissingResult" class="ml-1 text-muted small"></span>
+                    </div>
 
                     <!-- Vorschau-Bereich (initial versteckt) -->
                     <div id="erzieherPreviewArea" class="mt-3" style="display:none;">
                         <div class="alert alert-secondary py-2 mb-2" id="erzieherPreviewStats">Lade Vorschau…</div>
+
+                        <!-- Smart-Match Orphan-Liste (nur sichtbar wenn orphans vorhanden) -->
+                        <div id="erzieherOrphanArea" style="display:none;"></div>
 
                         <!-- Feld-Mapping (aufklappbar) -->
                         <details class="mb-3" id="erzieherFieldMapping">
@@ -480,6 +545,87 @@
                                     </div>
                                 </div>
                                 <small class="form-text text-muted">Eine ZIP-Datei pro Verarbeitungs-Lauf — enthält eine CSV pro „n-tem" Erzieher eines Schülers.</small>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">🧠 Smart-Match (Telefon ↔ Erzieher)</h5>
+                            <p class="text-muted small mb-2">Im echten Schild-Export ist nicht garantiert, dass die Reihenfolge der Telefon-Zeilen im Ansprechpartner-Export der Reihenfolge der Erzieher 1/2 im Erzieher-Export entspricht — bei rein positionaler Zuordnung kann Mutter Hans Vaters Telefon ins WebUntis bekommen.</p>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="erzieher_smart_match" name="smart_match" checked>
+                                <label class="form-check-label" for="erzieher_smart_match">
+                                    <strong>Smart-Match aktivieren</strong> (empfohlen) — Telefon-Zeilen werden per <code>Anschluss-Art</code>
+                                    (<em>Mutter / Vater / …</em>) den passenden Erzieher-Slots zugeordnet; neutrale Werte
+                                    (<em>Eltern / Notfallnummer / …</em>) fallen positional auf freie Slots zurück.
+                                </label>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">🔞 Volljährig-Filter</h5>
+                            <p class="text-muted small mb-2">Schild markiert im Feld <code>Erzieher: Art (Klartext)</code> einige Schüler als „Schüler/in ist volljährig" — typischerweise Azubis, bei denen kein Erzieher mehr gepflegt wird sondern sie selbst Ansprechpartner sind. Für den WebUntis-Erzieher-Import sind solche „Self-Erzieher"-Datensätze meist nicht sinnvoll.</p>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="erzieher_filter_volljaehrig" name="filter_volljaehrig">
+                                <label class="form-check-label" for="erzieher_filter_volljaehrig">
+                                    <strong>Volljährige Schüler herausfiltern</strong> — Schüler mit Erzieher-Art „<em>volljährig</em>" werden weder in der Vorschau angezeigt noch in den Output-CSVs exportiert.
+                                </label>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">📧 E-Mail-Pflicht</h5>
+                            <p class="text-muted small mb-2">Erzieher ohne E-Mail-Adresse können sich in WebUntis ohnehin nicht anmelden. Wenn man den Datensatz nicht aus anderen Gründen in WebUntis benötigt, kann man ihn beim Import gleich aussortieren.</p>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="erzieher_require_email" name="require_email">
+                                <label class="form-check-label" for="erzieher_require_email">
+                                    <strong>Nur Erzieher mit E-Mail-Adresse exportieren</strong> — Erzieher-Slots ohne E-Mail werden in keiner Output-CSV erzeugt.
+                                </label>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">🧪 Dummy-Felder für fehlende Daten</h5>
+                            <p class="text-muted small mb-2">Falls WebUntis bestimmte Felder als Pflicht erwartet, können leere Erzieher-Felder mit eindeutig erkennbaren Dummy-Werten gefüllt werden — Nachname/Vorname/Briefanrede=<code>DUMMY</code>, E-Mail=<code>dummy@invalid.local</code>, Telefon=<code>000</code>. So bleiben Dummies in WebUntis nachträglich filterbar.</p>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="erzieher_fill_dummies" name="fill_dummies">
+                                <label class="form-check-label" for="erzieher_fill_dummies">
+                                    <strong>Fehlende Felder mit Dummies füllen</strong> — leere Erzieher-Felder werden im Export durch klar erkennbare Platzhalter ersetzt.
+                                </label>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">🆔 Eindeutige Eltern-IDs</h5>
+                            <p class="text-muted small mb-2">Schild liefert pro Erzieher keine schul-/personeneindeutige ID — bei Geschwistern hat dasselbe Elternteil bei jedem Kind einen separaten Datensatz. WebUntis kann optional eine schulweit eindeutige Eltern-ID als Matching-Key auswerten, damit derselbe Erzieher-Account über mehrere Kinder hinweg verbunden bleibt. Identitäts-Schlüssel: <code>Vorname + Nachname + E-Mail</code> (case-insensitive); Dummies werden übersprungen. Die Zuordnung wird persistent in <code>eltern_ids.json</code> gespeichert.</p>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="erzieher_assign_eltern_ids" name="assign_eltern_ids">
+                                <label class="form-check-label" for="erzieher_assign_eltern_ids">
+                                    <strong>Eltern-IDs vergeben &amp; in Output-CSV mitschreiben</strong> — neue Spalte <code>Erzieher i: Eltern-ID</code> mit Werten wie <code>E00001</code>.
+                                </label>
+                            </div>
+                            <div class="alert alert-light border py-2 px-2 small mb-3" id="erzieher_eltern_id_stats">Lade ID-Datenbank-Status…</div>
+                            <button type="button" class="btn btn-outline-danger btn-sm mb-3" id="erzieher_eltern_id_reset">🗑️ ID-Datenbank zurücksetzen</button>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">📞 Telefon-Quelle</h5>
+                            <p class="text-muted small mb-2">Schild liefert im Erzieher-Export bereits eine primäre Telefonnummer pro Schüler (Spaltengruppe <code>Telefon-Nummern: …</code>) mit Anschluss-Art-Tag. Diese kann <em>vor</em> den Telefonnummern aus dem Ansprechpartner-Export ausgewertet werden — Duplikate (gleiche Nummer) werden gefiltert.</p>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="erzieher_phone_from_erz_first" name="phone_from_erz_first" checked>
+                                <label class="form-check-label" for="erzieher_phone_from_erz_first">
+                                    <strong>Telefon aus Erzieher-Export primär</strong> (empfohlen) — die Telefonnummer aus dem Erzieher-Export wird als prioritäre Pseudo-Ansprechpartner-Zeile behandelt; der Ansprechpartner-Export liefert nur die übrigen / abweichenden Nummern.
+                                </label>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="mb-1">♾️ Limit von 2 Erziehern aufheben</h5>
+                            <p class="text-muted small mb-2">Schild liefert im Erzieher-Export i.&nbsp;d.&nbsp;R. nur 2 Erzieher-Slots pro Schüler. Wenn im Ansprechpartner-Export mehr Telefon-Zeilen vorhanden sind (z.&nbsp;B. Oma, Notfallnummer, Pflegeeltern), gehen diese sonst beim Export verloren. Mit dieser Option werden weitere <code>Erzieher_3.csv</code>, <code>Erzieher_4.csv</code> usw. erzeugt — Stammdaten ggf. per Dummy-Fill.</p>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="erzieher_lift_limit" name="lift_limit">
+                                <label class="form-check-label" for="erzieher_lift_limit">
+                                    <strong>Überzählige Ansprechpartner-Zeilen als zusätzliche Erzieher-Slots exportieren</strong> — sonst orphan-Zeilen werden dann zu virtuellen Slots 3, 4, ….
+                                </label>
                             </div>
 
                         </form>
