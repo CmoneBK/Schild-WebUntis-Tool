@@ -7,10 +7,18 @@ ohne Pandas-Abhängigkeit (kleinere EXE, weniger Bloat).
 Idee:
   - Schild exportiert Erzieher (Hauptdaten) und Ansprechpartner (separate Datei
     mit Telefonnummern) getrennt.
-  - WebUntis erwartet pro Erzieher/Ansprechpartner einen eigenen Datensatz inkl.
-    Telefonnummer.
   - Wir bauen pro „n-tem Erzieher" eines Schülers eine eigene Import-Datei
     (Erzieher_1.csv, Erzieher_2.csv, …) und packen alle in ein ZIP.
+
+WebUntis-Realitaet (Stand: Mai 2026):
+  Der WebUntis-Erzieher-Import wertet derzeit nur Schueler-ID, Vorname, Nachname,
+  E-Mail und (optional) Eltern-ID aus. Anrede, Briefanrede, Titel, Anschluss-Art,
+  Bemerkung, Telefon-Nummer werden mit-exportiert, damit der Import nicht
+  angepasst werden muss, falls WebUntis seine Verarbeitung erweitert.
+
+  Die Telefon-Verarbeitungsoptionen (Smart-Match, phone_from_erz_first,
+  lift_limit) halten die Daten-Aufbereitung trotzdem sauber — fuer die Tool-
+  interne Vorschau, den Klassen-Report und einen moeglichen WebUntis-Upgrade.
 """
 
 import os
@@ -133,7 +141,11 @@ def get_smart_match():
     (Mutter -> Frau-Erzieher, Vater -> Herr-Erzieher); Output enthaelt nur
     so viele Erzieher-CSVs wie der Erzieher-Export Slots hergibt.
     False = altes Verhalten: positional, kann "Geister-Erzieher" mit leeren
-    Stammdaten erzeugen, wenn mehr Anspr-Zeilen als Erzieher existieren."""
+    Stammdaten erzeugen, wenn mehr Anspr-Zeilen als Erzieher existieren.
+
+    Hinweis: WebUntis wertet die Telefon-Spalte aktuell nicht aus — die
+    Smart-Match-Zuordnung ist primaer fuer Tool-interne Vorschau und Daten-
+    Hygiene relevant (falls WebUntis Telefon spaeter unterstuetzt)."""
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'smart_match', fallback=True)
@@ -453,6 +465,9 @@ def status_info():
         'latest_ansprechpartner_export':    os.path.basename(ansp_file) if ansp_file else None,
         'erzieher_export_path':             erz_file,
         'ansprechpartner_export_path':      ansp_file,
+        # Anspr-Export ist optional — Process- und Preview-Buttons brauchen ihn nicht
+        'anspr_available':                  bool(ansp_file),
+        'anspr_optional':                   True,
     }
 
 
@@ -487,20 +502,22 @@ def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
 
     if not erzieher_path or not os.path.isfile(erzieher_path):
         raise FileNotFoundError("Keine Erzieher-Export-CSV gefunden. Bitte Verzeichnis prüfen.")
-    if not ansprechpartner_path or not os.path.isfile(ansprechpartner_path):
-        raise FileNotFoundError("Keine Ansprechpartner-Export-CSV gefunden. Bitte Verzeichnis prüfen.")
 
-    erz_rows  = _read_csv_rows(erzieher_path)
-    ansp_rows = _read_csv_rows(ansprechpartner_path)
-
+    erz_rows = _read_csv_rows(erzieher_path)
     if not erz_rows:
         raise ValueError("Erzieher-Export ist leer.")
-    if not ansp_rows:
-        raise ValueError("Ansprechpartner-Export ist leer.")
     if 'Interne ID-Nummer' not in erz_rows[0]:
         raise ValueError("Spalte 'Interne ID-Nummer' fehlt im Erzieher-Export.")
-    if 'Schüler_ID' not in ansp_rows[0]:
-        raise ValueError("Spalte 'Schüler_ID' fehlt im Ansprechpartner-Export.")
+
+    # Ansprechpartner-Export ist OPTIONAL — wenn er fehlt, laufen alle Telefon-
+    # Verarbeitungsschritte ueber die im Erzieher-Export hinterlegte primaere
+    # Telefonnummer (Spaltengruppe 'Telefon-Nummern: ...') bzw. entfallen.
+    anspr_available = bool(ansprechpartner_path and os.path.isfile(ansprechpartner_path))
+    ansp_rows = []
+    if anspr_available:
+        ansp_rows = _read_csv_rows(ansprechpartner_path)
+        if ansp_rows and 'Schüler_ID' not in ansp_rows[0]:
+            raise ValueError("Spalte 'Schüler_ID' fehlt im Ansprechpartner-Export.")
 
     # Volljaehrige Schueler filtern + Stats
     volljaehrig_filtered = 0
@@ -640,6 +657,7 @@ def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
     stats = {
         'erzieher_rows':        len(erz_rows),
         'ansprechpartner_rows': len(ansp_rows),
+        'anspr_available':      anspr_available,
         'max_erzieher':         max_erzieher,
         'output_files':         list(result_files.keys()),
         'match_mode':           'smart' if smart_match else 'positional',
@@ -679,17 +697,20 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
 
     if not erzieher_path or not os.path.isfile(erzieher_path):
         raise FileNotFoundError("Keine Erzieher-Export-CSV gefunden. Bitte Verzeichnis pruefen.")
-    if not ansprechpartner_path or not os.path.isfile(ansprechpartner_path):
-        raise FileNotFoundError("Keine Ansprechpartner-Export-CSV gefunden. Bitte Verzeichnis pruefen.")
 
-    erz_rows  = _read_csv_rows(erzieher_path)
-    ansp_rows = _read_csv_rows(ansprechpartner_path)
+    erz_rows = _read_csv_rows(erzieher_path)
     if not erz_rows:
         raise ValueError("Erzieher-Export ist leer.")
     if 'Interne ID-Nummer' not in erz_rows[0]:
         raise ValueError("Spalte 'Interne ID-Nummer' fehlt im Erzieher-Export.")
-    if ansp_rows and 'Schüler_ID' not in ansp_rows[0]:
-        raise ValueError("Spalte 'Schüler_ID' fehlt im Ansprechpartner-Export.")
+
+    # Anspr-Export ist optional
+    anspr_available = bool(ansprechpartner_path and os.path.isfile(ansprechpartner_path))
+    ansp_rows = []
+    if anspr_available:
+        ansp_rows = _read_csv_rows(ansprechpartner_path)
+        if ansp_rows and 'Schüler_ID' not in ansp_rows[0]:
+            raise ValueError("Spalte 'Schüler_ID' fehlt im Ansprechpartner-Export.")
 
     # Header der Eingabe-Dateien (fuer die Anzeige im Field-Mapping-Block)
     erz_header  = list(erz_rows[0].keys())  if erz_rows  else []
@@ -704,19 +725,18 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
         volljaehrig_filtered = before - len(erz_rows)
 
     # Ansprechpartner-Zeilen pro Schueler-ID gruppieren (Reihenfolge aus CSV bewahrt).
-    # Ausserdem Schueler-Stammdaten-Lookup bauen — der Erzieher-Export enthaelt sie
-    # nicht, der Anspr-Export aber sehr wohl (Spalten 'Schueler-Klasse/-Vorname/-Nachname').
     ansp_by_sid = {}
-    student_lookup = {}
     for r in ansp_rows:
-        sid = r.get('Schüler_ID', '')
-        ansp_by_sid.setdefault(sid, []).append(r)
-        if sid and sid not in student_lookup:
-            student_lookup[sid] = {
-                'klasse':   (r.get('Schüler-Klasse',   '') or '').strip(),
-                'vorname':  (r.get('Schüler-Vorname',  '') or '').strip(),
-                'nachname': (r.get('Schüler-Nachname', '') or '').strip(),
-            }
+        ansp_by_sid.setdefault(r.get('Schüler_ID', ''), []).append(r)
+
+    # Schueler-Stammdaten-Lookup — kombiniert aus beiden Quellen.
+    # Anspr-Export ist die primaere Quelle (Schild-Standard); Erzieher-Export
+    # ist Fallback, falls die Schule die Stammdaten-Spalten ebenfalls in die
+    # Erzieher-Vorlage aufgenommen hat oder der Anspr-Export gar nicht existiert.
+    student_lookup = _merge_student_lookups(
+        _student_lookup_from_anspr(ansprechpartner_path),
+        _student_lookup_from_erz(erz_rows),
+    )
 
     # Maximale Erzieher-Slot-Nummer aus dem Header ableiten
     max_in_header = 0
@@ -926,6 +946,7 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
             'unique_erzieher':           len(erzieher_groups),
             'max_erzieher':              max_erzieher,
             'ansprechpartner_rows':      len(ansp_rows),
+            'anspr_available':           anspr_available,
             'match_mode':                'smart' if smart_match else 'positional',
             'match_stats':               match_stats,
             'orphan_anspr_rows':         orphan_anspr_rows[:200],  # Cap fuer UI
@@ -951,7 +972,7 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
         },
         'sources': {
             'erzieher_export_file':        os.path.basename(erzieher_path),
-            'ansprechpartner_export_file': os.path.basename(ansprechpartner_path),
+            'ansprechpartner_export_file': os.path.basename(ansprechpartner_path) if anspr_available else None,
             'erzieher_headers':            erz_header,
             'ansprechpartner_headers':     ansp_header,
         },
@@ -1065,12 +1086,64 @@ def _slot_used(erz_row, i):
     return False
 
 
+# Spaltennamen-Varianten fuer Schueler-Stammdaten — Schild liefert je nach
+# Export-Vorlage unterschiedliche Bezeichnungen. Wir suchen die erste nicht-leere.
+_STUDENT_KLASSE_COLS   = (
+    'Klasse', 'Schüler-Klasse', 'Schüler: Klasse', 'Schueler-Klasse',
+    'Schueler: Klasse', 'aktuelle Klasse', 'Klasse (aktuell)',
+)
+_STUDENT_VORNAME_COLS  = (
+    'Vorname', 'Schüler-Vorname', 'Schüler: Vorname', 'Schueler-Vorname',
+    'Schueler: Vorname',
+)
+_STUDENT_NACHNAME_COLS = (
+    'Nachname', 'Schüler-Nachname', 'Schüler: Nachname', 'Schueler-Nachname',
+    'Schueler: Nachname',
+)
+
+
+def _first_nonempty(row, cols):
+    """Liefert den ersten nicht-leeren, getrimmten Wert aus row fuer die
+    gegebenen Spaltennamen-Kandidaten."""
+    for c in cols:
+        v = (row.get(c, '') or '').strip()
+        if v:
+            return v
+    return ''
+
+
+def _extract_student_stamm(row):
+    """Versucht Schueler-Stammdaten (Klasse, Vorname, Nachname) aus EINEM Row
+    zu extrahieren — toleriert verschiedene Spaltennamen-Varianten."""
+    return {
+        'klasse':   _first_nonempty(row, _STUDENT_KLASSE_COLS),
+        'vorname':  _first_nonempty(row, _STUDENT_VORNAME_COLS),
+        'nachname': _first_nonempty(row, _STUDENT_NACHNAME_COLS),
+    }
+
+
+def _student_lookup_from_erz(erz_rows):
+    """Lookup {sid: {klasse, vorname, nachname}} aus dem Erzieher-Export.
+    Wirksam nur, wenn die Schild-Export-Vorlage diese Spalten enthaelt (Standard-
+    Vorlage hat sie NICHT — der Anspr-Export ist die primaere Quelle)."""
+    lookup = {}
+    for r in (erz_rows or []):
+        sid = (r.get('Interne ID-Nummer', '') or '').strip()
+        if not sid or sid in lookup:
+            continue
+        stamm = _extract_student_stamm(r)
+        if any(stamm.values()):
+            lookup[sid] = stamm
+    return lookup
+
+
 def _student_lookup_from_anspr(anspr_path=None):
     """Liefert {sid: {'klasse','vorname','nachname'}} aus dem Anspr-Export.
 
-    Der Schild-Erzieher-Export enthaelt keine Schueler-Stammdaten (Name/Klasse),
+    Der Schild-Standard-Erzieher-Export enthaelt keine Schueler-Stammdaten —
     der Anspr-Export aber sehr wohl als 'Schueler-Klasse/-Nachname/-Vorname'.
-    Wenn der Anspr-Export nicht erreichbar ist -> leerer Lookup."""
+    Wenn der Anspr-Export nicht erreichbar ist -> leerer Lookup (Aufrufer
+    sollte dann _student_lookup_from_erz() als Fallback verwenden)."""
     anspr_path = anspr_path or _latest_csv(get_ansprechpartner_export_dir())
     if not anspr_path or not os.path.isfile(anspr_path):
         return {}
@@ -1083,12 +1156,23 @@ def _student_lookup_from_anspr(anspr_path=None):
         sid = (r.get('Schüler_ID', '') or '').strip()
         if not sid or sid in lookup:
             continue
-        lookup[sid] = {
-            'klasse':   (r.get('Schüler-Klasse',   '') or '').strip(),
-            'vorname':  (r.get('Schüler-Vorname',  '') or '').strip(),
-            'nachname': (r.get('Schüler-Nachname', '') or '').strip(),
-        }
+        lookup[sid] = _extract_student_stamm(r)
     return lookup
+
+
+def _merge_student_lookups(*lookups):
+    """Kombiniert mehrere Lookups; bei mehrfacher SID gewinnt der erste,
+    fehlende Einzelfelder werden aus spaeteren ergaenzt."""
+    out = {}
+    for lk in lookups:
+        for sid, stamm in lk.items():
+            if sid not in out:
+                out[sid] = dict(stamm)
+            else:
+                for k, v in stamm.items():
+                    if not out[sid].get(k) and v:
+                        out[sid][k] = v
+    return out
 
 
 def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any'):
@@ -1140,13 +1224,20 @@ def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any')
         if m:
             max_slots = max(max_slots, int(m.group(1)))
 
-    # Schueler-Stammdaten (Name/Klasse) aus Anspr-Export joinen, weil sie im
-    # Erzieher-Export fehlen
-    student_lookup = _student_lookup_from_anspr()
+    # Schueler-Stammdaten (Name/Klasse) — kombiniert aus Anspr-Export (primaer,
+    # Schild-Standard-Vorlage hat die Spalten dort) und Erzieher-Export (Fallback,
+    # falls die Schule sie auch in die Erzieher-Vorlage aufgenommen hat oder
+    # wenn der Anspr-Export gar nicht existiert).
+    student_lookup = _merge_student_lookups(
+        _student_lookup_from_anspr(),
+        _student_lookup_from_erz(erz_rows),
+    )
+    anspr_path_used = _latest_csv(get_ansprechpartner_export_dir())
+    anspr_available = bool(anspr_path_used and os.path.isfile(anspr_path_used))
 
     by_class = {}
     total = 0
-    students_unknown = 0   # Schueler nicht im Anspr-Lookup gefunden
+    students_unknown = 0   # Schueler komplett ohne Stammdaten in beiden Quellen
     for er in erz_rows:
         if not _is_minor(er):
             continue
@@ -1157,17 +1248,12 @@ def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any')
         if match_mode == 'all' and len(hits) != len(criteria):
             continue
         sid = (er.get('Interne ID-Nummer', '') or '').strip()
-        stamm = student_lookup.get(sid)
-        if stamm:
-            klasse  = stamm['klasse']  or '(ohne Klasse)'
-            vorname = stamm['vorname']
-            nachname = stamm['nachname']
-        else:
-            klasse   = (er.get('Klasse', '')  or '').strip() or '(ohne Klasse)'
-            vorname  = (er.get('Vorname', '') or '').strip()
-            nachname = (er.get('Nachname','') or '').strip()
-            if not (vorname or nachname or klasse != '(ohne Klasse)'):
-                students_unknown += 1
+        stamm = student_lookup.get(sid, {})
+        klasse   = stamm.get('klasse')   or '(ohne Klasse)'
+        vorname  = stamm.get('vorname',  '')
+        nachname = stamm.get('nachname', '')
+        if not (vorname or nachname or klasse != '(ohne Klasse)'):
+            students_unknown += 1
         by_class.setdefault(klasse, []).append({
             'id':       sid,
             'vorname':  vorname,
@@ -1186,6 +1272,7 @@ def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any')
         'total_classes':      len(classes),
         'total_students':     total,
         'students_unknown':   students_unknown,
+        'anspr_available':    anspr_available,
         'source_file':        os.path.basename(erzieher_path),
         'criteria_used':      criteria,
         'available_criteria': available,

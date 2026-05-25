@@ -37,20 +37,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const haveE = !!d.latest_erzieher_export;
             const haveA = !!d.latest_ansprechpartner_export;
-            const ready = haveE && haveA;
+            // Anspr-Export ist optional — nur der Erzieher-Export ist Pflicht.
+            const ready = haveE;
             const lines = [];
             lines.push(`<strong>Erzieher-Export-Verzeichnis:</strong> <code>${d.erzieher_export_directory || '–'}</code>`);
             lines.push(haveE
                 ? `→ Aktuelle Datei: <code>${d.latest_erzieher_export}</code>`
                 : `→ <span class="text-warning">Keine CSV gefunden.</span>`);
-            lines.push(`<strong>Ansprechpartner-Export-Verzeichnis:</strong> <code>${d.ansprechpartner_export_directory || '–'}</code>`);
+            lines.push(`<strong>Ansprechpartner-Export-Verzeichnis</strong> <span class="text-muted">(optional)</span>: <code>${d.ansprechpartner_export_directory || '–'}</code>`);
             lines.push(haveA
                 ? `→ Aktuelle Datei: <code>${d.latest_ansprechpartner_export}</code>`
-                : `→ <span class="text-warning">Keine CSV gefunden.</span>`);
+                : `→ <span class="text-info">Keine CSV gefunden — Telefondaten/Schüler-Stammdaten kommen dann ausschließlich aus dem Erzieher-Export.</span>`);
             lines.push(`<strong>Ausgabeverzeichnis:</strong> <code>${d.output_directory || '–'}</code>`);
-            statusEl.className = ready ? "alert alert-success py-2 mb-3" : "alert alert-warning py-2 mb-3";
+            // Farbe: rot bei fehlendem Erzieher (Pflicht), gelb bei nur fehlendem Anspr (optional), grün sonst
+            let cls = "alert-success";
+            if (!haveE) cls = "alert-warning";
+            else if (!haveA) cls = "alert-info";
+            statusEl.className = `alert ${cls} py-2 mb-3`;
             statusEl.innerHTML = lines.join("<br>")
-                + (ready ? "" : "<br><br>Bitte zuerst die Schild-Exporte in die jeweiligen Verzeichnisse legen (Einstellungen → Quelldaten-Verzeichnisse).");
+                + (haveE ? "" : "<br><br>Bitte zuerst den Schild-Erzieher-Export in das Verzeichnis legen (Einstellungen → Quelldaten-Verzeichnisse).");
             if (procBtn) procBtn.disabled = !ready;
 
             // Falls zuvor schon ein ZIP erstellt wurde (z.B. nach Neuladen)
@@ -316,11 +321,13 @@ document.addEventListener("DOMContentLoaded", function () {
               + `(${s.eltern_id_known || 0} bekannt, ${s.eltern_id_would_new || 0} würden neu vergeben)</span>`
             : '';
 
+        const anspSource = s.anspr_available === false
+            ? `<span class="text-info">kein Anspr-Export</span>`
+            : `<code>${escHtml(src.ansprechpartner_export_file || '')}</code> · ${s.ansprechpartner_rows} Ansprechpartner-Zeilen`;
         previewStats.innerHTML =
             `<strong>${s.students_count}</strong> Schüler · <strong>${s.unique_erzieher}</strong> verschiedene Erzieher `
             + `(${s.erzieher_total} Zuordnungen, max. ${s.max_erzieher} pro Schüler)${noErz}${volljBlock}${emailBlock}${dummyBlock}${virtBlock}${phoneBlock}${elternBlock}<br>`
-            + `<span class="small text-muted">Quellen: <code>${escHtml(src.erzieher_export_file || '')}</code> + `
-            + `<code>${escHtml(src.ansprechpartner_export_file || '')}</code> · ${s.ansprechpartner_rows} Ansprechpartner-Zeilen</span>`
+            + `<span class="small text-muted">Quellen: <code>${escHtml(src.erzieher_export_file || '')}</code> + ${anspSource}</span>`
             + matchBlock;
     }
 
@@ -606,15 +613,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function renderMissingStats() {
         if (!missingStats || !missingData) return;
+        // Hinweis, wenn Stammdaten nicht aufgelöst werden konnten (z.B. weil
+        // Anspr-Export fehlt UND Erzieher-Export keine Schüler-Stammdaten-Spalten hat)
+        const unknownBlock = missingData.students_unknown
+            ? `<br><span class="text-warning small">⚠️ Für ${missingData.students_unknown} Schüler konnte weder Klasse noch Name aufgelöst werden — sie landen unter „(ohne Klasse)" mit leerem Namen.`
+              + (missingData.anspr_available
+                  ? ` Diese Schüler-IDs sind nur im Erzieher-Export, nicht im Ansprechpartner-Export hinterlegt.`
+                  : ` Ohne Ansprechpartner-CSV müsste der Erzieher-Export die Spalten <code>Schüler-Klasse</code>/<code>-Vorname</code>/<code>-Nachname</code> (oder <code>Klasse</code>/<code>Vorname</code>/<code>Nachname</code>) enthalten, damit die Stammdaten aufgelöst werden können.`)
+              + `</span>`
+            : '';
+        const anspBlock = !missingData.anspr_available
+            ? `<br><span class="text-info small">ℹ️ Ohne Ansprechpartner-Export — Schüler-Stammdaten werden aus dem Erzieher-Export gezogen (falls dort vorhanden).</span>`
+            : '';
         if (missingData.total_students === 0) {
             missingStats.className = "alert alert-success py-2 mb-2";
             missingStats.innerHTML = `✅ Keine minderjährigen Schüler ohne Erzieher-Daten gefunden — alles vollständig.<br>`
-                + `<span class="small text-muted">Quelle: <code>${escHtml(missingData.source_file || '')}</code></span>`;
+                + `<span class="small text-muted">Quelle: <code>${escHtml(missingData.source_file || '')}</code></span>`
+                + anspBlock;
         } else {
             missingStats.className = "alert alert-warning py-2 mb-2";
             missingStats.innerHTML = `<strong>${missingData.total_students}</strong> minderjährige Schüler in `
                 + `<strong>${missingData.total_classes}</strong> Klasse(n) ohne hinterlegte Erzieher-Daten.<br>`
-                + `<span class="small text-muted">Quelle: <code>${escHtml(missingData.source_file || '')}</code></span>`;
+                + `<span class="small text-muted">Quelle: <code>${escHtml(missingData.source_file || '')}</code></span>`
+                + anspBlock + unknownBlock;
         }
     }
 
