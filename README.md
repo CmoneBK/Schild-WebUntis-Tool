@@ -37,6 +37,30 @@ Menschen machen Fehler und Prozesse sind nicht immer perfekt. So kann es in Schi
 <details><summary><b>🤖Automatische Konfiguration:</b> Entpackt sich selbst und ist portabel.</summary>Erstellt die benötigten Ordner und .ini-Dateien bei der ersten Ausführung, falls diese fehlen. Bestehende Konfigurationsdateien werden bei Updates automatisch um neue Optionen ergänzt (Auto-Patcher) — ohne manuelles Nachpflegen.</details>
 <details><summary><b>🔐Sicherheit und internetunabhänige Verarbeitung:</b> Internetverbindung nur für Mail-Versand und visuelle Darstellung erforderlich</summary>Das Tool verarbeitet Daten unabhängig vom Internet. Eine Verbindung ist bei Nutzung des Kommandozeilenmodus ausschließlich für den Mail-Versand erforderlich. Im Browser-Frontend wird lediglich lesend auf externe visuelle Online Ressourchen zugegriffen. Es werden keinerlei Daten versendet. </details>
 
+###  Zusätzliche Workflows _(neu in 3.2)_
+<details><summary><b>👨‍👩‍👧 Erzieher / Ansprechpartner — Konvertierung für WebUntis:</b> Schild → WebUntis, mit Smart-Match, Volljährig-Filter, Dummy-Fill, eindeutigen Eltern-IDs und Klassen-Report fehlender Daten.</summary>
+<p>SchildNRW speichert Erzieher (Stammdaten) und Ansprechpartner (Telefonnummern) in zwei getrennten Exports. Dieser Workflow konvertiert beide in WebUntis-Import-CSVs (eine pro Erzieher-Nummer, gepackt als ZIP), mit zahlreichen Optionen:</p>
+<ul>
+<li><b>Smart-Match:</b> Telefonnummern werden per Anschluss-Art (Mutter/Vater/…) dem passenden Erzieher-Slot zugewiesen.</li>
+<li><b>Volljährig-Filter / E-Mail-Pflicht / Dummy-Fill:</b> für saubere Output-Daten.</li>
+<li><b>Limit von 2 Erziehern aufheben:</b> zusätzliche Telefonnummern landen in <code>Erzieher_3.csv</code>, <code>_4.csv</code>, …</li>
+<li><b>Eindeutige Eltern-IDs:</b> persistente IDs (<code>E00001</code>, <code>E00002</code>, …) anhand Vorname+Nachname+E-Mail — Geschwister-Eltern bekommen dieselbe ID, damit WebUntis denselben Erzieher-Account über mehrere Kinder hinweg erkennt.</li>
+<li><b>Klassen-Report fehlender Erzieher:</b> Klassenweise Liste minderjähriger Schüler mit fehlenden Stammdaten, Kriterien konfigurierbar, selektiv exportierbar.</li>
+<li><b>Vorschau + Quelldateien-Viewer:</b> Schüler ↔ Erzieher-Zuordnung im Browser, mit Highlighting der tatsächlich genutzten Spalten.</li>
+<li><b>Ansprechpartner-CSV optional:</b> der Workflow läuft auch nur mit dem Erzieher-Export durch.</li>
+</ul>
+<p><i>Hinweis: WebUntis verarbeitet derzeit nur Vorname/Nachname/E-Mail (+ optional Eltern-ID); die übrigen Felder werden mit-exportiert, falls die WebUntis-Auswertung künftig erweitert wird.</i></p></details>
+<details><summary><b>🏭 Ausbilder / Betreuer — DSGVO-konformer Berufskolleg-Import:</b> Filtert Auszubildende nach VO DVI für den WebUntis-Import.</summary>
+<p>Speziell für Berufskollegs in NRW: Der Schild-Ausbilder-Export wird gemäß <b>VO DVI / DSGVO</b> gefiltert, sodass nur Azubis aus freigegebenen Klassen exportiert werden — und nur jene, die der Datenverarbeitung zugestimmt haben.</p>
+<ul>
+<li><b>Klassen-Whitelist</b> (farbige Chips in der Schüler-Tabelle, leer = alle).</li>
+<li><b>Schüler-Blacklist</b> (Häkchen pro Zeile, persistiert in <code>settings.ini</code>).</li>
+<li><b>Firmen-Filter:</b> Whitelist oder Blacklist, je nach Modus.</li>
+<li>Automatischer Zeitstempel bei Datei-Konflikten — kein Überschreiben.</li>
+</ul></details>
+<details><summary><b>🧪 Beispieldateien:</b> 60 fiktive Berufskolleg-Azubis zum Ausprobieren — komplett konsistent, ohne reale Schülerdaten.</summary>
+<p>Im Verzeichnis <code>Beispieldateien/</code> liegen 60 fiktive Azubis in 4 Klassen, 8 Lehrkräfte, ~100 Erzieher, 12 Betriebe als CSV-Sammlung — bit-identisch zum Schild-/WebUntis-Format (Encoding, BOM, Quote-Pattern). Alle drei Workflows lassen sich direkt damit testen. Deterministisch generiert via <code>random.seed(2026)</code>, jederzeit per Generator-Skript regenerierbar.</p></details>
+
 ###  Zusatzfunktionen
 <details><summary><b>➕Zusatzfunktionen:</b> Klassenstärkenauswertung, Attestpflicht, Nachteilsausgleich und Sonderpädagogen-Arbeitsdatei</summary>
 <p>Das Tool bietet zusätzlich zur Hauptverarbeitung die Funktion, die Klassenstärken auf Grundlage des Import-Datenstandes zu ermitteln und in ein gewünschtes Verzeichnis auszugeben. Bei uns profitieren vor allem das Vertretungsteam und Stundenplaner davon, leicht an diese Daten zu kommen.</p>
@@ -218,9 +242,82 @@ Falls Sie Schüler-Fotos im Dashboard anzeigen und/oder als ZIP für den WebUnti
 
 </details>
 
+<details>
+<summary><b>9. Optional: Für den Erzieher- / Ansprechpartner-Workflow <em>(neu in 3.2)</em></b></summary>
+
+Falls Sie den 👨‍👩‍👧-Workflow nutzen möchten, um Erzieher-Daten von SchildNRW nach WebUntis zu konvertieren:
+
+- **Erzieher-Export aus Schild (Pflicht):**
+  - In Schild eine Export-Vorlage anlegen, die mindestens diese Spalten enthält:
+    - **Pflicht:** `Interne ID-Nummer`, `Erzieher i: Nachname`, `Erzieher i: Vorname`, `Erzieher i: E-Mail` (für jeden Erzieher-Slot, i&nbsp;=&nbsp;1, 2, …)
+    - **Empfohlen für die Optionen:** `Erzieher i: Anrede` / `Briefanrede` / `Titel`, `Erzieher: Art (Klartext)` (für den Volljährig-Filter und den Klassen-Report), `Telefon-Nummern: Telefon-Nummer` / `Anschluss-Art` / `Bemerkung` (für die Telefon-Verarbeitung)
+    - **Optional als Anspr-Ersatz:** `Klasse`, `Vorname`, `Nachname` (bzw. `Schüler-Klasse` / `Schüler-Vorname` / `Schüler-Nachname`) — nur nötig, wenn der Ansprechpartner-Export (unten) weggelassen werden soll
+  - Als `.csv` mit Semikolon-Separator speichern (Dateityp in Schild auf „Alle Dateien" stellen und `.csv` manuell anhängen).
+  - Datei im konfigurierten **Erzieher-Export-Verzeichnis** ablegen.
+- **Ansprechpartner-Export aus Schild (Optional, aber empfohlen):**
+  - Liefert weitere Telefonnummern pro Schüler sowie — bei der Schild-Standard-Vorlage — die Schüler-Stammdaten (Klasse / Vorname / Nachname), die der Erzieher-Standard-Export nicht enthält.
+  - **Spalten:** `Schüler_ID`, `Telefon-Nummer`, `Anschluss-Art`, `Bemerkung`, `Schüler-Klasse`, `Schüler-Vorname`, `Schüler-Nachname`
+  - Als `.csv` mit Semikolon-Separator speichern.
+  - Datei im konfigurierten **Ansprechpartner-Export-Verzeichnis** ablegen.
+- **Verzeichnisse konfigurieren:** Unter `👨‍👩‍👧 Erzieher / Ansprechpartner → ⚙️ Einstellungen` werden die Quelldaten- und Ausgabeverzeichnisse festgelegt.
+
+> 💡 **Hinweis zur WebUntis-Realität:** WebUntis verarbeitet beim Erzieher-Import derzeit nur Vorname / Nachname / E-Mail / Schüler-ID (sowie optional die Eltern-ID). Anrede, Titel, Telefon, Anschluss-Art und Bemerkung werden trotzdem mit-exportiert, falls WebUntis seine Auswertung erweitert. Die Telefon-Verarbeitungs-Optionen sind dafür da, dass die Daten auch für eine spätere WebUntis-Nutzung sauber aufbereitet sind.
+
+Eine konkrete Spalten-Tabelle nach Verwendungszweck (Kern-Konvertierung / Tool-Features / Schüler-Stammdaten-Fallback / Mit-Export für zukünftige WebUntis-Funktionen) findet sich im ℹ️-Hilfe-Modal des Erzieher-Workflows.
+
+**Beispiele** zum Ausprobieren: `Beispieldateien/ErzieherExport/ErzieherExport.csv` + `Beispieldateien/AnsprechpartnerExport/AnsprechpartnerExport.csv` (siehe Punkt 11).
+
+</details>
+
+<details>
+<summary><b>10. Optional: Für den Ausbilder- / Betreuer-Workflow <em>(neu in 3.2, Berufskolleg)</em></b></summary>
+
+> ⚠️ **Hinweis zum rechtlichen Kontext:** Dieser Workflow ist speziell für **Berufskollegs in NRW** gedacht und filtert den Schild-Export gemäß **VO DVI / DSGVO**. Eine ausführliche Erläuterung der rechtlichen Grundlagen (BASS-Verweise auf §§ DSGVO Art. 6, VO DVI Anlage 1) findet sich im ℹ️-Hilfe-Modal des Ausbilder-Workflows.
+
+Falls Sie den 🏭-Workflow nutzen möchten, um Auszubildende inkl. Ausbildungsbetrieb / Betreuer DSGVO-konform für den WebUntis-Import zu filtern:
+
+- **Schild-Export der Auszubildenden mit Ausbilder-Spalten:**
+  - In Schild den **Filter „Filter II"** verwenden, um nur Klassen mit dualem Ausbildungsbezug auszuwählen (oder den vollständigen Schüler-Filter belassen — die Klassen-Whitelist im Tool filtert dann nachträglich).
+  - **Spalten** in der Export-Vorlage:
+    - **Schüler-Identifikation:** `Interne ID-Nummer`, `Nachname`, `Vorname`, `Klasse`
+    - **Ausbilder / Betreuer:** `Allg. Adresse: Betreuer Vorname`, `Allg. Adresse: Betreuer Name`, `Allg. Adresse: Betreuer E-Mail`, `Allg. Adresse: Betreuer Anrede`, `Allg. Adresse: Betreuer Titel`, `Allg. Adresse: Betreuer Telefon`, `Allg. Adresse: Betreuer Abteilung`, `Allg. Adresse: Fax-Nr.`
+    - **Betrieb (Übersicht):** `Allg. Adresse: Name1` (Betriebsname)
+  - Als `.csv` mit Semikolon-Separator speichern.
+  - Datei im konfigurierten **Ausbilder-Eingabeverzeichnis** ablegen.
+- **WebUntis-Import-Vorlage:** In WebUntis eine Import-Vorlage für **Ausbildungsbeauftragte** anlegen — die genaue Spalten-Zuordnung (Schild → WebUntis) wird im ℹ️-Hilfe-Modal aufgelistet.
+- **Klassen-Whitelist + Schüler-Blacklist + Firmen-Filter** werden anschließend im Tool über die integrierte Schüler-Tabelle bzw. das Einstellungs-Panel gepflegt — alles wird automatisch persistent in der `settings.ini` gespeichert.
+
+> 💡 **DV-Einwilligung in Schild:** Falls die Checkbox `DV-Einwilligung vorh.` in Ihrer Schule konsistent und ausschließlich für die DSGVO-Einwilligung der Ausbilder-Datenübermittlung verwendet wurde, können Sie auch direkt in Schild filtern und brauchen das Tool für diesen Schritt nicht. Wurde sie aber jemals für etwas anderes mit-benutzt, ist dieses Tool der praktikable Workaround.
+
+**Beispiel** zum Ausprobieren: `Beispieldateien/AusbilderInput/AusbilderExport.csv` (siehe Punkt 11).
+
+</details>
+
+<details>
+<summary><b>11. Optional: Beispieldateien für alle drei Workflows <em>(neu in 3.2)</em></b></summary>
+
+Im Verzeichnis [`Beispieldateien/`](Beispieldateien/) liegt eine komplett konsistente, fiktive CSV-Sammlung — geeignet, um das Tool ohne reale Schülerdaten auszuprobieren:
+
+- 60 fiktive Berufskolleg-Azubis in 4 Klassen
+- 8 Lehrkräfte, ~100 Erzieher, 12 Ausbildungsbetriebe
+- Daten sind über alle 8 CSVs hinweg konsistent (gleiche IDs, Klassen, Lehrkräfte)
+- Format **bit-identisch** zu echten Schild-/WebUntis-Exporten (Encoding, BOM, Zeilenenden, Quote-Pattern)
+- Deterministisch generiert via `random.seed(2026)` — jederzeit per Generator-Skript regenerierbar
+
+Mit dieser Sammlung lassen sich alle drei Workflows (Schüler, Erzieher, Ausbilder) direkt durchspielen. Eine Anleitung zum schnellen Setup (Kopieren in die Standard-Verzeichnisse) und zur Erweiterung der Daten findet sich in [`Beispieldateien/Anleitung.md`](Beispieldateien/Anleitung.md).
+
+</details>
+
 ## Installation
-1. Laden Sie die .exe Datei des [aktuellen Releases](https://github.com/CmoneBK/Schild-WebUntis-Tool/releases/tag/v.3.1) oder, wenn Sie nicht gut auf neue Funktionen warten können, die .exe Datei unter [Schild-WebUntis-Tool-WServer](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe) [Entwicklungsversion] in ein leeres (!) Verzeichnis.</br>
-   Hinter letzterem Link gibt es oben rechts neben dem 'RAW' einen Download-Button.
+1. Laden Sie die `.exe`-Datei in ein **leeres (!) Verzeichnis**. Es stehen zwei Versionen zur Auswahl:
+
+   - **Stable: [v.3.1](https://github.com/CmoneBK/Schild-WebUntis-Tool/releases/tag/v.3.1)** — produktionserprobt, deckt den klassischen CSV-Workflow vollständig ab. Empfohlen für Schulen, die ausschließlich den Schüler-Import nutzen.
+   - **Beta: [v.3.2-beta](https://github.com/CmoneBK/Schild-WebUntis-Tool/releases/tag/v.3.2-beta)** — enthält zusätzlich die neuen Workflows für **Erzieher / Ansprechpartner** und **Ausbilder / Betreuer** sowie den Bugfix für den **Schild-3-API-Modus** (in 3.1 war dort der Schüler-Workflow durch CSV-Pre-Checks blockiert, siehe [#1](https://github.com/CmoneBK/Schild-WebUntis-Tool/issues/1)). Vor produktivem Einsatz bitte auf einem Test-System validieren.
+
+   <details><summary>Alternativ: bleeding-edge Entwicklungs-Build aus dem <code>master</code>-Branch</summary>
+
+   Wer auch zwischen den Releases die jeweils neueste Entwicklung mitnehmen möchte, kann die `.exe` direkt aus dem Repo ziehen: [Schild-WebUntis-Tool-WServer.exe](https://github.com/CmoneBK/Schild-WebUntis-Tool/blob/master/Schild_WebUntis_Tool/dist/Schild-WebUntis-Tool-WServer.exe). Oben rechts neben „Raw" findet sich ein Download-Button. Dieser Build ist nicht zwingend stabil und kann zwischen offiziellen Releases unfertige Funktionen enthalten.
+   </details>
 2. Platzieren Sie die `.csv`-Datei aus dem Schild-Export im selben Verzeichnis wie die ausführbare `Schild-WebUntis-Tool-WServer.exe`-Datei.</br>
 Diese Datei sollte immer durch neue Exporte überschrieben werden, was am leichtesten gelingt, indem man die Schild Export Vorlage entsprechend speichert.
 <details><summary>3. Starten Sie die `.exe`-Datei. Fehlende Konfigurationsdateien (.ini) und Ordner werden automatisch erstellt.</summary>
@@ -566,9 +663,22 @@ Außerdem wurden zahlreiche kleinere Verbesserungen, Bug Fixes und Robustheitsma
 - **Neu - Foto-Verwaltung:** Schüler-Fotos (aus Schild exportiert, benannt nach Interner ID) werden im Dashboard bei der Schülerhistorien-Suche angezeigt. Über den Bereich „🖼️ Fotos managen" lassen sich Fotos als ZIP für den WebUntis-Foto-Import packen (optional nach Schild-Status gefiltert, mit konfigurierbarer Dateinamen-Vorlage; ZIP wird in ein Ausgabeverzeichnis geschrieben und/oder heruntergeladen) und verwaiste Fotos (Schüler nicht mehr im Import) in einen Archiv-Unterordner verschieben.
 - **Neu - Inline-Hilfe direkt im Webend:** An vielen relevanten Stellen (Hauptbereich, Warnungs-Bereich, Schild-API, Foto-Manager, Verzeichnisse, Einstellungs-Tabs, …) sind nun kleine **ℹ️-Buttons** platziert, die die wichtigsten Inhalte der README direkt im Browser anzeigen — offline und ohne externen Link. Alle Hilfe-Themen lassen sich zusätzlich in einem **Glossar-Modus** mit Volltextsuche und thematischer Gruppierung (Bedienung, Eingabe-Dateien, Schild-API, WebUntis, Foto-Verwaltung) durchstöbern. Die Warnungs-Hilfe enthält eine anschauliche **interaktive Timeline** für jede Warnungsart (Entlass-/Aufnahmedatum-Verschiebungen, Klassenwechsel, neue Schüler, Karteileichen).
 
-### Update 3.2 _(In Entwicklung)_
+### Update 3.2 _(Beta)_
 - **Neu - Top-Level Workflow-Switcher:** Das Webend ist jetzt in drei eigenständige Arbeitsbereiche gegliedert, die über Tab-Pills oben im Hauptbereich umgeschaltet werden: 👨‍🎓 **Schüler-Verarbeitung** (der bisherige Hauptbereich), 👨‍👩‍👧 **Erzieher / Ansprechpartner** und 🏭 **Ausbilder / Betreuer**. Jeder Workflow hat seinen eigenen, unabhängigen Einstellungs-Dialog (Quelldaten- und Ausgabeverzeichnisse), so dass das Schüler-Einstellungsmenü nicht mit fachfremden Verzeichnissen überladen wird. Der zuletzt verwendete Workflow wird im Browser persistiert; geöffnete Panels schließen sich beim Wechsel automatisch.
-- **Neu - Erzieher- / Ansprechpartner-Konvertierung (integriert):** Das frühere Standalone-Tool *SchildNRW-WebUntis-Erzieher-Konvertierer* ist nun direkt im Haupttool eingebaut. SchildNRW speichert Erzieher (Hauptdaten) und zusätzliche Ansprechpartner (mit Telefonnummern) getrennt, WebUntis erwartet aber pro Erzieher einen eigenen Datensatz. Der Workflow kombiniert beide Schild-Exporte, nummeriert die Ansprechpartner pro Schüler durch und erzeugt pro „n-tem" Erzieher eine eigene WebUntis-Import-CSV (`Erzieher_1.csv`, `Erzieher_2.csv`, …) — gepackt als ZIP zum Direkt-Download. Der ZIP-Dateiname ist über eine Platzhalter-Vorlage (`{datum}`, `{datetime}`, …) konfigurierbar.
-- **Neu - Ausbilder- / Betreuer-Import für Berufskollegs (integriert):** Das frühere Standalone-Tool *AusbilderImporterFlask* ist nun ebenfalls im Haupttool eingebaut. Speziell für Berufskollegs in NRW: Der Schild-Export der Auszubildenden inkl. Ausbildungsbetrieb / Betreuer wird **DSGVO/VO-DVI-konform** für den WebUntis-Import gefiltert. In der integrierten Schüler-Tabelle werden über farbige Chips die **Klassen-Whitelist** (welche Bildungsgänge sollen überhaupt übernommen werden — leer = alle) und über Häkchen pro Zeile die **Schüler-Blacklist** (wer hat der Datenverarbeitung *nicht* zugestimmt) gepflegt — beides wird automatisch persistent in der `settings.ini` gespeichert. Die gefilterte WebUntis-Import-CSV wird mit konfigurierbarem Dateinamen erzeugt; bei Namens-Konflikten hängt das Tool automatisch einen Zeitstempel an, statt vorhandene Dateien zu überschreiben.
+- **Neu - Erzieher- / Ansprechpartner-Konvertierung (integriert):** Das frühere Standalone-Tool *SchildNRW-WebUntis-Erzieher-Konvertierer* ist nun direkt im Haupttool eingebaut. SchildNRW speichert Erzieher (Hauptdaten) und zusätzliche Ansprechpartner (mit Telefonnummern) getrennt; der Workflow kombiniert beide Schild-Exporte, nummeriert die Ansprechpartner pro Schüler durch und erzeugt pro „n-tem" Erzieher eine eigene WebUntis-Import-CSV (`Erzieher_1.csv`, `Erzieher_2.csv`, …) — gepackt als ZIP zum Direkt-Download. Der ZIP-Dateiname ist über eine Platzhalter-Vorlage konfigurierbar.
+  - **Hinweis zur WebUntis-Realität:** WebUntis verarbeitet derzeit (Stand Mai 2026) nur Vorname / Nachname / E-Mail / Schüler-ID (sowie optional die Eltern-ID). Anrede, Titel, Anschluss-Art, Bemerkung und Telefonnummer werden trotzdem mit-exportiert, damit der Import nicht angepasst werden muss, falls WebUntis seine Auswertung erweitert. Die Telefon-Verarbeitungsoptionen sind dabei kosmetisch — sie halten Vorschau und Output sauber für eine spätere WebUntis-Nutzung.
+  - **🧠 Smart-Match (Telefon ↔ Erzieher-Slot):** Telefonnummern werden anhand der Anschluss-Art (Mutter, Vater, Notfallnummer, …) dem passenden Erzieher-Slot zugewiesen.
+  - **🔞 Volljährig-Filter:** Schüler mit Erzieher-Art „volljährig" werden optional komplett aus dem Export entfernt.
+  - **📧 E-Mail-Pflicht:** Erzieher ohne E-Mail können optional aussortiert werden — sie könnten sich in WebUntis ohnehin nicht anmelden.
+  - **🧪 Dummy-Felder:** Leere Felder werden optional mit eindeutig erkennbaren Platzhaltern (`DUMMY` / `dummy@invalid.local` / `000`) gefüllt, in WebUntis nachträglich filterbar.
+  - **♾️ Limit von 2 Erziehern aufheben:** Überzählige Telefonzeilen aus dem Ansprechpartner-Export werden als virtuelle Slots `Erzieher_3.csv`, `Erzieher_4.csv` … exportiert, statt zu Orphans zu werden.
+  - **📞 Telefon aus Erzieher-Export primär:** Die im Erzieher-Export direkt hinterlegte Telefonnummer hat Vorrang vor dem separaten Anspr-Export, Duplikate werden gefiltert.
+  - **🆔 Eindeutige Eltern-IDs:** Schild liefert pro Erzieher keine schulweite ID — bei Geschwistern wird derselbe Erzieher mehrfach angelegt. Diese Option vergibt persistente IDs (`E00001`, `E00002`, …) anhand Vorname + Nachname + E-Mail; gespeichert in `eltern_ids.json`. Damit kann WebUntis (sobald die Auswertung kommt) denselben Erzieher über mehrere Kinder hinweg als ein Account erkennen.
+  - **⚠️ Klassenweiser Report fehlender Erzieher:** Liste minderjähriger Schüler mit fehlenden Erzieher-Daten — konfigurierbare Kriterien (kein Erzieher / Nachname / Vorname / E-Mail fehlt) mit ODER-/UND-Verknüpfung. Selektiver ZIP-Export pro Klasse mit Begründungs-Spalte.
+  - **👁️ Vorschau & 📄 Quelldateien-Viewer:** Tool-interne Inspektion der Schüler ↔ Erzieher-Zuordnung sowie Raw-Tabular-Anzeige der beiden Quell-CSVs mit Highlighting der tatsächlich genutzten Spalten.
+  - **Ansprechpartner-CSV ist optional:** Der Workflow läuft auch mit nur dem Erzieher-Export durch. Schüler-Stammdaten (Klasse / Vorname / Nachname) werden mit Spaltennamen-Variantenerkennung aus dem Erzieher-Export gezogen, falls die Schule sie dort aufgenommen hat.
+- **Neu - Ausbilder- / Betreuer-Import für Berufskollegs (integriert):** Das frühere Standalone-Tool *AusbilderImporterFlask* ist nun ebenfalls im Haupttool eingebaut. Speziell für Berufskollegs in NRW: Der Schild-Export der Auszubildenden inkl. Ausbildungsbetrieb / Betreuer wird **DSGVO/VO-DVI-konform** für den WebUntis-Import gefiltert. In der integrierten Schüler-Tabelle werden über farbige Chips die **Klassen-Whitelist** (welche Bildungsgänge sollen überhaupt übernommen werden — leer = alle) und über Häkchen pro Zeile die **Schüler-Blacklist** (wer hat der Datenverarbeitung *nicht* zugestimmt) gepflegt — beides wird automatisch persistent in der `settings.ini` gespeichert. Zusätzlich filterbar nach **Firma** (Whitelist oder Blacklist, je nach Modus). Die gefilterte WebUntis-Import-CSV wird mit konfigurierbarem Dateinamen erzeugt; bei Namens-Konflikten hängt das Tool automatisch einen Zeitstempel an, statt vorhandene Dateien zu überschreiben.
+- **Neu - Beispieldateien für alle Workflows:** Im neuen `Beispieldateien/`-Verzeichnis liegen 60 fiktive Berufskolleg-Azubis in 4 Klassen, 8 Lehrkräfte, ~100 Erzieher und 12 Ausbildungsbetriebe als komplett konsistente CSV-Sammlung. Das Format ist bit-identisch zu echten Schild-/WebUntis-Exporten (Encoding, BOM, Zeilenenden, Quote-Pattern); die Daten sind deterministisch generiert via `random.seed(2026)`. Ideal zum Ausprobieren des Tools ohne reale Schülerdaten — alle drei Workflows lassen sich direkt damit testen.
 - **Verbessert - Pandas-frei portiert:** Beide integrierten Workflows wurden bewusst ohne Pandas-Abhängigkeit umgesetzt (nur Python-Bordmittel: `csv`, `configparser`), so dass die EXE-Größe nicht aufgebläht wird. Encoding wird automatisch erkannt (UTF-8-BOM → UTF-8 → cp1252-Fallback).
-- **Verbessert - Inline-Hilfe erweitert:** Beide neuen Workflows haben eigene ℹ️-Buttons mit ausführlicher Hilfe (Vorbereitungs-Schritte, Verarbeitungs-Ablauf, DSGVO-Hintergrund beim Ausbilder-Workflow) und sind im Glossar-Modus unter „🛠️ Bedienung & Workflows" auffindbar.
+- **Verbessert - Inline-Hilfe erweitert:** Beide neuen Workflows haben eigene ℹ️-Buttons mit ausführlicher Hilfe (Vorbereitungs-Schritte, Verarbeitungs-Ablauf, DSGVO-Hintergrund beim Ausbilder-Workflow, exakte Spalten-Tabellen nach Verwendungszweck gruppiert) und sind im Glossar-Modus unter „🛠️ Bedienung & Workflows" auffindbar.
+- **Bug Fix - Schild-API-Modus blockierte Schüler-Workflow:** Im aktiven SVWS-API-Modus erschien beim Öffnen der Schüler-Seite hartnäckig der rote Fehler-Banner „Die Haupt-CSV-Datei fehlt im Hauptverzeichnis…", und das ▶️ Verarbeiten-POST schlug am gleichen Pre-Check fehl — die API-Verarbeitung lief gar nicht erst an (Siehe [#1](https://github.com/CmoneBK/Schild-WebUntis-Tool/issues/1)). Insgesamt vier Stellen waren betroffen: `index()` (Schüler-Seite), `validate_imports()` (Datei-prüfen-Button), `admin_warnings()` (Klassen-CSV-Reread) sowie die Option „zweite Importdatei" in `save_files()`. Alle Pre-Checks sind jetzt `use_api`-bewusst; die „zweite Importdatei" wurde so refaktoriert, dass sie keinen Quell-CSV-Reread mehr braucht (Filter direkt auf den bereits eingelesenen Schülerdaten). CSV-Modus verhält sich unverändert.
