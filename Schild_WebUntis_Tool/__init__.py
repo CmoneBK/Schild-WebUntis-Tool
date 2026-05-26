@@ -704,6 +704,14 @@ def admin_warnings(send_email_flag=False):
                     'Schüler': f"{student.get('Vorname', '')} {student.get('Nachname', '')}"
                 })
 
+    # Im SVWS-API-Modus (Schild 3.x) kommen die Klassendaten direkt vom Server —
+    # die zweite Warnungsstufe (Klassenlehrer-Check direkt aus der Klassen-CSV)
+    # entfaellt dann.
+    use_schild_api = config.getboolean('SchildAPI', 'use_api', fallback=False)
+    if use_schild_api:
+        print_info("SVWS-API-Modus: überspringe Klassen-CSV-basierte Klassenlehrer-Prüfung (Daten kommen vom Server).")
+        return admin_warnings_cache
+
     # Überprüfen, ob CSV-Dateien im Klassenverzeichnis vorhanden sind
     if not os.path.exists(classes_dir):
         print_admin_warning(f"Warnung: Klassenverzeichnis '{classes_dir}' nicht erreichbar (Laufwerk nicht verfügbar?).")
@@ -851,28 +859,43 @@ def index():
     safe_read_config(config, "settings.ini")
     classes_dir = config.get("Directories", "classes_directory", fallback="./Klassendaten")
     teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
+    use_schild_api = config.getboolean('SchildAPI', 'use_api', fallback=False)
+    fallback_to_csv = config.getboolean('SchildAPI', 'fallback_to_csv', fallback=True)
 
-    # Überprüfen, ob die Haupt-CSV-Datei vorhanden ist
-    schildexport_dir = get_directory('schildexport_directory', default='.')
-    if schildexport_dir in ('.', '', None):
-        schildexport_dir = os.getcwd()
-    main_csv_exists = any(
-        f.endswith('.csv') for f in os.listdir(schildexport_dir) if not os.path.isdir(os.path.join(schildexport_dir, f))
-    )
+    # Im SVWS-API-Modus (Schild 3.x) kommen die Daten direkt vom Server — die
+    # CSV-Exports sind dann nur noch optionaler Fallback. Pruefchecks daher
+    # entsprechend abschwaechen: fehlende CSV nur als Warnung, wenn ein Fallback
+    # ausdruecklich erwartet wird; sonst gar nichts melden.
+    if not use_schild_api:
+        # Haupt-CSV pruefen — nur im CSV-Modus harter Blocker
+        schildexport_dir = get_directory('schildexport_directory', default='.')
+        if schildexport_dir in ('.', '', None):
+            schildexport_dir = os.getcwd()
+        main_csv_exists = any(
+            f.endswith('.csv') for f in os.listdir(schildexport_dir) if not os.path.isdir(os.path.join(schildexport_dir, f))
+        )
+        if not main_csv_exists:
+            errors.append("Die Haupt-CSV-Datei fehlt im Hauptverzeichnis und wird für die Verarbeitung benötigt.")
+            print_error("Fehler: Haupt-CSV-Datei fehlt im Hauptverzeichnis und wird für die Verarbeitung benötigt.")
 
-    if not main_csv_exists:
-        errors.append("Die Haupt-CSV-Datei fehlt im Hauptverzeichnis und wird für die Verarbeitung benötigt.")
-        print_error("Fehler: Haupt-CSV-Datei fehlt im Hauptverzeichnis und wird für die Verarbeitung benötigt.")
-
-    # Überprüfen, ob die Klassendaten verfügbar sind
-    if not os.path.exists(classes_dir) or not any(f.endswith('.csv') for f in os.listdir(classes_dir)):
-        warnings_messages.append("Die Klassendaten fehlen oder es sind keine CSV-Dateien im konfigurierten Ordner vorhanden.")
-        print_warning(f"Warnung: Keine Klassendaten im Ordner '{classes_dir}' zur Vorbereitung der Warnungen gefunden.")
-
-    # Überprüfen, ob die Lehrerdaten verfügbar sind
-    if not os.path.exists(teachers_dir) or not any(f.endswith('.csv') for f in os.listdir(teachers_dir)):
-        warnings_messages.append("Die Lehrerdaten fehlen oder es sind keine CSV-Dateien im konfigurierten Ordner vorhanden.")
-        print_warning(f"Warnung: Keine Lehrerdaten im Ordner '{teachers_dir}' zur Vorbereitung der Warnungen gefunden.")
+        # Klassen-/Lehrer-CSVs nur im CSV-Modus pruefen
+        if not os.path.exists(classes_dir) or not any(f.endswith('.csv') for f in os.listdir(classes_dir)):
+            warnings_messages.append("Die Klassendaten fehlen oder es sind keine CSV-Dateien im konfigurierten Ordner vorhanden.")
+            print_warning(f"Warnung: Keine Klassendaten im Ordner '{classes_dir}' zur Vorbereitung der Warnungen gefunden.")
+        if not os.path.exists(teachers_dir) or not any(f.endswith('.csv') for f in os.listdir(teachers_dir)):
+            warnings_messages.append("Die Lehrerdaten fehlen oder es sind keine CSV-Dateien im konfigurierten Ordner vorhanden.")
+            print_warning(f"Warnung: Keine Lehrerdaten im Ordner '{teachers_dir}' zur Vorbereitung der Warnungen gefunden.")
+    elif fallback_to_csv:
+        # API aktiv, aber CSV als Fallback gewuenscht — pruefe nur, ob ein Fallback
+        # ueberhaupt verfuegbar waere; alles nur als Warnung, nicht als Blocker.
+        schildexport_dir = get_directory('schildexport_directory', default='.')
+        if schildexport_dir in ('.', '', None):
+            schildexport_dir = os.getcwd()
+        main_csv_exists = any(
+            f.endswith('.csv') for f in os.listdir(schildexport_dir) if not os.path.isdir(os.path.join(schildexport_dir, f))
+        )
+        if not main_csv_exists:
+            warnings_messages.append("SVWS-API-Modus aktiv mit fallback_to_csv=True, aber keine Haupt-CSV im Schild-Export-Verzeichnis. Bei API-Ausfall ist kein CSV-Fallback möglich.")
 
     if request.method == 'POST' and not errors:
         # Aktuelle Werte aus dem Formular auf im WebEnd lesen und die Auswahl des Benutzers speichern (Standardwerte werden für den Prozess überschrieben)

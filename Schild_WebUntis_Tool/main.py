@@ -133,23 +133,46 @@ def validate_imports():
     """
     Führt einen Vorab-Check aller benötigten Export-Dateien durch.
     Gibt einen Report über fehlende Dateien oder Spalten zurück.
+
+    Im SVWS-API-Modus (SchildAPI.use_api=True) sind die CSV-Exports keine
+    Pflicht — die Daten kommen direkt vom Server. Fehlende CSVs werden dann
+    je nach fallback_to_csv als 'success' (irrelevant) oder 'warning' (kein
+    Fallback) ausgewiesen, nicht als 'error'.
     """
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
-    
+    use_schild_api = config.getboolean('SchildAPI', 'use_api', fallback=False)
+    fallback_to_csv = config.getboolean('SchildAPI', 'fallback_to_csv', fallback=True)
+
     report = {
         "success": True,
         "files": {}
     }
 
+    def _api_status_missing_file(file_label):
+        """Liefert (status, payload) fuer eine fehlende CSV im API-Modus."""
+        if fallback_to_csv:
+            return ("warning", {
+                "status":   "warning",
+                "messages": [f"SVWS-API aktiv (Schild 3.x) — {file_label} ist nicht erforderlich. Aber: fallback_to_csv=True und keine CSV vorhanden — bei API-Ausfall kein Fallback möglich."],
+            })
+        return ("success", {
+            "status":   "success",
+            "messages": [f"SVWS-API aktiv (Schild 3.x) — {file_label} nicht erforderlich, Daten kommen vom Server."],
+        })
+
     # 1. Schild-Export prüfen
     schild_dir = config.get('Directories', 'schildexport_directory', fallback='.')
     if schild_dir in ('.', '', None): schild_dir = os.getcwd()
-    
+
     schild_files = [f for f in os.listdir(schild_dir) if f.lower().endswith('.csv')]
     if not schild_files:
-        report["files"]["Schild-Export"] = {"status": "error", "message": "Keine CSV-Datei im Schild-Export Verzeichnis gefunden."}
-        report["success"] = False
+        if use_schild_api:
+            _, payload = _api_status_missing_file("Schild-Export-CSV")
+            report["files"]["Schild-Export"] = payload
+        else:
+            report["files"]["Schild-Export"] = {"status": "error", "message": "Keine CSV-Datei im Schild-Export Verzeichnis gefunden."}
+            report["success"] = False
     else:
         newest_schild = max(schild_files, key=lambda f: os.path.getctime(os.path.join(schild_dir, f)))
         file_path = os.path.join(schild_dir, newest_schild)
@@ -195,13 +218,21 @@ def validate_imports():
     # 2. Lehrer-Daten prüfen
     teachers_dir = config.get('Directories', 'teachers_directory', fallback='./Lehrerdaten')
     if not os.path.exists(teachers_dir):
-        report["files"]["Lehrer-Daten"] = {"status": "error", "message": f"Verzeichnis '{teachers_dir}' nicht gefunden."}
-        report["success"] = False
+        if use_schild_api:
+            _, payload = _api_status_missing_file("Lehrer-CSV")
+            report["files"]["Lehrer-Daten"] = payload
+        else:
+            report["files"]["Lehrer-Daten"] = {"status": "error", "message": f"Verzeichnis '{teachers_dir}' nicht gefunden."}
+            report["success"] = False
     else:
         teacher_files = [f for f in os.listdir(teachers_dir) if f.lower().endswith('.csv')]
         if not teacher_files:
-            report["files"]["Lehrer-Daten"] = {"status": "error", "message": "Keine CSV-Datei im Lehrerdatenverzeichnis gefunden."}
-            report["success"] = False
+            if use_schild_api:
+                _, payload = _api_status_missing_file("Lehrer-CSV")
+                report["files"]["Lehrer-Daten"] = payload
+            else:
+                report["files"]["Lehrer-Daten"] = {"status": "error", "message": "Keine CSV-Datei im Lehrerdatenverzeichnis gefunden."}
+                report["success"] = False
         else:
             newest_teacher = max(teacher_files, key=lambda f: os.path.getctime(os.path.join(teachers_dir, f)))
             file_path = os.path.join(teachers_dir, newest_teacher)
@@ -223,13 +254,21 @@ def validate_imports():
     # 3. Klassen-Daten prüfen
     classes_dir = config.get('Directories', 'classes_directory', fallback='./Klassendaten')
     if not os.path.exists(classes_dir):
-        report["files"]["Klassen-Daten"] = {"status": "error", "message": f"Verzeichnis '{classes_dir}' nicht gefunden."}
-        report["success"] = False
+        if use_schild_api:
+            _, payload = _api_status_missing_file("Klassen-CSV")
+            report["files"]["Klassen-Daten"] = payload
+        else:
+            report["files"]["Klassen-Daten"] = {"status": "error", "message": f"Verzeichnis '{classes_dir}' nicht gefunden."}
+            report["success"] = False
     else:
         class_files = [f for f in os.listdir(classes_dir) if f.lower().endswith('.csv')]
         if not class_files:
-            report["files"]["Klassen-Daten"] = {"status": "error", "message": "Keine CSV-Datei im Klassendatenverzeichnis gefunden."}
-            report["success"] = False
+            if use_schild_api:
+                _, payload = _api_status_missing_file("Klassen-CSV")
+                report["files"]["Klassen-Daten"] = payload
+            else:
+                report["files"]["Klassen-Daten"] = {"status": "error", "message": "Keine CSV-Datei im Klassendatenverzeichnis gefunden."}
+                report["success"] = False
         else:
             newest_class = max(class_files, key=lambda f: os.path.getctime(os.path.join(classes_dir, f)))
             file_path = os.path.join(classes_dir, newest_class)
@@ -1572,34 +1611,32 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
         writer.writerows(output_data_students)
     print_creation(f"WebUntis-Importdatei gespeichert: {output_file}")
 
-    # Zweite Ausgabedatei speichern, falls gewünscht
+    # Zweite Ausgabedatei speichern, falls gewünscht — direkt aus
+    # output_data_students herausfiltern (funktioniert in CSV- und API-Modus),
+    # statt erneut die Quell-CSV einzulesen.
     if create_second_file:
         print_info("Erstelle zweite Ausgabedatei für fehlende Entlassdatumsangaben...")
         second_output_columns = ['Interne ID-Nummer', 'Nachname', 'Vorname', 'Geburtsdatum', 'Klasse', 'Geschlecht', 'Entlassdatum']
         second_output_data = []
 
-        # Suche die neueste Datei im Hauptverzeichnis
-        schildexport_dir = get_directory('schildexport_directory', default='.')
-        if schildexport_dir in ('.', '', None):
-            schildexport_dir = os.getcwd()
-        csv_files = [f for f in os.listdir(schildexport_dir) if f.lower().endswith('.csv')]
+        if not output_data_students or len(output_data_students) < 2:
+            print_warning("Keine Schülerdaten für zweite Ausgabedatei vorhanden — übersprungen.")
+        else:
+            header = output_data_students[0]
+            try:
+                idx_aktiv       = header.index('Aktiv')
+                idx_entlass     = header.index('Entlassdatum')
+                col_indices     = [header.index(c) for c in second_output_columns]
+            except ValueError as e:
+                print_error(f"Pflichtspalte fehlt in den Schülerdaten für die zweite Ausgabe: {e}")
+                col_indices = None
 
-        if not csv_files:
-            print_error("Fehler: Keine CSV-Dateien im Hauptverzeichnis gefunden.")
-            return
+            if col_indices is not None:
+                for row in output_data_students[1:]:
+                    # "Aktiv == Nein" (Status nicht in active_statuses) UND kein Entlassdatum
+                    if (row[idx_aktiv] != 'Ja') and not (row[idx_entlass] or '').strip():
+                        second_output_data.append([row[i] for i in col_indices])
 
-        # Daten für zweite Datei extrahieren
-        newest_file = max(
-            [os.path.join(schildexport_dir, f) for f in csv_files], 
-            key=os.path.getctime
-        )
-        print_info(f"Verwende Datei für zweite Ausgabe:\n {newest_file}")
-        with open(newest_file, 'r', newline='', encoding='utf-8-sig') as csvfile:
-            reader = csv.DictReader(csvfile, delimiter=';')
-            for row in reader:
-                if row['Status'] not in get_active_schild_status() and not row.get('Entlassdatum'):
-                    filtered_row = {k: v for k, v in row.items() if k in second_output_columns}
-                    second_output_data.append([filtered_row.get(col, '') for col in second_output_columns])
         if second_output_data:
             with open(second_output_file, 'w', newline='', encoding='utf-8-sig') as csvfile:
                 writer = csv.writer(csvfile, delimiter=';')
