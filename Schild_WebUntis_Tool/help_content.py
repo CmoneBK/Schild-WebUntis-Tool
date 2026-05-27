@@ -672,7 +672,8 @@ oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüf
 
     <h6 class="mt-3">B) Tool-Features (vom Tool ausgewertet, nicht von WebUntis)</h6>
     <table class="col-table">
-      <tr><td><code>Erzieher: Art (Klartext)</code></td><td>Quelle für den <strong>Volljährig-Filter</strong> und den <strong>„Fehlende Erzieher"-Klassen-Report</strong> — Schild markiert hier u. a. <em>„Schüler/in ist volljährig"</em></td></tr>
+      <tr><td><code>Erzieher: Art (Klartext)</code></td><td>Quelle für den <strong>Volljährig-Filter</strong> (Heuristik via Markierung <em>„Schüler/in ist volljährig"</em>) und den <strong>„Fehlende Erzieher"-Klassen-Report</strong></td></tr>
+      <tr><td><code>Geburtsdatum</code></td><td>Bevorzugte Quelle für den Volljährig-Check (≥ 18 → volljährig). Wenn diese Spalte fehlt, fällt das Tool auf die Heuristik via <code>Erzieher: Art (Klartext)</code> zurück. Akzeptiert TT.MM.JJJJ und ISO YYYY-MM-DD</td></tr>
     </table>
 
     <h6 class="mt-3">C) Optional: Schüler-Stammdaten (Fallback, falls Anspr-Export fehlt)</h6>
@@ -686,6 +687,12 @@ oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüf
       <tr><td><code>Vorname</code> / <code>Schüler-Vorname</code> / <code>Schüler: Vorname</code></td><td>für UI-Anzeige</td></tr>
       <tr><td><code>Nachname</code> / <code>Schüler-Nachname</code> / <code>Schüler: Nachname</code></td><td>für UI-Anzeige</td></tr>
     </table>
+    <p class="small text-muted mb-0 mt-2">💡 <strong>Tipp:</strong> Wir empfehlen, all
+    diese Spalten von Anfang an mit in die Erzieher-Vorlage aufzunehmen
+    (Schild-Datenart <em>Schüler</em>) — dann ist sowohl der Anspr-Export entbehrlich
+    als auch der Volljährig-Check deterministisch. Die Status-Box des Workflows zeigt
+    grüne Badges, sobald beide Bereiche („Schüler-Stammdaten in Erzieher-Export" und
+    „Geburtsdatum vorhanden") erkannt sind.</p>
 
     <h6 class="mt-3">D) Mit-Export für mögliche zukünftige WebUntis-Funktionen</h6>
     <p class="small text-muted mb-2">Aktuell nicht von WebUntis ausgewertet; werden trotzdem
@@ -703,6 +710,34 @@ oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüf
     <p class="small text-muted mb-0 mt-2">💡 In der Schild-Standard-Vorlage fehlen
     die Schüler-Stammdaten — dann muss der Ansprechpartner-Export vorhanden sein,
     der diese Spalten liefert (siehe nächste Sektion).</p>
+  </div>
+</details>
+
+<details class="erz-detail">
+  <summary>📊 Datenquellen-Übersicht — was nutzt das Tool aus welcher Quelle?</summary>
+  <div class="erz-body">
+    <p>Für die zentralen Felder gibt es jeweils eine Primärquelle, oft eine
+    Sekundärquelle und eine Merge-Regel:</p>
+    <table class="col-table">
+      <tr><th>Feld</th><th>Primär</th><th>Fallback</th></tr>
+      <tr><td>Erzieher Vorname / Nachname / E-Mail</td><td>Erz: <code>Erzieher i: …</code></td><td>— (Pflicht)</td></tr>
+      <tr><td>Schüler Klasse / Vor- / Nachname</td><td>Anspr: <code>Schüler-…</code></td><td>Erz: <code>Klasse</code> / <code>Vorname</code> / <code>Nachname</code> — Anspr gewinnt, Erz füllt Lücken</td></tr>
+      <tr><td>Volljährig</td><td>Erz: <code>Geburtsdatum</code> (≥ 18)</td><td>Heuristik <code>Erzieher: Art (Klartext)</code> enthält „volljährig" — ODER-verknüpft mit Geburtsdatum</td></tr>
+      <tr><td>Telefonnummern</td><td>Erz: <code>Telefon-Nummern: …</code> (1 pro Schüler)</td><td>Anspr-Zeilen — Erz zuerst, Duplikate aus Anspr gefiltert</td></tr>
+      <tr><td>Smart-Match</td><td><code>Erzieher i: Anrede</code> + Anschluss-Art</td><td>fehlt eines → positionales Matching</td></tr>
+    </table>
+
+    <p class="mt-2"><strong>Effekt in den 4 typischen Setups:</strong></p>
+    <table class="col-table">
+      <tr><th>Setup</th><th>Schüler-Stammdaten</th><th>Volljährig</th><th>Telefon</th></tr>
+      <tr><td><strong>A. Optimal</strong> — Erz mit Klasse + Geb.-Datum + Anspr</td><td>aus Anspr (+ Erz als Füller)</td><td>deterministisch ✓</td><td>beide Quellen, dedupliziert</td></tr>
+      <tr><td><strong>B. Erz all-in-one</strong> — Erz mit Klasse + Geb.-Datum, kein Anspr</td><td>aus Erz</td><td>deterministisch ✓</td><td>nur Erz (1 pro Schüler)</td></tr>
+      <tr><td><strong>C. Schild-Standard</strong> — Erz minimal + Anspr</td><td>aus Anspr; Rest leer</td><td>nur Heuristik (ungenau)</td><td>nur Anspr</td></tr>
+      <tr><td><strong>D. Worst case</strong> — Erz minimal, kein Anspr</td><td>leer</td><td>nur Heuristik</td><td>keine</td></tr>
+    </table>
+    <p class="small text-muted mb-0 mt-2">💡 Empfehlung: Setup A oder B. Die
+    Status-Box des Workflows zeigt mit grünen Badges, welches Setup erkannt
+    wurde.</p>
   </div>
 </details>
 
@@ -757,9 +792,20 @@ oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüf
 
     <h6>👨‍🎓 Schüler-Filter</h6>
     <p><strong>🔞 Volljährig-Filter</strong> <em>(Default: aus)</em><br>
-    Schüler mit <code>Erzieher: Art (Klartext)</code> = <em>„Schüler/in ist volljährig"</em>
-    werden komplett aus dem Export entfernt. Bei volljährigen Azubis ist meist kein
-    echter Erzieher mehr gepflegt — sie sind ihre eigenen Ansprechpartner.</p>
+    Als volljährig erkannte Schüler werden komplett aus dem Export entfernt.
+    Volljährigkeit wird aus zwei Quellen bestimmt — eine reicht:</p>
+    <ul>
+      <li><strong>🎂 Geburtsdatum</strong> aus Spalte <code>Geburtsdatum</code>
+          im Erzieher-Export (≥ 18 → volljährig). Deterministisch, sofern
+          vorhanden.</li>
+      <li><strong>📝 Schild-Heuristik:</strong> <code>Erzieher: Art (Klartext)</code>
+          enthält <em>„volljährig"</em> — Fallback bei fehlendem Geburtsdatum,
+          plus Sonderfall-Override für Schüler, die ausdrücklich auf
+          Erziehungsberechtigte verzichtet haben.</li>
+    </ul>
+    <p>Bei volljährigen Azubis ist meist kein echter Erzieher mehr gepflegt —
+    sie sind ihre eigenen Ansprechpartner, der Datensatz bringt für WebUntis
+    nichts.</p>
 
     <h6>👨‍👩‍👧 Erzieher-Stammdaten</h6>
     <p>Wirken auf die Spalten, die WebUntis aktuell tatsächlich auswertet
@@ -1111,6 +1157,21 @@ Datei zu überschreiben.</p>
           <a href="https://github.com/CmoneBK/AusbilderImporterFlask#vor-der-installation"
              target="_blank" rel="noopener">AusbilderImporterFlask auf GitHub</a>.</li>
     </ul>
+
+    <p class="mt-2"><strong>Bewährtes SQL-Filter-Snippet</strong> (nur duale
+    Azubis — Schüler mit zugeordneter Betrieb- oder Kammer-Adresse, aktuelles
+    Schuljahr):</p>
+<pre class="small mb-2" style="white-space:pre-wrap;"><code>Schueler.Geloescht='-' AND Schueler.Status IN (2,8,9) AND Schueler.AktSchuljahr = 2025
+AND ((Schueler_AllgAdr.Adresse_ID = K_AllgAdresse.ID
+      AND Schueler.ID = Schueler_AllgAdr.Schueler_ID
+      AND K_AllgAdresse.AllgAdrAdressArt = 'Betrieb')
+  OR (Schueler_AllgAdr.Adresse_ID = K_AllgAdresse.ID
+      AND Schueler.ID = Schueler_AllgAdr.Schueler_ID
+      AND K_AllgAdresse.AllgAdrAdressArt = 'Kammer'))</code></pre>
+    <p class="small text-muted mb-0">In Schild über <em>„Auswahl → Filter II →
+    Aktuelle Auswahl übernehmen"</em>, anschließend in „SQL-Befehle" einfügen,
+    „Testen" und speichern. Beim nächsten Mal über <em>„Auswahl → Vorhandene
+    Filter laden"</em> wieder aufrufbar.</p>
   </div>
 </details>
 

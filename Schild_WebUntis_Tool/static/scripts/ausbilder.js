@@ -123,6 +123,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 state.classFilter = collapseFilter(cur);
                 saveClassFilter();
                 renderClassChips();
+                // Schueler aus jetzt abgewaehlten Klassen aus der Tabelle ausblenden
+                renderStudents();
             });
         });
         const allBtnEl = document.getElementById('ausbilderClassAll');
@@ -131,6 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
             state.classFilter = allMode ? [NONE_SENTINEL] : [];
             saveClassFilter();
             renderClassChips();
+            renderStudents();
         });
     }
 
@@ -209,6 +212,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (setRef.has(f)) setRef.delete(f); else setRef.add(f);
                 await saveFirmaList(mode);
                 renderFirmaChips();
+                // Schueler aus jetzt blacklisteten / nicht-whitelisteten Firmen
+                // sofort aus der Tabelle ausblenden (bzw. wieder einblenden).
+                renderStudents();
             });
         });
     }
@@ -306,9 +312,56 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function updateStudentCount() {
         if (!countEl || !bodyEl) return;
-        const visible = bodyEl.querySelectorAll('tr').length;
+        // Wir zaehlen nur die main-rows (nicht die Detail-Aufklapp-Zeilen).
+        const visible = bodyEl.querySelectorAll('tr.ausb-row').length;
         const bl = state.students.filter(x => state.blacklist.has(x.id)).length;
-        countEl.textContent = `${visible} sichtbar · ${state.students.length} insgesamt · ${bl} auf Blacklist`;
+        const classHiddenCount = state.students.filter(s => !passesClassFilter(s)).length;
+        const firmaHiddenCount = state.students.filter(s =>
+            passesClassFilter(s) && !passesFirmaFilter(s)).length;
+        let txt = `${visible} sichtbar · ${state.students.length} insgesamt · ${bl} auf Blacklist`;
+        if (classHiddenCount > 0) {
+            txt += ` · ${classHiddenCount} aus abgewählten Klassen`;
+        }
+        if (firmaHiddenCount > 0) {
+            const word = state.firmaMode === 'whitelist' ? 'ausserhalb Firmen-Whitelist' : 'durch Firmen-Blacklist ausgeblendet';
+            txt += ` · ${firmaHiddenCount} ${word}`;
+        }
+        countEl.textContent = txt;
+    }
+
+    /**
+     * Filtert Schueler nach dem aktiven Firma-Modus exakt wie das Backend:
+     * - Whitelist-Modus mit leerer Liste: alle durch
+     * - Whitelist-Modus mit gefuellter Liste: nur Schueler, deren Firma drin ist
+     *   (Schueler ohne Firma fallen damit raus — wie im Backend)
+     * - Blacklist-Modus: Schueler ohne Firma kommen durch, sonst nur wenn die
+     *   Firma NICHT auf der Blacklist steht
+     * Schueler aus geblacklisteten / nicht-whitelisteten Firmen werden damit
+     * aus der Schueler-Tabelle ausgeblendet — sie werden ohnehin nicht
+     * exportiert und sollen den Nutzer nicht verwirren.
+     */
+    function passesFirmaFilter(s) {
+        if (state.firmaMode === 'whitelist') {
+            if (state.firmaWhitelist.size === 0) return true;
+            return state.firmaWhitelist.has(s.firma);
+        }
+        if (!s.firma) return true;
+        return !state.firmaBlacklist.has(s.firma);
+    }
+
+    /**
+     * Filtert Schueler nach der aktiven Klassen-Whitelist — analog zum Backend
+     * in filter_and_write():
+     * - All-Mode (classFilter leer): alle Klassen sichtbar
+     * - None-Mode (classFilter === ['__NONE__']): nichts sichtbar
+     * - sonst: nur Schueler aus Klassen in classFilter
+     * Schueler aus abgewaehlten Klassen werden so ebenfalls ausgeblendet, statt
+     * den Nutzer mit "warum taucht der noch auf" verwirren zu lassen.
+     */
+    function passesClassFilter(s) {
+        if (isNoneMode())  return false;
+        if (isAllMode())   return true;
+        return state.classFilter.includes(s.klasse);
     }
 
     function passesSearch(s, q) {
@@ -389,11 +442,27 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
         const q = (searchInput?.value || '').trim();
-        const filtered = state.students.filter(s => passesSearch(s, q));
+        // Schueler aus abgewaehlten Klassen + blacklisteten / nicht-whitelisteten
+        // Firmen werden ausgeblendet (Backend filtert sie ohnehin beim Export raus
+        // — so sieht der Nutzer gleich, dass sie nicht mitkommen, und blackt sie
+        // nicht versehentlich ein zweites Mal).
+        const filtered = state.students.filter(s =>
+            passesClassFilter(s) && passesFirmaFilter(s) && passesSearch(s, q));
         const list = sortStudents(filtered);
         const blacklistedTotal = state.students.filter(s => state.blacklist.has(s.id)).length;
+        const classHiddenCount = state.students.filter(s => !passesClassFilter(s)).length;
+        const firmaHiddenCount = state.students.filter(s =>
+            passesClassFilter(s) && !passesFirmaFilter(s)).length;
         if (countEl) {
-            countEl.textContent = `${list.length} sichtbar · ${state.students.length} insgesamt · ${blacklistedTotal} auf Blacklist`;
+            let txt = `${list.length} sichtbar · ${state.students.length} insgesamt · ${blacklistedTotal} auf Blacklist`;
+            if (classHiddenCount > 0) {
+                txt += ` · ${classHiddenCount} aus abgewählten Klassen`;
+            }
+            if (firmaHiddenCount > 0) {
+                const word = state.firmaMode === 'whitelist' ? 'ausserhalb Firmen-Whitelist' : 'durch Firmen-Blacklist ausgeblendet';
+                txt += ` · ${firmaHiddenCount} ${word}`;
+            }
+            countEl.textContent = txt;
         }
         const rows = list.flatMap(s => {
             const checked  = !state.blacklist.has(s.id);

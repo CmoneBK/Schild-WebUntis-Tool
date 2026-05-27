@@ -19,6 +19,39 @@ WebUntis-Realitaet (Stand: Mai 2026):
   Die Telefon-Verarbeitungsoptionen (Smart-Match, phone_from_erz_first,
   lift_limit) halten die Daten-Aufbereitung trotzdem sauber — fuer die Tool-
   interne Vorschau, den Klassen-Report und einen moeglichen WebUntis-Upgrade.
+
+Datenquellen-Strategie (welche Spalte kommt woher?):
+  Beide Schild-Quellen (Erzieher- und Ansprechpartner-Export) koennen ueberlappende
+  Daten enthalten. Das Tool kombiniert sie nach folgenden Regeln:
+
+  - Erzieher-Stammdaten (Erzieher i: Vorname/Nachname/E-Mail): PFLICHT aus dem
+    Erzieher-Export. Fehlt eines dieser Felder, crasht process() mit ValueError.
+
+  - Schueler-Stammdaten (Klasse / Vorname / Nachname): PRIMAER aus dem Anspr-
+    Export (Spalten 'Schueler-...'). FALLBACK aus dem Erzieher-Export, sofern die
+    Schule die Spalten dort mit aufgenommen hat (mehrere Spaltennamen-Varianten
+    werden erkannt — siehe _STUDENT_*_COLS). Merge: Anspr gewinnt pro Schueler,
+    Erzieher fuellt einzelne Leerstellen. Siehe _merge_student_lookups().
+
+  - Volljaehrigkeits-Erkennung: PRIMAER ueber Geburtsdatum aus dem Erzieher-Export
+    (Spalten-Varianten in _GEBURTSDATUM_COLS, akzeptiert TT.MM.JJJJ und ISO).
+    ZUSAETZLICH (ODER-verknuepft) ueber die Heuristik 'Erzieher: Art (Klartext)'
+    enthaelt 'volljaehrig' — diese deckt Sonderfaelle ab, in denen ein Schueler
+    ausdruecklich auf Erziehungsberechtigte verzichtet hat (Self-Ansprech-
+    partner-Markierung), und greift als Fallback bei fehlendem Geburtsdatum.
+    Siehe _is_self_volljaehrig().
+
+  - Telefonnummern: PRIMAER die im Erzieher-Export hinterlegte primaere Nummer
+    (Spaltengruppe 'Telefon-Nummern: ...') als Pseudo-Anspr-Zeile, SEKUNDAER die
+    Zeilen aus dem Anspr-Export. Duplikate (gleiche Nummer normalisiert) aus dem
+    Anspr-Export werden gefiltert. Siehe _merge_phone_sources(). Optional ueber
+    Setting phone_from_erz_first deaktivierbar.
+
+  Empfehlung an die Schule: All-in-One-Erzieher-Vorlage (Klasse + Geburtsdatum
+  zusaetzlich zu Erzieher-Daten). Damit ist der Anspr-Export rein optional und
+  alle Tool-Features (UI-Anzeige, Klassen-Report, deterministischer Vollj.-Check)
+  funktionieren vollstaendig. Die Status-Box im Frontend zeigt per Badge an,
+  welches Setup erkannt wurde (siehe _inspect_erz_source()).
 """
 
 import os
@@ -27,7 +60,7 @@ import re
 import csv
 import zipfile
 import configparser
-from datetime import datetime
+from datetime import datetime, date
 
 
 # ---------------------------------------------------------------------------
@@ -251,9 +284,46 @@ def _set_erz_bool(key, value):
         config.write(f)
 
 
+# Spaltennamen-Varianten fuer Geburtsdatum im Erzieher-Export
+_GEBURTSDATUM_COLS = ('Geburtsdatum', 'Schüler-Geburtsdatum', 'Schüler: Geburtsdatum')
+
+
+def _calc_age_from_str(geb_str, today=None):
+    """Liefert Alter (int) zum Stichtag (Default: heute), oder None wenn das
+    Geburtsdatum nicht parsbar ist. Akzeptiert TT.MM.JJJJ (Schild-Standard)
+    sowie ISO YYYY-MM-DD als Fallback."""
+    if not geb_str:
+        return None
+    today = today or date.today()
+    for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+        try:
+            geb = datetime.strptime(geb_str.strip(), fmt).date()
+            return today.year - geb.year - ((today.month, today.day) < (geb.month, geb.day))
+        except (ValueError, TypeError):
+            continue
+    return None
+
+
 def _is_self_volljaehrig(erz_row):
-    """True wenn der Schueler im Erzieher-Export als 'volljaehrig' markiert ist
-    (Self-Ansprechpartner statt echter Eltern)."""
+    """True wenn der Schueler als volljaehrig gilt. Nutzt zwei Quellen:
+    1. PRIMAER: Geburtsdatum aus dem Erzieher-Export (deterministisch — wenn
+       die Schild-Vorlage 'Geburtsdatum' mit-exportiert; ≥ 18 = volljaehrig).
+    2. ZUSAETZLICH/Fallback: Schild-Heuristik via 'Erzieher: Art (Klartext)'
+       enthaelt 'volljaehrig' — deckt Sonderfaelle ab, in denen ein Schueler
+       ausdruecklich auf Erziehungsberechtigte verzichtet hat (Self-
+       Ansprechpartner-Markierung), und greift, wenn kein Geburtsdatum
+       verfuegbar ist.
+    """
+    # 1) Geburtsdatum-basiert
+    age = None
+    for col in _GEBURTSDATUM_COLS:
+        geb_str = (erz_row.get(col, '') or '').strip()
+        if geb_str:
+            age = _calc_age_from_str(geb_str)
+            break
+    if age is not None and age >= 18:
+        return True
+    # 2) Schild-Heuristik (Fallback + Sonderfall-Override)
     art = (erz_row.get('Erzieher: Art (Klartext)', '') or '').lower()
     return 'volljährig' in art or 'volljaehrig' in art
 
@@ -438,6 +508,48 @@ def _read_csv_rows(path):
     return rows
 
 
+def _read_csv_header(path):
+    """Liest nur den Header der CSV (gestrippt) — billig auch bei sehr grossen
+    Dateien. Liefert [] bei Fehler/leerer Datei."""
+    if not path or not os.path.isfile(path):
+        return []
+    try:
+        with open(path, 'r', encoding='utf-8-sig', newline='') as f:
+            reader = csv.DictReader(f, delimiter=';')
+            return [(c or '').strip() for c in (reader.fieldnames or [])]
+    except Exception:
+        return []
+
+
+def _inspect_erz_source(path):
+    """Schaut sich den Erzieher-Export-Header an und liefert Flags, welche
+    optionalen Spalten die genutzte Schild-Vorlage enthaelt — fuer die UI,
+    damit der Nutzer sieht, dass z.B. Stammdaten- oder Geburtsdatum-Spalten
+    vorhanden sind und der Anspr-Export entsprechend (un-)noetig ist."""
+    headers = set(_read_csv_header(path))
+    if not headers:
+        return {
+            'has_student_stamm':  False,
+            'has_geburtsdatum':   False,
+            'klasse_col':         None,
+            'vorname_col':        None,
+            'nachname_col':       None,
+            'geburtsdatum_col':   None,
+        }
+    klasse_col   = next((c for c in _STUDENT_KLASSE_COLS   if c in headers), None)
+    vorname_col  = next((c for c in _STUDENT_VORNAME_COLS  if c in headers), None)
+    nachname_col = next((c for c in _STUDENT_NACHNAME_COLS if c in headers), None)
+    geb_col      = next((c for c in _GEBURTSDATUM_COLS     if c in headers), None)
+    return {
+        'has_student_stamm':  bool(klasse_col and vorname_col and nachname_col),
+        'has_geburtsdatum':   bool(geb_col),
+        'klasse_col':         klasse_col,
+        'vorname_col':        vorname_col,
+        'nachname_col':       nachname_col,
+        'geburtsdatum_col':   geb_col,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Verarbeitung
 # ---------------------------------------------------------------------------
@@ -449,10 +561,13 @@ def status_info():
     out_dir   = get_output_dir()
     erz_file  = _latest_csv(erz_dir)
     ansp_file = _latest_csv(ansp_dir)
+    erz_inspect = _inspect_erz_source(erz_file)
     return {
         'erzieher_export_directory':        erz_dir,
         'ansprechpartner_export_directory': ansp_dir,
         'output_directory':                 out_dir,
+        # Welche optionalen Spalten enthaelt die genutzte Erzieher-Vorlage?
+        'erz_source_inspect':               erz_inspect,
         'zip_name_template':                get_zip_name_template(),
         'smart_match':                      get_smart_match(),
         'filter_volljaehrig':               get_filter_volljaehrig(),
@@ -1017,8 +1132,10 @@ def raw_source(max_rows=500):
                 used_erz.add(f'Erzieher {i}: {fld}')
     # Erzieher-Export-Telefon (Pseudo-Anspr-Zeile fuer phone_from_erz_first)
     used_erz.update(ERZ_PHONE_COLS.values())
-    # Klasse + Volljaehrig-Flag (fuer Missing-Report)
+    # Klasse / Name / Geburtsdatum / Vollj.-Flag (fuer UI-Anzeige, Missing-Report
+    # und Vollj.-Filter)
     used_erz.update({'Klasse', 'Erzieher: Art (Klartext)', 'Vorname', 'Nachname'})
+    used_erz.update(_GEBURTSDATUM_COLS)
     used_anp = set(ANSPRECHPARTNER_FIELD_MAP.keys()) | {'Schüler_ID'}
 
     return {

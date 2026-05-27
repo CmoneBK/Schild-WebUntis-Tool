@@ -248,11 +248,28 @@ Falls Sie Schüler-Fotos im Dashboard anzeigen und/oder als ZIP für den WebUnti
 Falls Sie den 👨‍👩‍👧-Workflow nutzen möchten, um Erzieher-Daten von SchildNRW nach WebUntis zu konvertieren:
 
 - **Erzieher-Export aus Schild (Pflicht):**
-  - In Schild eine Export-Vorlage anlegen, die mindestens diese Spalten enthält:
-    - **Pflicht:** `Interne ID-Nummer`, `Erzieher i: Nachname`, `Erzieher i: Vorname`, `Erzieher i: E-Mail` (für jeden Erzieher-Slot, i&nbsp;=&nbsp;1, 2, …)
-    - **Empfohlen für die Optionen:** `Erzieher i: Anrede` / `Briefanrede` / `Titel`, `Erzieher: Art (Klartext)` (für den Volljährig-Filter und den Klassen-Report), `Telefon-Nummern: Telefon-Nummer` / `Anschluss-Art` / `Bemerkung` (für die Telefon-Verarbeitung)
-    - **Optional als Anspr-Ersatz:** `Klasse`, `Vorname`, `Nachname` (bzw. `Schüler-Klasse` / `Schüler-Vorname` / `Schüler-Nachname`) — nur nötig, wenn der Ansprechpartner-Export (unten) weggelassen werden soll
-  - Als `.csv` mit Semikolon-Separator speichern (Dateityp in Schild auf „Alle Dateien" stellen und `.csv` manuell anhängen).
+  - Datenart `Schüler`, Export als `.csv` mit Semikolon-Separator. Für die Erzieher-Felder mit i&nbsp;=&nbsp;1, 2, … so viele Slots wie Schild liefert (Standard: 2). **Kein Filter** nötig — der Export-Filter aus dem Schüler-Workflow (Status 2/8/9, aktuelles Schuljahr) kann übernommen werden.
+
+  **Empfohlene All-in-One-Vorlage** *(deckt alle Optionen ab, Schild-Screenshot-konform):*
+
+  | Spalte in Schild | Zweck |
+  |---|---|
+  | `Interne ID-Nummer` | **Pflicht** — Schüler-ID / Matching |
+  | `Klasse` | Schüler-Stammdaten für Vorschau und Klassen-Report (entfällt Ansprechpartner-Export nicht zwingend nötig) |
+  | `Nachname` | dito |
+  | `Vorname` | dito |
+  | `Geburtsdatum` | **deterministischer Volljährig-Check** (≥ 18 → volljährig). Ohne diese Spalte fällt das Tool auf die Schild-Heuristik via `Erzieher: Art (Klartext)` zurück |
+  | `Erzieher i: Anrede` | für Smart-Match (Telefon ↔ Erzieher-Slot per Anrede-Geschlecht) |
+  | `Erzieher i: Briefanrede` | Mit-Export (WebUntis nutzt aktuell nicht) |
+  | `Erzieher i: Titel` | Mit-Export |
+  | `Erzieher i: Nachname` | **Pflicht** — WebUntis-Stammdaten |
+  | `Erzieher i: Vorname` | **Pflicht** |
+  | `Erzieher i: E-Mail` | **Pflicht** (leer → Slot wird ggf. per E-Mail-Filter ausgesondert) |
+  | `Erzieher: Art (Klartext)` | Volljährig-Heuristik („Schüler/in ist volljährig") + Klassen-Report-Filter |
+  | `Telefon-Nummern: Anschluss-Art` | Smart-Match (Mutter / Vater / Notfallnummer / …) |
+  | `Telefon-Nummern: Bemerkung` | optional, wird durchgereicht |
+  | `Telefon-Nummern: Telefon-Nummer` | primäre Telefonnummer pro Schüler |
+
   - Datei im konfigurierten **Erzieher-Export-Verzeichnis** ablegen.
 - **Ansprechpartner-Export aus Schild (Optional, aber empfohlen):**
   - Liefert weitere Telefonnummern pro Schüler sowie — bei der Schild-Standard-Vorlage — die Schüler-Stammdaten (Klasse / Vorname / Nachname), die der Erzieher-Standard-Export nicht enthält.
@@ -263,7 +280,26 @@ Falls Sie den 👨‍👩‍👧-Workflow nutzen möchten, um Erzieher-Daten von
 
 > 💡 **Hinweis zur WebUntis-Realität:** WebUntis verarbeitet beim Erzieher-Import derzeit nur Vorname / Nachname / E-Mail / Schüler-ID (sowie optional die Eltern-ID). Anrede, Titel, Telefon, Anschluss-Art und Bemerkung werden trotzdem mit-exportiert, falls WebUntis seine Auswertung erweitert. Die Telefon-Verarbeitungs-Optionen sind dafür da, dass die Daten auch für eine spätere WebUntis-Nutzung sauber aufbereitet sind.
 
-Eine konkrete Spalten-Tabelle nach Verwendungszweck (Kern-Konvertierung / Tool-Features / Schüler-Stammdaten-Fallback / Mit-Export für zukünftige WebUntis-Funktionen) findet sich im ℹ️-Hilfe-Modal des Erzieher-Workflows.
+<details><summary><strong>📊 Was nutzt das Tool aus welcher Quelle?</strong> (Effekt-Matrix für die 4 typischen Konstellationen)</summary>
+
+| Feld | Primärquelle | Fallback | Bei Konflikt |
+|---|---|---|---|
+| Erzieher-Vorname / -Nachname / -E-Mail | Erzieher-Export `Erzieher i: …` | — (Pflicht) | — |
+| Schüler-Klasse / -Vor- / -Nachname | Anspr-Export `Schüler-…` | Erzieher-Export `Klasse` / `Vorname` / `Nachname` | Anspr gewinnt, Erzieher füllt Lücken |
+| Volljährig | Erzieher-Export `Geburtsdatum` (≥ 18) | Heuristik via `Erzieher: Art (Klartext)` enthält „volljährig" | Beides ODER-verknüpft (Heuristik kann zusätzlich „volljährig" setzen) |
+| Telefonnummern | Erzieher-Export `Telefon-Nummern: …` (primär, 1 pro Schüler) | Anspr-Export-Zeilen (mehrere pro Schüler) | Erzieher-Tel zuerst, Duplikate aus Anspr werden gefiltert |
+| Smart-Match Anschluss-Art → Slot | `Erzieher i: Anrede` + Anschluss-Art aus Tel-Zeile | — | Fehlt eines → positionales Matching |
+
+| Setup | Schüler-Stammdaten | Volljährig-Check | Telefonnummern |
+|---|---|---|---|
+| **A. Optimal** (Erz mit Klasse + Geb.-Datum + Anspr) | aus Anspr (+ Erz als Lückenfüller) | deterministisch ✓ | beide Quellen, dedupliziert |
+| **B. Erz all-in-one** (Erz mit Klasse + Geb.-Datum, kein Anspr) | aus Erz | deterministisch ✓ | nur Erz-Tel (1 pro Schüler) |
+| **C. Schild-Standard** (Erz minimal + Anspr) | aus Anspr; restliche leer | nur Heuristik (ungenau) | nur Anspr |
+| **D. Worst case** (Erz minimal, kein Anspr) | leer | nur Heuristik | keine |
+
+**Empfehlung:** Setup A oder B — siehe All-in-One-Vorlage oben. Anspr-Export dann nur, wenn mehrere Telefonnummern pro Schüler exportiert werden sollen.
+
+</details>
 
 **Beispiele** zum Ausprobieren: `Beispieldateien/ErzieherExport/ErzieherExport.csv` + `Beispieldateien/AnsprechpartnerExport/AnsprechpartnerExport.csv` (siehe Punkt 11).
 
@@ -277,7 +313,24 @@ Eine konkrete Spalten-Tabelle nach Verwendungszweck (Kern-Konvertierung / Tool-F
 Falls Sie den 🏭-Workflow nutzen möchten, um Auszubildende inkl. Ausbildungsbetrieb / Betreuer DSGVO-konform für den WebUntis-Import zu filtern:
 
 - **Schild-Export der Auszubildenden mit Ausbilder-Spalten:**
-  - In Schild den **Filter „Filter II"** verwenden, um nur Klassen mit dualem Ausbildungsbezug auszuwählen (oder den vollständigen Schüler-Filter belassen — die Klassen-Whitelist im Tool filtert dann nachträglich).
+  - **Empfohlener Filter** in Schild (nur duale Azubis mit Betrieb oder Kammer):
+
+    ```sql
+    Schueler.Geloescht='-' AND Schueler.Status IN (2,8,9) AND Schueler.AktSchuljahr = 2025
+    AND ((Schueler_AllgAdr.Adresse_ID = K_AllgAdresse.ID
+          AND Schueler.ID = Schueler_AllgAdr.Schueler_ID
+          AND K_AllgAdresse.AllgAdrAdressArt = 'Betrieb')
+      OR (Schueler_AllgAdr.Adresse_ID = K_AllgAdresse.ID
+          AND Schueler.ID = Schueler_AllgAdr.Schueler_ID
+          AND K_AllgAdresse.AllgAdrAdressArt = 'Kammer'))
+    ```
+
+    Damit werden ausschließlich Schüler aus dem aktuellen Schuljahr exportiert,
+    die einer Schild-Adresse mit Typ `Betrieb` oder `Kammer` zugeordnet sind —
+    also alle dualen Azubis. Den vollständigen Schüler-Filter zu belassen geht
+    auch, dann muss die Klassen-Whitelist im Tool die nicht-dualen Bildungsgänge
+    nachträglich ausfiltern. Den Filter über *„Auswahl → Filter II → Aktuelle
+    Auswahl übernehmen"* und anschließend speichern.
   - **Spalten** in der Export-Vorlage:
     - **Schüler-Identifikation:** `Interne ID-Nummer`, `Nachname`, `Vorname`, `Klasse`
     - **Ausbilder / Betreuer:** `Allg. Adresse: Betreuer Vorname`, `Allg. Adresse: Betreuer Name`, `Allg. Adresse: Betreuer E-Mail`, `Allg. Adresse: Betreuer Anrede`, `Allg. Adresse: Betreuer Titel`, `Allg. Adresse: Betreuer Telefon`, `Allg. Adresse: Betreuer Abteilung`, `Allg. Adresse: Fax-Nr.`

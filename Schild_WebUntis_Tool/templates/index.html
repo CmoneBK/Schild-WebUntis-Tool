@@ -391,7 +391,7 @@
                         <div class="alert alert-warning py-2 mb-2" id="erzieherMissingStats">Lade Klassen-Auswertung…</div>
                         <p class="small text-muted mb-2">
                             Klassenweise Liste der <strong>nicht-volljährigen Schüler</strong>, bei denen die unten gewählten Kriterien zutreffen.
-                            „Nicht volljährig" = Erzieher-Art enthält nicht <em>„volljährig"</em> — derselbe Proxy wie der Volljährig-Filter.
+                            Volljährigkeit wird primär per <code>Geburtsdatum</code> (≥ 18 → volljährig) und als Fallback per Schild-Heuristik (<code>Erzieher: Art (Klartext)</code> enthält „volljährig") bestimmt — gleiche Logik wie der Volljährig-Filter.
                         </p>
                         <!-- Konfigurierbare Kriterien -->
                         <div class="card border-warning mb-2">
@@ -555,11 +555,17 @@
                             <p class="text-muted small mb-3">Welche Schüler überhaupt in den Erzieher-Export wandern.</p>
 
                             <h5 class="mb-1">🔞 Volljährig-Filter</h5>
-                            <p class="text-muted small mb-2">Schild markiert im Feld <code>Erzieher: Art (Klartext)</code> einige Schüler als „Schüler/in ist volljährig" — typischerweise Azubis, bei denen kein Erzieher mehr gepflegt wird sondern sie selbst Ansprechpartner sind. Für den WebUntis-Erzieher-Import sind solche „Self-Erzieher"-Datensätze meist nicht sinnvoll.</p>
+                            <p class="text-muted small mb-2">Volljährige Schüler — typischerweise Azubis, bei denen kein Erzieher mehr gepflegt wird, sondern sie selbst Ansprechpartner sind — bringen i.&nbsp;d.&nbsp;R. keinen sinnvollen Erzieher-Datensatz für den WebUntis-Import.</p>
+                            <p class="text-muted small mb-2">Das Tool erkennt Volljährigkeit aus zwei Quellen:</p>
+                            <ul class="text-muted small mb-2 pl-4">
+                                <li><strong>🎂 Geburtsdatum</strong> aus der Spalte <code>Geburtsdatum</code> im Erzieher-Export (≥ 18 Jahre → volljährig) — deterministisch, sofern die Schild-Vorlage die Spalte enthält.</li>
+                                <li><strong>📝 Schild-Markierung</strong> im Feld <code>Erzieher: Art (Klartext)</code> = „Schüler/in ist volljährig" — Fallback wenn kein Geburtsdatum vorhanden, plus Sonderfall-Override (Person hat explizit auf Erziehungsberechtigte verzichtet, ist physisch aber noch nicht 18).</li>
+                            </ul>
+                            <p class="text-muted small mb-2">Volljährig gilt, sobald <em>eine</em> der beiden Quellen anschlägt.</p>
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" id="erzieher_filter_volljaehrig" name="filter_volljaehrig">
                                 <label class="form-check-label" for="erzieher_filter_volljaehrig">
-                                    <strong>Volljährige Schüler herausfiltern</strong> — Schüler mit Erzieher-Art „<em>volljährig</em>" werden weder in der Vorschau angezeigt noch in den Output-CSVs exportiert.
+                                    <strong>Volljährige Schüler herausfiltern</strong> — als volljährig erkannte Schüler werden weder in der Vorschau angezeigt noch in den Output-CSVs exportiert.
                                 </label>
                             </div>
 

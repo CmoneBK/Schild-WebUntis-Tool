@@ -48,6 +48,24 @@ document.addEventListener("DOMContentLoaded", function () {
             lines.push(haveA
                 ? `→ Aktuelle Datei: <code>${d.latest_ansprechpartner_export}</code>`
                 : `→ <span class="text-info">Keine CSV gefunden — Telefondaten/Schüler-Stammdaten kommen dann ausschließlich aus dem Erzieher-Export.</span>`);
+            // Hinweis zur Erzieher-Vorlage: welche optionalen Spalten gefunden wurden
+            const ins = d.erz_source_inspect || {};
+            if (haveE) {
+                const badges = [];
+                if (ins.has_student_stamm) {
+                    badges.push(`<span class="badge badge-success">👨‍🎓 Schüler-Stammdaten in Erzieher-Export</span>`);
+                } else if (haveA) {
+                    badges.push(`<span class="badge badge-secondary">👨‍🎓 Schüler-Stammdaten aus Anspr-Export gejoint</span>`);
+                } else {
+                    badges.push(`<span class="badge badge-warning">⚠️ Schüler-Stammdaten fehlen (weder Erzieher- noch Anspr-Export)</span>`);
+                }
+                if (ins.has_geburtsdatum) {
+                    badges.push(`<span class="badge badge-success">🎂 Geburtsdatum vorhanden (deterministischer Volljährig-Check)</span>`);
+                } else {
+                    badges.push(`<span class="badge badge-secondary" title="Kein Geburtsdatum im Erzieher-Export → Volljährigkeit nur per Schild-Heuristik 'Erzieher: Art (Klartext)' erkannt">🎂 Kein Geburtsdatum (nur Schild-Heuristik)</span>`);
+                }
+                lines.push(`<div class="mt-1">${badges.join(' ')}</div>`);
+            }
             lines.push(`<strong>Ausgabeverzeichnis:</strong> <code>${d.output_directory || '–'}</code>`);
             // Farbe: rot bei fehlendem Erzieher (Pflicht), gelb bei nur fehlendem Anspr (optional), grün sonst
             let cls = "alert-success";
