@@ -7,8 +7,112 @@ document.addEventListener("DOMContentLoaded", function () {
     const procBtn    = document.getElementById("erzieherProcess");
     const dlBtn      = document.getElementById("erzieherDownload");
     const resultEl   = document.getElementById("erzieherResult");
+    const classChipsEl = document.getElementById("erzieherClassChips");
 
     let zipReady = false;
+
+    // ---- Klassen-Whitelist State (analog Ausbilder-Workflow) -----------
+    const NONE_SENTINEL = '__NONE__';
+    const classState = {
+        classes: [],         // alle verfuegbaren Klassen aus der Quelle
+        classFilter: [],     // aktiver Filter (leer = alle, ['__NONE__'] = keine)
+    };
+
+    function escHtmlBasic(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
+
+    function isNoneClassMode() {
+        return classState.classFilter.length === 1 && classState.classFilter[0] === NONE_SENTINEL;
+    }
+    function isAllClassMode() {
+        return !isNoneClassMode() && classState.classFilter.length === 0;
+    }
+    function collapseClassFilter(cur) {
+        // cur: Set<string>
+        if (cur.size === classState.classes.length) return [];               // alle -> Default
+        if (cur.size === 0)                          return [NONE_SENTINEL]; // keine -> explizit nichts
+        return Array.from(cur);
+    }
+
+    function renderClassChips() {
+        if (!classChipsEl) return;
+        if (!classState.classes.length) {
+            classChipsEl.innerHTML = '<span class="text-muted small">Keine Klassen in der Quelle gefunden. (Schüler-Stammdaten fehlen im Erzieher- und Anspr-Export?)</span>';
+            return;
+        }
+        const allMode  = isAllClassMode();
+        const noneMode = isNoneClassMode();
+        const filterSet = new Set(classState.classFilter);
+        const chips = classState.classes.map(k => {
+            let active;
+            if (allMode)       active = true;
+            else if (noneMode) active = false;
+            else               active = filterSet.has(k);
+            const cls = active ? 'btn-success' : 'btn-outline-secondary';
+            return `<button type="button" class="btn btn-sm ${cls} mr-1 mb-1 erz-class-chip" data-class="${escHtmlBasic(k)}">${escHtmlBasic(k)}</button>`;
+        }).join('');
+        const allLabel = allMode ? 'Alle abwählen' : 'Alle wählen';
+        const allCls   = allMode ? 'btn-info'     : 'btn-outline-info';
+        const allBtn   = `<button type="button" class="btn btn-sm ${allCls} mr-2 mb-1" id="erzClassAll" title="Schaltet zwischen 'alle Klassen aktiv' und 'keine Klasse aktiv' um.">${allLabel}</button>`;
+        const warning  = noneMode
+            ? '<div class="text-danger small mt-2">⚠️ Keine Klasse aktiv — es würde nichts exportiert (Vorschau und Klassen-Report sind leer).</div>'
+            : '';
+        classChipsEl.innerHTML = allBtn + chips + warning;
+
+        classChipsEl.querySelectorAll('.erz-class-chip').forEach(btn => {
+            btn.addEventListener('click', () => toggleClassChip(btn.dataset.class));
+        });
+        document.getElementById('erzClassAll')?.addEventListener('click', () => {
+            classState.classFilter = isAllClassMode() ? [NONE_SENTINEL] : [];
+            saveClassFilter();
+            renderClassChips();
+            invalidateCachedErzieherViews();
+        });
+    }
+
+    function toggleClassChip(k) {
+        const allMode  = isAllClassMode();
+        const noneMode = isNoneClassMode();
+        let cur;
+        if (allMode) {
+            cur = new Set(classState.classes); cur.delete(k);
+        } else if (noneMode) {
+            cur = new Set([k]);
+        } else {
+            cur = new Set(classState.classFilter);
+            if (cur.has(k)) cur.delete(k); else cur.add(k);
+        }
+        classState.classFilter = collapseClassFilter(cur);
+        saveClassFilter();
+        renderClassChips();
+        invalidateCachedErzieherViews();
+    }
+
+    async function saveClassFilter() {
+        try {
+            const r = await fetch('/api/erzieher/save_class_filter', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ classes: classState.classFilter }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) throw new Error(d.error || r.statusText);
+        } catch (e) {
+            alert('Fehler beim Speichern der Klassen-Whitelist: ' + e);
+        }
+    }
+
+    function invalidateCachedErzieherViews() {
+        // Caches der Preview/Missing-Bereiche verwerfen (sie verwenden den
+        // Klassen-Filter im Backend) und ggf. neu laden, wenn gerade sichtbar.
+        previewData = null;
+        missingData = null;
+        if (previewArea && previewArea.style.display !== 'none') loadPreview();
+        if (missingArea && missingArea.style.display !== 'none') loadMissing();
+    }
 
     async function loadStatus() {
         if (!statusEl) return;
@@ -34,6 +138,11 @@ document.addEventListener("DOMContentLoaded", function () {
             if (eltCb && typeof d.assign_eltern_ids === 'boolean') eltCb.checked = d.assign_eltern_ids;
             // Eltern-ID-DB-Status nachladen, wenn das Settings-Panel offen ist
             loadElternIdStats();
+
+            // Klassen-Whitelist: Liste der verfuegbaren Klassen + aktiver Filter
+            classState.classes     = Array.isArray(d.classes_available) ? d.classes_available : [];
+            classState.classFilter = Array.isArray(d.class_filter)      ? d.class_filter      : [];
+            renderClassChips();
 
             const haveE = !!d.latest_erzieher_export;
             const haveA = !!d.latest_ansprechpartner_export;

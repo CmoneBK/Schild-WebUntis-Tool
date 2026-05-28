@@ -349,6 +349,10 @@ phone_from_erz_first = True
 # (persistent in eltern_ids.json), damit WebUntis denselben Erzieher ueber
 # Geschwister hinweg als denselben Account erkennt.
 assign_eltern_ids = False
+# Klassen-Whitelist (Komma-getrennt, analog Ausbilder). Leer = alle Klassen
+# werden uebernommen. Sentinel '__NONE__' = explizit keine Klasse aktiv
+# (nichts wird exportiert — fuer 'Alle abwaehlen' im UI).
+class_filter =
 
 [Ausbilder]
 # Vorlage fuer den Dateinamen der Ausbilder-Import-CSV.
@@ -529,6 +533,9 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             if not config.has_option('Erzieher', 'assign_eltern_ids'):
                 config.set('Erzieher', 'assign_eltern_ids', 'False')
+                updated = True
+            if not config.has_option('Erzieher', 'class_filter'):
+                config.set('Erzieher', 'class_filter', '')
                 updated = True
 
             # Ausbilder (Phase 3 — aktiv)
@@ -1783,6 +1790,23 @@ def erzieher_missing_export():
         "directory": erzieher_processor.get_output_dir(),
         "counts":    counts,
     })
+
+
+@app.route('/api/erzieher/save_class_filter', methods=['POST'])
+def erzieher_save_class_filter():
+    """Speichert die Klassen-Whitelist (analog Ausbilder). Erwartet
+    `{'classes': [klassen-namen]}`; leerer Array = alle Klassen aktiv,
+    `['__NONE__']` = explizit keine."""
+    import erzieher_processor
+    data = request.json or {}
+    classes = data.get('classes', [])
+    if not isinstance(classes, list):
+        return jsonify({"error": "Feld 'classes' muss eine Liste sein."}), 400
+    try:
+        erzieher_processor.save_class_filter(classes)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True, "class_filter": erzieher_processor.get_class_filter()})
 
 
 @app.route('/api/erzieher/eltern_ids/status', methods=['GET'])

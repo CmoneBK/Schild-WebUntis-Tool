@@ -791,6 +791,17 @@ oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüf
     Die Anordnung folgt der Gruppierung im Settings-Panel.</p>
 
     <h6>👨‍🎓 Schüler-Filter</h6>
+
+    <p><strong>🏫 Klassen-Whitelist</strong> <em>(Default: alle Klassen aktiv)</em><br>
+    Über die farbigen Klassen-Chips über den Action-Buttons (oben im Workflow,
+    analog zum Ausbilder-Workflow) lassen sich ganze Klassen aus dem Export
+    ausschließen — z.&nbsp;B. bei Berufskolleg-Klassen, deren Erzieher-Daten
+    irrelevant sind. Der Filter wirkt einheitlich auf Vorschau, Klassen-Report
+    und den eigentlichen Export. Empfehlung: <em>„Alle wählen"</em> als
+    Default belassen, gezielt einzelne Klassen abwählen statt umgekehrt.
+    Voraussetzung: das Tool kennt die Klassen (entweder aus dem Anspr-Export
+    oder über eine erweiterte Erzieher-Vorlage mit Spalte <code>Klasse</code>).</p>
+
     <p><strong>🔞 Volljährig-Filter</strong> <em>(Default: aus)</em><br>
     Als volljährig erkannte Schüler werden komplett aus dem Export entfernt.
     Volljährigkeit wird aus zwei Quellen bestimmt — eine reicht:</p>

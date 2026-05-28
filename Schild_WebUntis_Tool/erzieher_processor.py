@@ -52,6 +52,33 @@ Datenquellen-Strategie (welche Spalte kommt woher?):
   alle Tool-Features (UI-Anzeige, Klassen-Report, deterministischer Vollj.-Check)
   funktionieren vollstaendig. Die Status-Box im Frontend zeigt per Badge an,
   welches Setup erkannt wurde (siehe _inspect_erz_source()).
+
+Filter-Optionen im Ueberblick (alle persistent in [Erzieher]-Section):
+  Schueler-Auswahl (greift VOR der Verarbeitung):
+    - class_filter         — Klassen-Whitelist analog Ausbilder: Liste oder
+                             ['__NONE__'] Sentinel; leer = alle Klassen.
+                             Spiegelt UI-Chip-Auswahl. Siehe _resolve_class_filter()
+                             und _student_passes_class().
+    - filter_volljaehrig   — Schueler ueber _is_self_volljaehrig() rauswerfen.
+
+  Erzieher-Slot-Auswahl (greift beim Zusammenbau der Output-CSVs):
+    - require_email        — Slots ohne E-Mail ueberspringen.
+    - fill_dummies         — Leere Felder mit DUMMY-Werten fuellen (siehe
+                             DUMMY_VALUES).
+
+  Telefon/Slot-Mapping:
+    - smart_match          — Anschluss-Art-basiertes Slot-Mapping (siehe
+                             _smart_match_student()).
+    - phone_from_erz_first — Erzieher-interne Telefonnummer als prioritaere
+                             Pseudo-Anspr-Zeile (siehe _erz_phone_pseudo()
+                             und _merge_phone_sources()).
+    - lift_limit           — Ueberzaehlige Telefon-Zeilen werden zu virtuellen
+                             Erzieher_3/_4/...-Slots statt zu Orphans
+                             (Phase 3 in _smart_match_student()).
+
+  Output-Erweiterung:
+    - assign_eltern_ids    — Persistente schulweite Eltern-IDs via
+                             eltern_id_manager (Vorname+Nachname+E-Mail als Key).
 """
 
 import os
@@ -258,6 +285,57 @@ def get_phone_from_erz_first():
 
 def save_phone_from_erz_first(value):
     _set_erz_bool('phone_from_erz_first', value)
+
+
+def get_class_filter():
+    """Klassen-Whitelist analog Ausbilder. Liefert Liste der zu beruecksichtigenden
+    Klassen (leer = alle). Sentinel '__NONE__' = explizit keine Klasse aktiv
+    (Default ist 'leer = alle', deshalb braucht's den Marker, um 'explizit
+    nichts' von 'noch nicht konfiguriert' zu unterscheiden)."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    raw = config.get('Erzieher', 'class_filter', fallback='').strip()
+    if not raw:
+        return []
+    return [c.strip() for c in raw.split(',') if c.strip()]
+
+
+def save_class_filter(classes):
+    """Speichert die Klassen-Whitelist (Liste[str])."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Erzieher'):
+        config.add_section('Erzieher')
+    cleaned = [str(c).strip() for c in (classes or []) if str(c).strip()]
+    config.set('Erzieher', 'class_filter', ','.join(cleaned))
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+def _resolve_class_filter(class_filter):
+    """Normalisiert die Whitelist in (mode, set_of_classes):
+       mode='all'  -> Set ist leer und ignoriert; alle Klassen durch
+       mode='none' -> keine Klasse durch (Sentinel __NONE__)
+       mode='set'  -> nur die Klassen aus dem Set durch
+    """
+    cf = list(class_filter or [])
+    if not cf:
+        return ('all', set())
+    if '__NONE__' in cf:
+        return ('none', set())
+    return ('set', {c.strip() for c in cf if c.strip()})
+
+
+def _student_passes_class(stamm, mode, klassen_set):
+    """Spiegelt die Backend-Filter-Logik aus filter_and_write() (Ausbilder):
+    mode='all'  -> True
+    mode='none' -> False
+    mode='set'  -> Klasse muss im Set sein (Schueler ohne Klasse faellt raus)
+    """
+    if mode == 'all':  return True
+    if mode == 'none': return False
+    klasse = (stamm or {}).get('klasse', '') or ''
+    return klasse.strip() in klassen_set
 
 
 def get_lift_limit():
@@ -562,12 +640,29 @@ def status_info():
     erz_file  = _latest_csv(erz_dir)
     ansp_file = _latest_csv(ansp_dir)
     erz_inspect = _inspect_erz_source(erz_file)
+    # Verfuegbare Klassen + aktiver Whitelist-Filter — fuer die Chip-UI.
+    # Klassen kommen primaer aus dem Anspr-Export (Schueler-Klasse), Fallback
+    # aus dem Erzieher-Export (falls Klasse-Spalte vorhanden).
+    classes_available = []
+    if erz_file:
+        try:
+            lookup = _merge_student_lookups(
+                _student_lookup_from_anspr(ansp_file),
+                _student_lookup_from_erz(_read_csv_rows(erz_file)),
+            )
+            classes_available = sorted({s['klasse'] for s in lookup.values()
+                                        if s.get('klasse')})
+        except Exception:
+            classes_available = []
     return {
         'erzieher_export_directory':        erz_dir,
         'ansprechpartner_export_directory': ansp_dir,
         'output_directory':                 out_dir,
         # Welche optionalen Spalten enthaelt die genutzte Erzieher-Vorlage?
         'erz_source_inspect':               erz_inspect,
+        # Klassen-Whitelist (analog Ausbilder)
+        'classes_available':                classes_available,
+        'class_filter':                     get_class_filter(),
         'zip_name_template':                get_zip_name_template(),
         'smart_match':                      get_smart_match(),
         'filter_volljaehrig':               get_filter_volljaehrig(),
@@ -588,7 +683,8 @@ def status_info():
 
 def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
             filter_volljaehrig=None, require_email=None, fill_dummies=None,
-            lift_limit=None, phone_from_erz_first=None, assign_eltern_ids=None):
+            lift_limit=None, phone_from_erz_first=None, assign_eltern_ids=None,
+            class_filter=None):
     """
     Verarbeitet die zwei CSVs und liefert (result_files, stats).
 
@@ -611,6 +707,7 @@ def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
     if lift_limit is None:         lift_limit = get_lift_limit()
     if phone_from_erz_first is None: phone_from_erz_first = get_phone_from_erz_first()
     if assign_eltern_ids is None:    assign_eltern_ids = get_assign_eltern_ids()
+    if class_filter is None:         class_filter = get_class_filter()
 
     erzieher_path = erzieher_path or _latest_csv(get_erzieher_export_dir())
     ansprechpartner_path = ansprechpartner_path or _latest_csv(get_ansprechpartner_export_dir())
@@ -633,6 +730,23 @@ def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
         ansp_rows = _read_csv_rows(ansprechpartner_path)
         if ansp_rows and 'Schüler_ID' not in ansp_rows[0]:
             raise ValueError("Spalte 'Schüler_ID' fehlt im Ansprechpartner-Export.")
+
+    # Klassen-Whitelist anwenden — VOR allen anderen Filterstufen, damit die
+    # nachfolgenden Stats (volljaehrig_filtered, dummy_fills, …) sich nur auf
+    # den vom Nutzer ausgewaehlten Klassen-Pool beziehen.
+    class_mode, classes_set = _resolve_class_filter(class_filter)
+    class_filtered = 0
+    if class_mode != 'all':
+        student_lookup = _merge_student_lookups(
+            _student_lookup_from_anspr(ansprechpartner_path),
+            _student_lookup_from_erz(erz_rows),
+        )
+        before = len(erz_rows)
+        erz_rows = [r for r in erz_rows
+                    if _student_passes_class(
+                        student_lookup.get((r.get('Interne ID-Nummer', '') or '').strip(), {}),
+                        class_mode, classes_set)]
+        class_filtered = before - len(erz_rows)
 
     # Volljaehrige Schueler filtern + Stats
     volljaehrig_filtered = 0
@@ -790,6 +904,9 @@ def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
         'assign_eltern_ids':            assign_eltern_ids,
         'eltern_id_new':                eltern_id_new,
         'eltern_id_reused':             eltern_id_reused,
+        'class_filter':                 list(class_filter or []),
+        'class_filter_mode':            class_mode,
+        'class_filtered':               class_filtered,
     }
     return result_files, stats
 
@@ -831,6 +948,29 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
     erz_header  = list(erz_rows[0].keys())  if erz_rows  else []
     ansp_header = list(ansp_rows[0].keys()) if ansp_rows else []
 
+    # Schueler-Stammdaten-Lookup — kombiniert aus beiden Quellen.
+    # Anspr-Export ist die primaere Quelle (Schild-Standard); Erzieher-Export
+    # ist Fallback, falls die Schule die Stammdaten-Spalten ebenfalls in die
+    # Erzieher-Vorlage aufgenommen hat oder der Anspr-Export gar nicht existiert.
+    # Brauchen wir frueh, weil der Klassen-Filter darauf zugreift.
+    student_lookup = _merge_student_lookups(
+        _student_lookup_from_anspr(ansprechpartner_path),
+        _student_lookup_from_erz(erz_rows),
+    )
+
+    # Klassen-Whitelist anwenden — VOR allen anderen Filterstufen, damit die
+    # nachfolgenden Stats sich nur auf den vom Nutzer ausgewaehlten Pool beziehen.
+    class_filter = get_class_filter()
+    class_mode, classes_set = _resolve_class_filter(class_filter)
+    class_filtered = 0
+    if class_mode != 'all':
+        before = len(erz_rows)
+        erz_rows = [r for r in erz_rows
+                    if _student_passes_class(
+                        student_lookup.get((r.get('Interne ID-Nummer', '') or '').strip(), {}),
+                        class_mode, classes_set)]
+        class_filtered = before - len(erz_rows)
+
     # Volljaehrige Schueler optional rausfiltern
     filter_volljaehrig = get_filter_volljaehrig()
     volljaehrig_filtered = 0
@@ -843,15 +983,6 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
     ansp_by_sid = {}
     for r in ansp_rows:
         ansp_by_sid.setdefault(r.get('Schüler_ID', ''), []).append(r)
-
-    # Schueler-Stammdaten-Lookup — kombiniert aus beiden Quellen.
-    # Anspr-Export ist die primaere Quelle (Schild-Standard); Erzieher-Export
-    # ist Fallback, falls die Schule die Stammdaten-Spalten ebenfalls in die
-    # Erzieher-Vorlage aufgenommen hat oder der Anspr-Export gar nicht existiert.
-    student_lookup = _merge_student_lookups(
-        _student_lookup_from_anspr(ansprechpartner_path),
-        _student_lookup_from_erz(erz_rows),
-    )
 
     # Maximale Erzieher-Slot-Nummer aus dem Header ableiten
     max_in_header = 0
@@ -1080,6 +1211,9 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
             'eltern_id_total':              eltern_id_total,
             'eltern_id_known':              eltern_id_known,
             'eltern_id_would_new':          eltern_id_would_new,
+            'class_filter':                 list(class_filter or []),
+            'class_filter_mode':            class_mode,
+            'class_filtered':               class_filtered,
         },
         'field_mapping': {
             'from_erzieher_csv':        from_erzieher,
@@ -1352,11 +1486,21 @@ def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any')
     anspr_path_used = _latest_csv(get_ansprechpartner_export_dir())
     anspr_available = bool(anspr_path_used and os.path.isfile(anspr_path_used))
 
+    # Klassen-Whitelist auch fuer den Report respektieren — sonst tauchen
+    # Schueler aus abgewaehlten Klassen hier auf, obwohl der Nutzer sie aus
+    # dem Workflow ausgeblendet hat.
+    class_mode, classes_set = _resolve_class_filter(get_class_filter())
+
     by_class = {}
     total = 0
     students_unknown = 0   # Schueler komplett ohne Stammdaten in beiden Quellen
     for er in erz_rows:
         if not _is_minor(er):
+            continue
+        sid = (er.get('Interne ID-Nummer', '') or '').strip()
+        stamm = student_lookup.get(sid, {})
+        # Klassen-Whitelist
+        if not _student_passes_class(stamm, class_mode, classes_set):
             continue
         # Pro Kriterium pruefen + Gruende sammeln
         hits = [k for k in criteria if MISSING_CRITERIA[k]['test'](er, max_slots)]
@@ -1364,8 +1508,6 @@ def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any')
             continue
         if match_mode == 'all' and len(hits) != len(criteria):
             continue
-        sid = (er.get('Interne ID-Nummer', '') or '').strip()
-        stamm = student_lookup.get(sid, {})
         klasse   = stamm.get('klasse')   or '(ohne Klasse)'
         vorname  = stamm.get('vorname',  '')
         nachname = stamm.get('nachname', '')
@@ -1390,6 +1532,7 @@ def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any')
         'total_students':     total,
         'students_unknown':   students_unknown,
         'anspr_available':    anspr_available,
+        'class_filter_mode':  class_mode,
         'source_file':        os.path.basename(erzieher_path),
         'criteria_used':      criteria,
         'available_criteria': available,

@@ -8,8 +8,30 @@ Idee:
   - Schild exportiert Auszubildende inkl. Betreuer-Daten als CSV.
   - In WebUntis dürfen Ausbilder nur Fehlstunden derjenigen Azubis sehen, die der
     Datenverarbeitung zugestimmt haben (VO DVI, DSGVO).
-  - Tool filtert die CSV nach Klassen-Whitelist UND blendet Schüler aus, die auf
-    einer Blacklist stehen (keine Einwilligung) → fertige WebUntis-Import-CSV.
+  - Tool filtert die CSV nach mehreren Whitelists/Blacklists und schreibt eine
+    bereinigte WebUntis-Import-CSV.
+
+Filter-Stufen (alle persistent in [Ausbilder]-Section, werden in
+filter_and_write() in dieser Reihenfolge angewendet):
+  - class_filter (Komma-getrennt, Sentinel '__NONE__' = nichts; leer = alle)
+    Klassen-Whitelist — nur diese Klassen werden exportiert. Im UI als farbige
+    Chips ueber der Schueler-Tabelle gepflegt; das Frontend spiegelt den Filter
+    zusaetzlich live in der Schueler-Tabelle (Hidden-Count im Counter).
+  - blacklist_ids (Komma-getrennt)
+    Schueler-Blacklist nach Interner ID-Nummer — Schueler ohne DSGVO-Einwilligung
+    werden hier dauerhaft ausgeschlossen, im UI ueber Checkbox-Spalte pro Zeile.
+  - firma_filter_mode = 'whitelist' | 'blacklist' (Default 'blacklist')
+    + firma_whitelist (JSON-Liste) bzw. firma_blacklist (JSON-Liste)
+    Firmen-Filter — JSON wegen Kommas in Firmennamen ('Meyer, Schmidt & Co.').
+    Pro Modus ist nur EINE der beiden Listen wirksam, die andere bleibt
+    persistiert aber inaktiv. Verhalten:
+      - Whitelist + gefuellt  → nur Schueler aus diesen Firmen
+      - Whitelist + leer      → alle Schueler durch
+      - Blacklist + gefuellt  → Schueler aus diesen Firmen raus
+      - Blacklist + leer      → keine Filterung
+    Schueler ohne Firma (Spalte 'Allg. Adresse: Name1' leer) fallen im
+    Whitelist-Modus mit gefuellter Liste heraus; im Blacklist-Modus kommen sie
+    durch (analog zur Schild-/Frontend-Semantik).
 """
 
 import os
