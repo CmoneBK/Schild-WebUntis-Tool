@@ -79,6 +79,42 @@ Filter-Optionen im Ueberblick (alle persistent in [Erzieher]-Section):
   Output-Erweiterung:
     - assign_eltern_ids    — Persistente schulweite Eltern-IDs via
                              eltern_id_manager (Vorname+Nachname+E-Mail als Key).
+
+Quell-Modi (Single-File-Konsolidierung, neu in 3.2):
+  Der Schild-Schueler-Export KANN — sofern die Schild-Vorlage entsprechend
+  konfiguriert ist — dieselben 'Erzieher 1: ...' / 'Erzieher 2: ...' /
+  'Telefon-Nummern: ...' / 'Geburtsdatum' / 'Erzieher: Art (Klartext)'-Spalten
+  enthalten, die der bisherige Erzieher-Export liefert. Diese Spalten sind in
+  der Schild-Standard-Vorlage NICHT enthalten und muessen einmalig zur
+  Export-Vorlage hinzugefuegt werden (Datenart 'Schueler'). Ist das geschehen,
+  kann derselbe Schueler-Export, der fuer die Schueler-Hauptverarbeitung im
+  'Schild Exporte'-Verzeichnis (Setting 'schildexport_directory') liegt,
+  zusaetzlich als Erzieher-Quelle dienen — ein separater Schild-Erzieher-
+  Export ist dann ueberfluessig.
+
+  Welche Spalten ergaenzt werden muessen, listet inspect_schueler_for_erzieher()
+  pro Schueler-CSV detailliert auf (siehe Frontend-Status-Box).
+
+  Setting [Erzieher].schueler_export_mode:
+    - 'off'      (Default) — Quelle ausschliesslich aus erzieher_export_directory.
+                              Schüler-Export wird ignoriert; bisheriges Verhalten.
+    - 'fallback' — wenn erzieher_export_directory leer/ohne CSV ist, wird die
+                   neueste CSV aus schildexport_directory verwendet (sofern
+                   sie ein Schüler-Export ist — Detection via Marker-Spalten).
+                   Sonst bleibt der separate Erzieher-Export Quelle.
+    - 'always'   — Schüler-Export aus schildexport_directory wird IMMER
+                   bevorzugt, auch wenn ein separater Erzieher-Export existiert.
+
+  Wichtige Limitierungen im Schüler-Export-Modus:
+    - Maximal 2 Erzieher pro Schüler (Erzieher 1/Erzieher 2-Spalten). Bei
+      mehr als zwei Erziehern (z.B. Mutter, Vater, Grossmutter) fehlen alle
+      weiteren — separater Erzieher-Export aus Schild ist dann besser.
+    - Maximal 1 Telefonnummer pro Schüler (Telefon-Nummern: ...). Anspr-
+      Export ist ohnehin optional und liefert mehrere Telefone pro Schüler.
+
+  Detection: _is_schueler_export_file(path) — True wenn der Header sowohl
+  'Erzieher 1: Anrede' als auch 'Allg. Adresse: Name1' enthaelt (zweite Spalte
+  taucht NUR im Schüler-Export auf, nicht im separaten Erzieher-Export).
 """
 
 import os
@@ -362,6 +398,199 @@ def _set_erz_bool(key, value):
         config.write(f)
 
 
+# ---------------------------------------------------------------------------
+# Single-File-Konsolidierung: Schueler-Export aus AusbilderInput als alternative
+# Quelle nutzen. Details siehe Module-Docstring (Abschnitt "Quell-Modi").
+# ---------------------------------------------------------------------------
+
+_SCHUELER_EXPORT_MODES = ('off', 'fallback', 'always')
+
+
+def get_schildexport_dir():
+    """Liest das Schild-Exporte-Hauptverzeichnis aus settings.ini (gleiche
+    Quelle wie die Schueler-Hauptverarbeitung). Default '.': Repo-Wurzel/CWD.
+    Bewusst lokal definiert (statt aus main.py zu importieren), um keine
+    Cross-Modul-Zirkelabhaengigkeit beim Modul-Laden zu erzeugen."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.get('Directories', 'schildexport_directory',
+                      fallback='.').strip() or '.'
+
+
+def get_schueler_export_mode():
+    """Liefert den aktiven Quell-Modus fuer den Erzieher-Workflow:
+    'off'      (Default) — ausschliesslich erzieher_export_directory nutzen.
+    'fallback' — Schueler-Export aus AusbilderInput nur, wenn separater
+                 Erzieher-Export fehlt.
+    'always'   — Schueler-Export aus AusbilderInput hat IMMER Vorrang."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    mode = config.get('Erzieher', 'schueler_export_mode',
+                      fallback='off').strip().lower()
+    return mode if mode in _SCHUELER_EXPORT_MODES else 'off'
+
+
+def save_schueler_export_mode(mode):
+    """Speichert den Quell-Modus. Wirft ValueError bei unbekanntem Wert."""
+    mode = (mode or '').strip().lower()
+    if mode not in _SCHUELER_EXPORT_MODES:
+        raise ValueError(
+            f"schueler_export_mode muss eines von {_SCHUELER_EXPORT_MODES} sein.")
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Erzieher'):
+        config.add_section('Erzieher')
+    config.set('Erzieher', 'schueler_export_mode', mode)
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+# Basis-Marker fuer "ist eine per-Schueler-CSV" (nicht z.B. der separate
+# Erzieher-Export, der pro Zeile EINEN Erzieher beschreibt, oder ein
+# Klassen-/Lehrer-Export). 'Interne ID-Nummer' ist Schild's eindeutiger
+# Per-Schueler-Key — die mit Stamm-Daten kombinierte Variante hat hohe
+# Trennschaerfe ggue. anderen CSV-Typen.
+_SCHUELER_BASIC_REQUIRED = ('Interne ID-Nummer',)
+_SCHUELER_BASIC_STAMM    = ('Vorname', 'Nachname', 'Klasse')  # mind. EINE
+
+
+# Spalten, die der Erzieher-Workflow im Single-File-Modus konkret braucht:
+# - Hart-Pflicht:        Interne ID-Nummer (Schueler-Matching)
+# - Mindestens EINE aus: Erzieher 1: Vorname/Nachname/E-Mail (sonst leerer Output)
+# Beim Anlegen der Schild-Export-Vorlage zusaetzlich empfohlen — fuer volles
+# Feature-Set (Smart-Match, Volljaehrig-Check, Schueler-Stammdaten in der UI):
+_ERZIEHER_REQUIRED_HARD = ('Interne ID-Nummer',)
+_ERZIEHER_REQUIRED_ANY  = ('Erzieher 1: Vorname', 'Erzieher 1: Nachname',
+                           'Erzieher 1: E-Mail')
+_ERZIEHER_RECOMMENDED   = (
+    'Erzieher 1: Anrede', 'Erzieher 1: Briefanrede', 'Erzieher 1: Titel',
+    'Erzieher 2: Vorname', 'Erzieher 2: Nachname', 'Erzieher 2: E-Mail',
+    'Erzieher 2: Anrede',
+    'Telefon-Nummern: Telefon-Nummer', 'Telefon-Nummern: Anschluss-Art',
+    'Telefon-Nummern: Bemerkung',
+    'Geburtsdatum', 'Erzieher: Art (Klartext)',
+    'Klasse', 'Vorname', 'Nachname',
+)
+
+
+def _is_schueler_export_file(path):
+    """True wenn die CSV grundsaetzlich als 'per-Schueler-Export' erkennbar ist
+    (hat Interne ID-Nummer + mind. eine Stamm-Spalte). Sagt NICHTS darueber
+    aus, ob die fuer den Erzieher-Workflow noetigen 'Erzieher N: ...'-Spalten
+    drin sind — dafuer: inspect_schueler_for_erzieher().
+    Anders gesagt: erkennt 'ist dies eine Schueler-CSV?', nicht 'ist sie schon
+    fuer den Single-File-Modus gepflegt?'."""
+    if not path or not os.path.isfile(path):
+        return False
+    headers = set(_read_csv_header(path))
+    if not all(c in headers for c in _SCHUELER_BASIC_REQUIRED):
+        return False
+    return any(c in headers for c in _SCHUELER_BASIC_STAMM)
+
+
+def inspect_schueler_for_erzieher(path):
+    """Detail-Inspektion der CSV im schildexport_directory fuer den Erzieher-
+    Single-File-Modus. Liefert dem Frontend genug Info, um eine konkrete
+    Handlungsaufforderung anzuzeigen (welche Spalten muss man in der Schild-
+    Export-Vorlage zusaetzlich aktivieren?).
+
+    Returns dict mit:
+      file_exists                 — ist ueberhaupt eine CSV im Verzeichnis?
+      is_schueler_export          — Basis-Marker (ID + Stamm) erfuellt?
+      usable_for_single_file_mode — alle Pflichtspalten erfuellt UND mind. eine
+                                    Erzieher-N-Slot-Spalte vorhanden?
+      missing_required_hard       — Liste der fehlenden Hart-Pflichtspalten
+      missing_required_any        — fehlende OR-Pflicht (mind. eine muss da sein)
+      present_recommended         — vorhandene empfohlene Spalten
+      missing_recommended         — fehlende empfohlene Spalten
+      erzieher_slots_in_header    — Max-N aus 'Erzieher N: ...' Headern (0 = keine)
+    """
+    info = {
+        'file_exists':                 False,
+        'is_schueler_export':          False,
+        'usable_for_single_file_mode': False,
+        'missing_required_hard':       [],
+        'missing_required_any':        list(_ERZIEHER_REQUIRED_ANY),
+        'present_recommended':         [],
+        'missing_recommended':         list(_ERZIEHER_RECOMMENDED),
+        'erzieher_slots_in_header':    0,
+    }
+    if not path or not os.path.isfile(path):
+        return info
+    info['file_exists'] = True
+    headers = set(_read_csv_header(path))
+    info['is_schueler_export'] = _is_schueler_export_file(path)
+    info['missing_required_hard'] = [c for c in _ERZIEHER_REQUIRED_HARD if c not in headers]
+    # OR-Pflicht: mind. eine aus _ERZIEHER_REQUIRED_ANY muss vorhanden sein.
+    # Wenn KEINE drin ist, listen wir alle als "any-fehlend" — sonst leere Liste
+    # (Anforderung erfuellt).
+    any_present = any(c in headers for c in _ERZIEHER_REQUIRED_ANY)
+    info['missing_required_any'] = [] if any_present else list(_ERZIEHER_REQUIRED_ANY)
+    info['present_recommended']  = [c for c in _ERZIEHER_RECOMMENDED if c in headers]
+    info['missing_recommended']  = [c for c in _ERZIEHER_RECOMMENDED if c not in headers]
+    # Max-Slot fuer den Slot-Loop in process()/preview()
+    max_slot = 0
+    for h in headers:
+        m = re.match(r'Erzieher\s+(\d+):', h)
+        if m:
+            max_slot = max(max_slot, int(m.group(1)))
+    info['erzieher_slots_in_header'] = max_slot
+    info['usable_for_single_file_mode'] = (
+        not info['missing_required_hard']
+        and any_present
+        and max_slot > 0
+    )
+    return info
+
+
+def _resolve_erzieher_path():
+    """Liefert den effektiv genutzten Erzieher-Pfad und die Quell-Info fuer die
+    UI — abhaengig vom schueler_export_mode-Setting und der Verfuegbarkeit der
+    Verzeichnisse.
+
+    Returns:
+        (path_or_None, source_info_dict)
+        source_info_dict enthaelt:
+          mode               — aktueller Mode ('off'/'fallback'/'always')
+          source             — 'erzieher_export' | 'schueler_export' | None
+          erzieher_csv_path  — neuester Erzieher-Export (oder None)
+          schueler_csv_path  — neuester Schueler-Export aus AusbilderInput (oder None)
+          schueler_available — True wenn AusbilderInput-CSV ein erkannter Schueler-Export ist
+          fell_back          — True wenn mode='fallback' und tatsaechlich auf Schueler-Export ausgewichen wurde
+    """
+    mode = get_schueler_export_mode()
+    erz_path = _latest_csv(get_erzieher_export_dir())
+    sch_path = _latest_csv(get_schildexport_dir())
+    sch_inspect = inspect_schueler_for_erzieher(sch_path)
+    # 'verwendbar' (im engeren Sinne) = alle Pflichtspalten vorhanden;
+    # nur DANN wird im fallback/always wirklich auf die Schueler-CSV gewechselt.
+    sch_usable = sch_inspect['usable_for_single_file_mode']
+    info = {
+        'mode':                  mode,
+        'source':                None,
+        'erzieher_csv_path':     erz_path,
+        # path nur durchreichen, wenn brauchbar — sonst kann das Frontend daran
+        # einen 'aktiv genutzt'-Badge falsch dranhaengen.
+        'schueler_csv_path':     sch_path if sch_usable else None,
+        'schueler_csv_present':  bool(sch_path),
+        'schueler_available':    sch_usable,
+        'schueler_inspect':      sch_inspect,
+        'fell_back':             False,
+    }
+    if mode == 'always' and sch_usable:
+        info['source'] = 'schueler_export'
+        return sch_path, info
+    if mode == 'fallback' and not erz_path and sch_usable:
+        info['source']    = 'schueler_export'
+        info['fell_back'] = True
+        return sch_path, info
+    if erz_path:
+        info['source'] = 'erzieher_export'
+        return erz_path, info
+    # Letzter Ausweg: in 'off'/'fallback' ohne Erzieher-Export bleibt None
+    return None, info
+
+
 # Spaltennamen-Varianten fuer Geburtsdatum im Erzieher-Export
 _GEBURTSDATUM_COLS = ('Geburtsdatum', 'Schüler-Geburtsdatum', 'Schüler: Geburtsdatum')
 
@@ -637,7 +866,10 @@ def status_info():
     erz_dir   = get_erzieher_export_dir()
     ansp_dir  = get_ansprechpartner_export_dir()
     out_dir   = get_output_dir()
-    erz_file  = _latest_csv(erz_dir)
+    # Resolver entscheidet anhand schueler_export_mode, welche Quelle wirksam ist;
+    # ohne den waere der UI-Status nur halbe Wahrheit (Buttons wuerden trotz
+    # vorhandenem Schueler-Export im 'always'-Mode auf 'keine Quelle' stehen).
+    erz_file, source_info = _resolve_erzieher_path()
     ansp_file = _latest_csv(ansp_dir)
     erz_inspect = _inspect_erz_source(erz_file)
     # Verfuegbare Klassen + aktiver Whitelist-Filter — fuer die Chip-UI.
@@ -654,6 +886,13 @@ def status_info():
                                         if s.get('klasse')})
         except Exception:
             classes_available = []
+    # Schueler-Export-Quelle (Konsolidierung): zeige separat, was im
+    # 'Schild Exporte'-Hauptverzeichnis (schildexport_directory) liegt —
+    # damit das Frontend auch bei mode='off' anbieten kann, auf
+    # 'fallback'/'always' umzuschalten, falls dort ein nutzbarer Schueler-Export
+    # liegt. UI rendert daraus das Hinweis-Banner + Quellwahl-Radios.
+    schexp_dir     = get_schildexport_dir()
+    schexp_csv     = source_info.get('schueler_csv_path')
     return {
         'erzieher_export_directory':        erz_dir,
         'ansprechpartner_export_directory': ansp_dir,
@@ -678,6 +917,11 @@ def status_info():
         # Anspr-Export ist optional — Process- und Preview-Buttons brauchen ihn nicht
         'anspr_available':                  bool(ansp_file),
         'anspr_optional':                   True,
+        # Single-File-Konsolidierung (3.2): aktiver Mode + erkannte Schueler-Export-Quelle
+        'schueler_export_mode':             get_schueler_export_mode(),
+        'schueler_export_source':           source_info,
+        'schildexport_directory':           schexp_dir,
+        'latest_schueler_export':           os.path.basename(schexp_csv) if schexp_csv else None,
     }
 
 
@@ -709,7 +953,11 @@ def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
     if assign_eltern_ids is None:    assign_eltern_ids = get_assign_eltern_ids()
     if class_filter is None:         class_filter = get_class_filter()
 
-    erzieher_path = erzieher_path or _latest_csv(get_erzieher_export_dir())
+    # Resolver respektiert schueler_export_mode — kann auf den Schueler-Export
+    # aus AusbilderInput ausweichen, wenn so konfiguriert / wenn der separate
+    # Erzieher-Export fehlt.
+    if erzieher_path is None:
+        erzieher_path, _src = _resolve_erzieher_path()
     ansprechpartner_path = ansprechpartner_path or _latest_csv(get_ansprechpartner_export_dir())
 
     if not erzieher_path or not os.path.isfile(erzieher_path):
@@ -907,6 +1155,8 @@ def process(erzieher_path=None, ansprechpartner_path=None, smart_match=None,
         'class_filter':                 list(class_filter or []),
         'class_filter_mode':            class_mode,
         'class_filtered':               class_filtered,
+        'erzieher_source_path':         erzieher_path,
+        'erzieher_source_is_schueler':  _is_schueler_export_file(erzieher_path),
     }
     return result_files, stats
 
@@ -924,7 +1174,9 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
       - field_mapping:   {from_erzieher_csv: [{src,target}], from_ansprechpartner_csv: [{src,target}]}
       - sources:         {erzieher_export_file, ansprechpartner_export_file, headers_*}
     """
-    erzieher_path = erzieher_path or _latest_csv(get_erzieher_export_dir())
+    # Resolver respektiert schueler_export_mode — siehe process() fuer Details.
+    if erzieher_path is None:
+        erzieher_path, _src = _resolve_erzieher_path()
     ansprechpartner_path = ansprechpartner_path or _latest_csv(get_ansprechpartner_export_dir())
 
     if not erzieher_path or not os.path.isfile(erzieher_path):
@@ -1224,6 +1476,9 @@ def preview(erzieher_path=None, ansprechpartner_path=None):
             'ansprechpartner_export_file': os.path.basename(ansprechpartner_path) if anspr_available else None,
             'erzieher_headers':            erz_header,
             'ansprechpartner_headers':     ansp_header,
+            # Konsolidierung: erkennt das Frontend, ob die genutzte Erzieher-Quelle
+            # tatsaechlich ein Schueler-Export war (relevant fuer das Source-Badge).
+            'erzieher_is_schueler_export': _is_schueler_export_file(erzieher_path),
         },
     }
 
@@ -1233,7 +1488,9 @@ def raw_source(max_rows=500):
     die UI — damit der Nutzer schnell verifizieren kann, dass der Schild-Export
     so aussieht wie erwartet. Markiert auch welche Spalten der Workflow
     tatsaechlich liest."""
-    erz_path = _latest_csv(get_erzieher_export_dir())
+    # Resolver respektiert schueler_export_mode — so sieht der Nutzer im
+    # Quelldateien-Viewer immer die Datei, die der Workflow tatsaechlich verarbeitet.
+    erz_path, _src = _resolve_erzieher_path()
     anp_path = _latest_csv(get_ansprechpartner_export_dir())
 
     def _capped(path):
@@ -1457,7 +1714,8 @@ def missing_erzieher_report(erzieher_path=None, criteria=None, match_mode='any')
     if not criteria:
         criteria = ['no_erzieher']
 
-    erzieher_path = erzieher_path or _latest_csv(get_erzieher_export_dir())
+    if erzieher_path is None:
+        erzieher_path, _src = _resolve_erzieher_path()
     available = [{'key': k, 'label': v['label']} for k, v in MISSING_CRITERIA.items()]
     if not erzieher_path or not os.path.isfile(erzieher_path):
         raise FileNotFoundError("Keine Erzieher-Export-CSV gefunden.")

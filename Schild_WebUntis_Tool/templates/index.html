@@ -519,6 +519,26 @@
                             <h5 class="mb-1">Quelldaten-Verzeichnisse</h5>
                             <p class="text-muted small mb-3">Hier landen die Schild-Exports, die das Tool einliest.</p>
 
+                            <!-- Single-File-Konsolidierung (3.2): Quell-Modus. Erlaubt,
+                                 den Schueler-Export der Hauptverarbeitung (Setting
+                                 schildexport_directory, 'Schild Exporte'-Verzeichnis) auch
+                                 als Erzieher-Quelle zu nutzen (gleiche 'Erzieher 1/2:'-
+                                 und 'Telefon-Nummern:'-Spalten). Limit: max. 2 Erzieher
+                                 + 1 Telefon pro Schueler. Wird auto-gespeichert bei
+                                 Radio-Wechsel (kein Klick auf 'Speichern' noetig). -->
+                            <div class="form-group">
+                                <label class="mb-1">
+                                    <strong>📂 Quelle für den Erzieher-Workflow</strong>
+                                </label>
+                                <div id="erzieherSchuelerExportToggle" class="border rounded p-2" style="min-height:46px;">
+                                    <span class="text-muted small">Wird geladen…</span>
+                                </div>
+                                <small class="form-text text-muted">
+                                    <strong>Single-File-Modus</strong> — nutzt den Schüler-Export aus dem <strong>🟦📥 Schild-Exporte-Verzeichnis</strong> der Hauptverarbeitung als Alternative. Limit: max. 2 Erzieher + 1 Telefon pro Schüler.
+                                    Wird beim Klick auf einen Radio-Button sofort gespeichert (kein „Speichern" nötig).
+                                </small>
+                            </div>
+
                             <div class="form-group">
                                 <label for="erzieher_export_directory">👨‍👩‍👧 Erzieher-Export-Verzeichnis:</label>
                                 <div class="input-group">
@@ -809,6 +829,23 @@
 
                             <h5 class="mb-1">Quelldaten-Verzeichnis</h5>
                             <p class="text-muted small mb-3">Hier landet der Schild-Export der Auszubildenden inkl. Betreuer-Daten.</p>
+
+                            <!-- Single-File-Konsolidierung (3.2, symmetrisch zur Erzieher-Card):
+                                 erlaubt, denselben Schueler-Export aus dem Schild-Exporte-
+                                 Verzeichnis (Hauptverarbeitung) als Ausbilder-Quelle zu nutzen
+                                 und so das eigenstaendige AusbilderInput zu sparen. -->
+                            <div class="form-group">
+                                <label class="mb-1">
+                                    <strong>📂 Quelle für den Ausbilder-Workflow</strong>
+                                </label>
+                                <div id="ausbilderSchuelerExportToggle" class="border rounded p-2" style="min-height:46px;">
+                                    <span class="text-muted small">Wird geladen…</span>
+                                </div>
+                                <small class="form-text text-muted">
+                                    <strong>Single-File-Modus</strong> — nutzt den Schüler-Export aus dem <strong>🟦📥 Schild-Exporte-Verzeichnis</strong> der Hauptverarbeitung als Alternative.
+                                    Wird beim Klick auf einen Radio-Button sofort gespeichert (kein „Speichern" nötig); die Schüler-Tabelle lädt sich automatisch neu.
+                                </small>
+                            </div>
 
                             <div class="form-group">
                                 <label for="ausbilder_input_directory">🏭 Ausbilder-Eingabeverzeichnis:</label>

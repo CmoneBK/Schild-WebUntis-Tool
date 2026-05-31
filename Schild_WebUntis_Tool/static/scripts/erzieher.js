@@ -114,6 +114,70 @@ document.addEventListener("DOMContentLoaded", function () {
         if (missingArea && missingArea.style.display !== 'none') loadMissing();
     }
 
+    // -------------------------------------------------------------------
+    // Schueler-Export-Modus (Single-File-Konsolidierung)
+    // 3 Modi: off | fallback | always — siehe Module-Docstring im Processor.
+    // -------------------------------------------------------------------
+    const sourceToggleEl = document.getElementById("erzieherSchuelerExportToggle");
+
+    function renderSchuelerExportToggle(currentMode, schuelerAvailable, inspect) {
+        if (!sourceToggleEl) return;
+        inspect = inspect || {};
+        const MODES = [
+            { key: 'off',      label: 'Nur Erzieher-Export',         desc: 'Schüler-Export der Hauptverarbeitung wird ignoriert (Default).' },
+            { key: 'fallback', label: 'Fallback: Schüler-Export',    desc: 'Nur wenn Erzieher-Export fehlt — sonst weiterhin Erzieher-Export.' },
+            { key: 'always',   label: 'Immer Schüler-Export',        desc: 'Schüler-Export aus dem Schild-Exporte-Verzeichnis hat Vorrang.' },
+        ];
+        const radios = MODES.map(m => {
+            const checked = m.key === currentMode ? 'checked' : '';
+            // 'always' ohne tauglichen Schueler-Export waere kaputt — wir
+            // erlauben es zu wählen (User sieht Warnung im Status), disablen
+            // aber nichts (Lock-In waere uebergriffig).
+            return `<div class="form-check form-check-inline mr-3">
+                <input class="form-check-input erz-source-radio" type="radio"
+                       name="erz_source_mode" id="erz_src_${m.key}"
+                       value="${m.key}" ${checked}>
+                <label class="form-check-label small" for="erz_src_${m.key}"
+                       title="${escHtmlBasic(m.desc)}">
+                    <strong>${escHtmlBasic(m.label)}</strong>
+                </label>
+            </div>`;
+        }).join('');
+        // Statusnachricht je nach 3-Fall-Detection (siehe loadStatus())
+        let note;
+        if (schuelerAvailable) {
+            note = `<small class="text-muted">Schüler-Export ist <strong>tauglich</strong> — Umschalten wirkt sofort auf Vorschau, Klassen-Report und Export.</small>`;
+        } else if (inspect.file_exists && inspect.is_schueler_export) {
+            note = `<small class="text-warning">⚠️ Schüler-Export gefunden, aber für Single-File-Modus <strong>nicht tauglich</strong> — siehe Status-Box oben für die konkreten Spalten, die in der Schild-Export-Vorlage zusätzlich aktiviert werden müssen.</small>`;
+        } else if (inspect.file_exists) {
+            note = `<small class="text-muted">CSV im <strong>🟦📥 Schild-Exporte-Verzeichnis</strong> vorhanden, aber kein Schüler-Export (Pflicht-Stammdaten fehlen). Im Modus <code>always</code> würde die Verarbeitung scheitern.</small>`;
+        } else {
+            note = `<small class="text-muted">Keine CSV im <strong>🟦📥 Schild-Exporte-Verzeichnis</strong>. Im Modus <code>always</code> würde die Verarbeitung scheitern, solange dort keine Schild-Schüler-CSV liegt.</small>`;
+        }
+        sourceToggleEl.innerHTML = radios + `<div class="mt-1">${note}</div>`;
+        sourceToggleEl.querySelectorAll('.erz-source-radio').forEach(r => {
+            r.addEventListener('change', () => saveSchuelerExportMode(r.value));
+        });
+    }
+
+    async function saveSchuelerExportMode(mode) {
+        try {
+            const r = await fetch('/api/erzieher/save_schueler_export_mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) throw new Error(d.error || r.statusText);
+            // Quellwechsel ändert sowohl Klassen-Pool (anderer Datensatz)
+            // als auch Status-Badges — Status neu laden, dann Caches kicken.
+            invalidateCachedErzieherViews();
+            loadStatus();
+        } catch (e) {
+            alert('Fehler beim Speichern des Quell-Modus: ' + e);
+        }
+    }
+
     async function loadStatus() {
         if (!statusEl) return;
         statusEl.textContent = "Lade Status…";
@@ -146,8 +210,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const haveE = !!d.latest_erzieher_export;
             const haveA = !!d.latest_ansprechpartner_export;
-            // Anspr-Export ist optional — nur der Erzieher-Export ist Pflicht.
-            const ready = haveE;
+            // Single-File-Konsolidierung: das Backend hat ueber den Resolver
+            // schon entschieden, welche Quelle wirksam ist. 'ready' richtet
+            // sich nach dem Resolver-Ergebnis, nicht nur nach haveE — sonst
+            // bleibt der Verarbeiten-Button im 'always'-Mode (mit Schueler-
+            // Export aber ohne Erzieher-Export) faelschlicherweise disabled.
+            const sourceInfo = d.schueler_export_source || {};
+            const sourceMode = d.schueler_export_mode || 'off';
+            const activeSource = sourceInfo.source; // 'erzieher_export' | 'schueler_export' | null
+            const haveS = !!sourceInfo.schueler_available;
+            const ready = !!activeSource;
             const lines = [];
             lines.push(`<strong>Erzieher-Export-Verzeichnis:</strong> <code>${d.erzieher_export_directory || '–'}</code>`);
             lines.push(haveE
@@ -176,14 +248,80 @@ document.addEventListener("DOMContentLoaded", function () {
                 lines.push(`<div class="mt-1">${badges.join(' ')}</div>`);
             }
             lines.push(`<strong>Ausgabeverzeichnis:</strong> <code>${d.output_directory || '–'}</code>`);
-            // Farbe: rot bei fehlendem Erzieher (Pflicht), gelb bei nur fehlendem Anspr (optional), grün sonst
+
+            // Konsolidierungs-Block: 'Schild Exporte'-Hauptverzeichnis als
+            // Schueler-Export-Quelle sichtbar machen. Anzeige-Logik:
+            //  - mode != 'off' (User hat den Modus aktiv ausgewaehlt) -> immer
+            //    zeigen, inkl. Warnung bei fehlenden Spalten
+            //  - mode == 'off' + Datei voll tauglich -> positiver Discovery-
+            //    Hinweis ('koennten Sie auch nutzen')
+            //  - mode == 'off' + Datei nicht tauglich -> NICHTS zeigen, sonst
+            //    Laerm fuer User, die den Modus bewusst deaktiviert haben
+            // Fall-Aufteilung im else-if-Block:
+            //  a) gar keine CSV im Verzeichnis
+            //  b) CSV vorhanden, aber kein Schueler-Export (z.B. Lehrer-CSV)
+            //  c) CSV vorhanden + ist Schueler-Export, aber Pflichtspalten fehlen
+            //     -> konkrete Spalten-Liste anzeigen (Handlungsaufforderung)
+            //  d) CSV vorhanden + alle Pflichtspalten -> aktiv nutzbar
+            const inspect = sourceInfo.schueler_inspect || {};
+            if (sourceMode !== 'off' || haveS) {
+                const schexpDir = escHtmlBasic(d.schildexport_directory || '–');
+                const schFile   = escHtmlBasic(d.latest_schueler_export || sourceInfo.schueler_csv_present ? '' : '');
+                lines.push(`<strong>🟦📥 Schild-Exporte-Verzeichnis</strong> <span class="text-muted">(Single-File-Konsolidierung, Mode <code>${escHtmlBasic(sourceMode)}</code>)</span>: <code>${schexpDir}</code>`);
+                if (haveS) {
+                    // Fall (d): tauglich + (ggf.) aktiv
+                    const fname = escHtmlBasic(d.latest_schueler_export || '');
+                    const usedBadge = activeSource === 'schueler_export'
+                        ? ` <span class="badge badge-success">aktiv genutzt${sourceInfo.fell_back ? ' (Fallback)' : ''}</span>`
+                        : ` <span class="badge badge-light border">tauglich (Mode <code>${escHtmlBasic(sourceMode)}</code>)</span>`;
+                    lines.push(`→ Schüler-Export: <code>${fname}</code>${usedBadge}`);
+                } else if (inspect.file_exists && inspect.is_schueler_export) {
+                    // Fall (c): CSV ist Schueler-Export, aber Spalten fehlen
+                    const missingHard = inspect.missing_required_hard || [];
+                    const missingAny  = inspect.missing_required_any  || [];
+                    const slots       = inspect.erzieher_slots_in_header || 0;
+                    const fname = escHtmlBasic(inspect.file_exists ? '(neueste CSV im Verzeichnis)' : '');
+                    const parts = [];
+                    if (missingHard.length) {
+                        parts.push(`Pflichtspalten fehlen: ${missingHard.map(c => `<code>${escHtmlBasic(c)}</code>`).join(', ')}`);
+                    }
+                    if (missingAny.length) {
+                        parts.push(`mindestens eine dieser Spalten erforderlich: ${missingAny.map(c => `<code>${escHtmlBasic(c)}</code>`).join(' / ')}`);
+                    }
+                    if (slots === 0) {
+                        parts.push(`keine <code>Erzieher N: …</code>-Slot-Spalte gefunden`);
+                    }
+                    lines.push(`→ <span class="text-warning">⚠️ Schüler-Export gefunden, aber für Single-File-Modus nicht tauglich:</span><br>`
+                        + `<span class="small text-muted ml-3">${parts.join('<br>')}</span>`
+                        + `<br><span class="small text-muted ml-3">→ Bitte beim nächsten Schild-Export die fehlenden Spalten in der Vorlage mit-auswählen (Datenart <em>Schüler</em>: Erzieher 1/2 Anrede/Briefanrede/Titel/Vorname/Nachname/E-Mail, Telefon-Nummern: Anschluss-Art/Bemerkung/Telefon-Nummer, Geburtsdatum, Erzieher: Art (Klartext)).</span>`);
+                } else if (inspect.file_exists) {
+                    // Fall (b): irgendeine CSV, aber kein Schueler-Export
+                    lines.push(`→ <span class="text-muted">CSV vorhanden, aber kein Schüler-Export (Spalten <code>Interne ID-Nummer</code> + <code>Vorname</code>/<code>Nachname</code>/<code>Klasse</code> fehlen).</span>`);
+                } else {
+                    // Fall (a): leeres Verzeichnis
+                    lines.push(`→ <span class="text-muted">Keine CSV im Verzeichnis gefunden.</span>`);
+                }
+                if (activeSource === 'schueler_export') {
+                    lines.push(`<span class="text-info small">⚠️ Im Schüler-Export-Modus gilt: max. 2 Erzieher pro Schüler, max. 1 Telefonnummer pro Schüler. Für mehr Erzieher/Telefone weiterhin separaten Schild-Erzieher-Export verwenden.</span>`);
+                }
+            }
+            // Farbe: rot bei fehlender Quelle, gelb bei nur fehlendem Anspr (optional), grün sonst
             let cls = "alert-success";
-            if (!haveE) cls = "alert-warning";
-            else if (!haveA) cls = "alert-info";
+            if (!ready) cls = "alert-warning";
+            else if (!haveA && activeSource !== 'schueler_export') cls = "alert-info";
             statusEl.className = `alert ${cls} py-2 mb-3`;
-            statusEl.innerHTML = lines.join("<br>")
-                + (haveE ? "" : "<br><br>Bitte zuerst den Schild-Erzieher-Export in das Verzeichnis legen (Einstellungen → Quelldaten-Verzeichnisse).");
+            const hint = ready
+                ? ''
+                : (haveS
+                    ? '<br><br>Im <strong>🟦📥 Schild-Exporte-Verzeichnis</strong> liegt bereits ein nutzbarer Schüler-Export — Modus auf <code>fallback</code> oder <code>always</code> stellen (<em>Einstellungen → Quelle für den Erzieher-Workflow</em>), oder einen separaten Erzieher-Export in das Erzieher-Verzeichnis legen.'
+                    : '<br><br>Bitte zuerst den Schild-Erzieher-Export in das Verzeichnis legen (Einstellungen → Quelldaten-Verzeichnisse) oder den Schüler-Export der Hauptverarbeitung (<strong>🟦📥 Schild-Exporte-Verzeichnis</strong>) nutzen und Modus umschalten.');
+            statusEl.innerHTML = lines.join("<br>") + hint;
             if (procBtn) procBtn.disabled = !ready;
+
+            // Konsolidierungs-Radios: 3-Stufen-Switch unter dem Status. Wird
+            // immer gerendert (auch bei mode='off') — sonst wuerde der User die
+            // Option nie entdecken, falls er den Erzieher-Export nicht pflegt.
+            renderSchuelerExportToggle(sourceMode, haveS, sourceInfo.schueler_inspect || {});
 
             // Falls zuvor schon ein ZIP erstellt wurde (z.B. nach Neuladen)
             if (d.last_zip) {
@@ -972,8 +1110,13 @@ document.addEventListener("DOMContentLoaded", function () {
             const erzCbKeys = new Set(['smart_match', 'filter_volljaehrig',
                                        'require_email', 'fill_dummies', 'lift_limit',
                                        'phone_from_erz_first', 'assign_eltern_ids']);
+            // Konsolidierungs-Radios werden auto-gespeichert beim Toggle
+            // (saveSchuelerExportMode), gehoeren NICHT in [Directories].
+            // Trotzdem im <form> drin (UI-Gruppierung) — explizit ueberspringen.
+            const erzSkipKeys = new Set(['erz_source_mode']);
             new FormData(form).forEach((value, key) => {
-                if (erzCbKeys.has(key)) return;  // schon oben behandelt
+                if (erzCbKeys.has(key))   return;  // schon oben behandelt
+                if (erzSkipKeys.has(key)) return;  // separater Endpoint
                 directories[key] = value;
             });
             const sections = {};

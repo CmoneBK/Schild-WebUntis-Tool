@@ -353,6 +353,15 @@ assign_eltern_ids = False
 # werden uebernommen. Sentinel '__NONE__' = explizit keine Klasse aktiv
 # (nichts wird exportiert — fuer 'Alle abwaehlen' im UI).
 class_filter =
+# Single-File-Konsolidierung (3.2): nutzt den Schueler-Export aus dem
+# 'Schild Exporte'-Hauptverzeichnis (Setting schildexport_directory) auch
+# als Erzieher-Quelle (gleiche 'Erzieher 1/2: ...' und 'Telefon-Nummern: ...'-
+# Spalten wie der separate Erzieher-Export). Werte:
+#   off      — Default, ignoriert Schueler-Export
+#   fallback — nur wenn erzieher_export_directory leer ist
+#   always   — Schueler-Export hat IMMER Vorrang
+# Limit: max. 2 Erzieher pro Schueler, max. 1 Telefon pro Schueler.
+schueler_export_mode = off
 
 [Ausbilder]
 # Vorlage fuer den Dateinamen der Ausbilder-Import-CSV.
@@ -370,6 +379,13 @@ firma_filter_mode = blacklist
 # JSON, weil Firmen-Namen Kommas enthalten koennen.
 firma_whitelist = []
 firma_blacklist = []
+# Single-File-Konsolidierung (3.2): nutzt den Schueler-Export aus dem
+# 'Schild Exporte'-Hauptverzeichnis (Setting schildexport_directory) auch
+# als Ausbilder-Quelle. Werte:
+#   off      — Default, ignoriert Schueler-Export (liest aus ausbilder_input_directory)
+#   fallback — nur wenn ausbilder_input_directory leer ist
+#   always   — Schueler-Export hat IMMER Vorrang
+schueler_export_mode = off
 """
 
     # Standard-Inhalt für email_settings.ini vorbereiten
@@ -537,6 +553,12 @@ client_name = Schild-WebUntis-Tool
             if not config.has_option('Erzieher', 'class_filter'):
                 config.set('Erzieher', 'class_filter', '')
                 updated = True
+            # Single-File-Konsolidierung (3.2): default = 'off' (bestehende
+            # Installationen veraendern ihr Verhalten nicht stillschweigend —
+            # User muss in der UI explizit auf 'fallback' oder 'always' wechseln).
+            if not config.has_option('Erzieher', 'schueler_export_mode'):
+                config.set('Erzieher', 'schueler_export_mode', 'off')
+                updated = True
 
             # Ausbilder (Phase 3 — aktiv)
             if not config.has_section('Ausbilder'):
@@ -563,6 +585,11 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             if not config.has_option('Ausbilder', 'firma_filter_mode'):
                 config.set('Ausbilder', 'firma_filter_mode', 'blacklist')
+                updated = True
+            # Single-File-Konsolidierung (3.2) auch fuer Ausbilder — default 'off',
+            # damit bestehende Workflows ihre Quelle nicht stillschweigend wechseln.
+            if not config.has_option('Ausbilder', 'schueler_export_mode'):
+                config.set('Ausbilder', 'schueler_export_mode', 'off')
                 updated = True
 
             if updated:
@@ -1506,7 +1533,13 @@ def fotos_image(student_id):
     path = foto_manager.get_foto_path(student_id, foto_dir)
     if not path or not os.path.isfile(path):
         return '', 404
-    directory = os.path.dirname(path)
+    # send_from_directory loest relative Verzeichnisse gegen app.root_path
+    # (= Schild_WebUntis_Tool/) auf, NICHT gegen cwd — und die settings.ini
+    # liefert das Foto-Verzeichnis typischerweise cwd-relativ ('SchuelerFotos').
+    # Ohne abspath() schlagen alle Foto-Auslieferungen mit 404 fehl, sobald
+    # das Foto-Verzeichnis nicht zufaellig unter Schild_WebUntis_Tool/ liegt
+    # (Bug bis 3.2 Beta, siehe auch analoge Stelle im xlsx-Download).
+    directory = os.path.abspath(os.path.dirname(path))
     return send_from_directory(directory, os.path.basename(path))
 
 
@@ -1809,6 +1842,23 @@ def erzieher_save_class_filter():
     return jsonify({"success": True, "class_filter": erzieher_processor.get_class_filter()})
 
 
+@app.route('/api/erzieher/save_schueler_export_mode', methods=['POST'])
+def erzieher_save_schueler_export_mode():
+    """Speichert den Quell-Modus fuer den Erzieher-Workflow (Single-File-
+    Konsolidierung). Erwartet `{'mode': 'off'|'fallback'|'always'}`."""
+    import erzieher_processor
+    data = request.json or {}
+    mode = (data.get('mode') or '').strip().lower()
+    try:
+        erzieher_processor.save_schueler_export_mode(mode)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True,
+                    "schueler_export_mode": erzieher_processor.get_schueler_export_mode()})
+
+
 @app.route('/api/erzieher/eltern_ids/status', methods=['GET'])
 def erzieher_eltern_ids_status():
     """Statistik der persistenten Eltern-ID-Datenbank."""
@@ -1869,6 +1919,24 @@ def ausbilder_save_filter():
     except Exception as e:
         return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
     return jsonify({"success": True, "class_filter": ausbilder_processor.get_class_filter()})
+
+
+@app.route('/api/ausbilder/save_schueler_export_mode', methods=['POST'])
+def ausbilder_save_schueler_export_mode():
+    """Speichert den Quell-Modus fuer den Ausbilder-Workflow (Single-File-
+    Konsolidierung, symmetrisch zum Erzieher-Workflow). Erwartet
+    `{'mode': 'off'|'fallback'|'always'}`."""
+    import ausbilder_processor
+    data = request.json or {}
+    mode = (data.get('mode') or '').strip().lower()
+    try:
+        ausbilder_processor.save_schueler_export_mode(mode)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True,
+                    "schueler_export_mode": ausbilder_processor.get_schueler_export_mode()})
 
 
 @app.route('/api/ausbilder/save_blacklist', methods=['POST'])

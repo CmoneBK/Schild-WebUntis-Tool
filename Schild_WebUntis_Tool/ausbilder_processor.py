@@ -11,6 +11,22 @@ Idee:
   - Tool filtert die CSV nach mehreren Whitelists/Blacklists und schreibt eine
     bereinigte WebUntis-Import-CSV.
 
+Quell-Modi (Single-File-Konsolidierung, neu in 3.2):
+  Standard ist 'off': der Workflow liest den Schueler-Export aus dem
+  Ausbilder-Eingabeverzeichnis (Setting ausbilder_input_directory). Der
+  Schild-Schueler-Export der Hauptverarbeitung liegt aber typischerweise
+  schon im 'Schild Exporte'-Verzeichnis (Setting schildexport_directory)
+  und enthaelt exakt dieselben Spalten ('Klasse', 'Vorname', 'Nachname',
+  'Interne ID-Nummer', 'Allg. Adresse: Name1', 'Allg. Adresse: Betreuer ...'
+  etc.). Damit kann diese eine Datei beide Workflows speisen.
+
+  Setting [Ausbilder].schueler_export_mode:
+    - 'off'      (Default) — Verhalten wie bisher: nur ausbilder_input_directory.
+    - 'fallback' — Wenn ausbilder_input_directory leer/ohne CSV ist, wird die
+                   neueste CSV aus schildexport_directory verwendet (sofern
+                   ein Schueler-Export erkannt — Marker via _is_schueler_export_file).
+    - 'always'   — schildexport_directory hat IMMER Vorrang.
+
 Filter-Stufen (alle persistent in [Ausbilder]-Section, werden in
 filter_and_write() in dieser Reihenfolge angewendet):
   - class_filter (Komma-getrennt, Sentinel '__NONE__' = nichts; leer = alle)
@@ -203,6 +219,179 @@ def save_firma_filter_mode(mode):
 
 
 # ---------------------------------------------------------------------------
+# Single-File-Konsolidierung (3.2): Schueler-Export aus schildexport_directory
+# auch als Ausbilder-Quelle nutzbar. Details siehe Module-Docstring oben.
+# Symmetrisch zum schueler_export_mode im Erzieher-Workflow.
+# ---------------------------------------------------------------------------
+
+_SCHUELER_EXPORT_MODES = ('off', 'fallback', 'always')
+
+# Basis-Marker fuer "ist eine per-Schueler-CSV" (bewusst dupliziert zu
+# erzieher_processor, um Cross-Modul-Querbezuege zu vermeiden; wer einen
+# aendert, muss den anderen mit-aendern). 'Interne ID-Nummer' + mind. EINE
+# Stamm-Spalte trennt Schueler-Exporte verlaesslich von anderen CSV-Typen.
+_SCHUELER_BASIC_REQUIRED = ('Interne ID-Nummer',)
+_SCHUELER_BASIC_STAMM    = ('Vorname', 'Nachname', 'Klasse')
+
+# Spalten, die der Ausbilder-Workflow konkret braucht. Diese ergeben sich
+# direkt aus list_students() / filter_and_write() — siehe row.get(...)-Stellen:
+_AUSBILDER_REQUIRED_HARD = (
+    'Interne ID-Nummer',         # Matching + Blacklist
+    'Klasse',                    # Klassen-Whitelist + UI-Spalte
+    'Vorname', 'Nachname',       # UI-Spalten
+    'Allg. Adresse: Name1',      # Firma-Filter + UI-Spalte
+)
+# Optional, aber empfohlen — der Detail-Aufklapper in der Schueler-Tabelle
+# zeigt diese Felder; ohne sie wird er rein leer angezeigt.
+_AUSBILDER_RECOMMENDED = (
+    'Allg. Adresse: Betreuer Anrede',
+    'Allg. Adresse: Betreuer Titel',
+    'Allg. Adresse: Betreuer Vorname',
+    'Allg. Adresse: Betreuer Name',
+    'Allg. Adresse: Betreuer E-Mail',
+    'Allg. Adresse: Betreuer Telefon',
+    'Allg. Adresse: Betreuer Abteilung',
+    'Allg. Adresse: Fax-Nr.',
+)
+
+
+def get_schildexport_dir():
+    """Liest das Schild-Exporte-Hauptverzeichnis aus settings.ini (gleiche
+    Quelle wie die Schueler-Hauptverarbeitung). Default '.': CWD."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.get('Directories', 'schildexport_directory',
+                      fallback='.').strip() or '.'
+
+
+def get_schueler_export_mode():
+    """Liefert den aktiven Quell-Modus fuer den Ausbilder-Workflow:
+    'off' (Default) / 'fallback' / 'always'. Siehe Modul-Docstring."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    mode = config.get('Ausbilder', 'schueler_export_mode',
+                      fallback='off').strip().lower()
+    return mode if mode in _SCHUELER_EXPORT_MODES else 'off'
+
+
+def save_schueler_export_mode(mode):
+    """Speichert den Quell-Modus. Wirft ValueError bei unbekanntem Wert."""
+    mode = (mode or '').strip().lower()
+    if mode not in _SCHUELER_EXPORT_MODES:
+        raise ValueError(
+            f"schueler_export_mode muss eines von {_SCHUELER_EXPORT_MODES} sein.")
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Ausbilder'):
+        config.add_section('Ausbilder')
+    config.set('Ausbilder', 'schueler_export_mode', mode)
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+def _read_csv_header(path):
+    """Liest nur den Header der CSV (gestrippt) — billig auch bei sehr grossen
+    Dateien. Liefert [] bei Fehler/leerer Datei."""
+    if not path or not os.path.isfile(path):
+        return []
+    try:
+        enc = _detect_encoding(path)
+        with open(path, 'r', encoding=enc, newline='') as f:
+            reader = csv.DictReader(f, delimiter=';')
+            return [(c or '').strip() for c in (reader.fieldnames or [])]
+    except Exception:
+        return []
+
+
+def _is_schueler_export_file(path):
+    """True wenn die CSV grundsaetzlich als 'per-Schueler-Export' erkennbar ist
+    (Interne ID-Nummer + mind. eine Stamm-Spalte). Sagt NICHTS darueber aus,
+    ob die fuer den Ausbilder-Workflow noetigen Allg.-Adresse-Spalten drin
+    sind — dafuer: inspect_schueler_for_ausbilder()."""
+    if not path or not os.path.isfile(path):
+        return False
+    headers = set(_read_csv_header(path))
+    if not all(c in headers for c in _SCHUELER_BASIC_REQUIRED):
+        return False
+    return any(c in headers for c in _SCHUELER_BASIC_STAMM)
+
+
+def inspect_schueler_for_ausbilder(path):
+    """Detail-Inspektion der CSV im schildexport_directory fuer den Ausbilder-
+    Single-File-Modus. Symmetrisch zu erzieher_processor.inspect_schueler_for_erzieher.
+
+    Returns dict mit:
+      file_exists                 — ist ueberhaupt eine CSV im Verzeichnis?
+      is_schueler_export          — Basis-Marker (ID + Stamm) erfuellt?
+      usable_for_single_file_mode — alle Ausbilder-Pflichtspalten vorhanden?
+      missing_required_hard       — Liste der fehlenden Hart-Pflichtspalten
+      present_recommended         — vorhandene empfohlene Spalten (Betreuer-Felder)
+      missing_recommended         — fehlende empfohlene Spalten
+    """
+    info = {
+        'file_exists':                 False,
+        'is_schueler_export':          False,
+        'usable_for_single_file_mode': False,
+        'missing_required_hard':       list(_AUSBILDER_REQUIRED_HARD),
+        'present_recommended':         [],
+        'missing_recommended':         list(_AUSBILDER_RECOMMENDED),
+    }
+    if not path or not os.path.isfile(path):
+        return info
+    info['file_exists'] = True
+    headers = set(_read_csv_header(path))
+    info['is_schueler_export']    = _is_schueler_export_file(path)
+    info['missing_required_hard'] = [c for c in _AUSBILDER_REQUIRED_HARD if c not in headers]
+    info['present_recommended']   = [c for c in _AUSBILDER_RECOMMENDED if c in headers]
+    info['missing_recommended']   = [c for c in _AUSBILDER_RECOMMENDED if c not in headers]
+    info['usable_for_single_file_mode'] = not info['missing_required_hard']
+    return info
+
+
+def _resolve_input_path():
+    """Liefert den effektiv genutzten Ausbilder-Input-Pfad + Quell-Info fuer
+    die UI — analog zu erzieher_processor._resolve_erzieher_path().
+
+    Returns:
+        (path_or_None, source_info_dict)
+        source_info_dict enthaelt:
+          mode               — aktueller Mode ('off'/'fallback'/'always')
+          source             — 'ausbilder_input' | 'schueler_export' | None
+          ausbilder_csv_path — neueste CSV im ausbilder_input_directory
+          schueler_csv_path  — neuester Schueler-Export im schildexport_directory
+          schueler_available — True wenn schildexport-CSV ein erkannter Schueler-Export ist
+          fell_back          — True wenn mode='fallback' und tatsaechlich auf
+                               schildexport_directory ausgewichen wurde
+    """
+    mode = get_schueler_export_mode()
+    ausb_path = _latest_csv(get_input_dir())
+    sch_path  = _latest_csv(get_schildexport_dir())
+    sch_inspect = inspect_schueler_for_ausbilder(sch_path)
+    sch_usable  = sch_inspect['usable_for_single_file_mode']
+    info = {
+        'mode':                 mode,
+        'source':               None,
+        'ausbilder_csv_path':   ausb_path,
+        'schueler_csv_path':    sch_path if sch_usable else None,
+        'schueler_csv_present': bool(sch_path),
+        'schueler_available':   sch_usable,
+        'schueler_inspect':     sch_inspect,
+        'fell_back':            False,
+    }
+    if mode == 'always' and sch_usable:
+        info['source'] = 'schueler_export'
+        return sch_path, info
+    if mode == 'fallback' and not ausb_path and sch_usable:
+        info['source']    = 'schueler_export'
+        info['fell_back'] = True
+        return sch_path, info
+    if ausb_path:
+        info['source'] = 'ausbilder_input'
+        return ausb_path, info
+    return None, info
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -282,7 +471,9 @@ def list_students():
     in_dir   = get_input_dir()
     out_dir  = get_output_dir()
     tpl      = get_output_name_template()
-    csv_path = _latest_csv(in_dir)
+    # Resolver respektiert schueler_export_mode — kann auf den Schueler-Export
+    # aus schildexport_directory ausweichen / dort sogar Vorrang nehmen.
+    csv_path, source_info = _resolve_input_path()
     class_filter      = get_class_filter()
     blacklist         = get_blacklist()
     firma_whitelist   = get_firma_whitelist()
@@ -325,6 +516,7 @@ def list_students():
         except Exception:
             pass
 
+    sch_csv = source_info.get('schueler_csv_path')
     return {
         'input_directory':      in_dir,
         'output_directory':     out_dir,
@@ -339,6 +531,11 @@ def list_students():
         'firma_whitelist':      firma_whitelist,
         'firma_blacklist':      firma_blacklist,
         'firma_filter_mode':    firma_filter_mode,
+        # Single-File-Konsolidierung (3.2)
+        'schueler_export_mode':   get_schueler_export_mode(),
+        'schueler_export_source': source_info,
+        'schildexport_directory': get_schildexport_dir(),
+        'latest_schueler_export': os.path.basename(sch_csv) if sch_csv else None,
     }
 
 
@@ -351,7 +548,10 @@ def filter_and_write(input_path=None, classes=None, blacklist=None, output_dir=N
     CSV ins Ausgabeverzeichnis.
     Liefert (output_pfad, output_name, anzahl_eingang, anzahl_ausgang).
     """
-    input_path        = input_path or _latest_csv(get_input_dir())
+    if input_path is None:
+        # Resolver respektiert schueler_export_mode — siehe list_students()
+        # fuer Details.
+        input_path, _src = _resolve_input_path()
     classes           = list(classes) if classes is not None else get_class_filter()
     blacklist_set     = set(blacklist) if blacklist is not None else get_blacklist()
     firma_mode        = (firma_filter_mode or get_firma_filter_mode())

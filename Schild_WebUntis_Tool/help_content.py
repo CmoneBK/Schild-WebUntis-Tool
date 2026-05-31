@@ -639,7 +639,9 @@ Details unten im Abschnitt „Import in WebUntis".
 <h6>Schnellstart</h6>
 <ol>
   <li>Erzieher-Export aus Schild → in <em>Erzieher-Export-Verzeichnis</em> ablegen
-      (<strong>Pflicht</strong>).</li>
+      (<strong>Pflicht</strong>).<br>
+      <span class="small text-muted">Alternative seit 3.2 — <strong>Single-File-Modus</strong>: Wenn die Schild-Export-Vorlage für die Schüler-Hauptverarbeitung um die <code>Erzieher 1/2:</code>- und <code>Telefon-Nummern:</code>-Spalten erweitert wird (in der Standard-Vorlage nicht enthalten — die Status-Box listet konkret die fehlenden Spalten), kann der Schüler-Export aus dem <strong>🟦📥 Schild-Exporte-Verzeichnis</strong> (Setting <code>schildexport_directory</code>) auch als Erzieher-Quelle dienen. Mode-Auswahl <em>off / fallback / always</em> in den Erzieher-Einstellungen → <em>Quelle für den Erzieher-Workflow</em>. Limit: max. 2 Erzieher + 1 Telefon pro Schüler — siehe eigenen Abschnitt unten.</span>
+  </li>
   <li>Optional: Ansprechpartner-Export aus Schild → in <em>Ansprechpartner-Export-Verzeichnis</em> ablegen
       (liefert weitere Telefonnummern und — bei Schild-Standard-Vorlage — die
       Schüler-Stammdaten Klasse/Vor-/Nachname; entfällt, wenn beides bereits im
@@ -780,6 +782,116 @@ oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüf
       <tr><td><code>Anschluss-Art</code></td><td>Mutter / Vater / Notfallnummer / … — Basis für Smart-Match</td></tr>
       <tr><td><code>Bemerkung</code></td><td>z. B. <em>„Handy Mutter"</em></td></tr>
     </table>
+  </div>
+</details>
+
+<details class="erz-detail">
+  <summary>📂 Single-File-Modus — Schüler-Export aus AusbilderInput als Erzieher-Quelle (neu in 3.2)</summary>
+  <div class="erz-body">
+    <p>Der Schild-<strong>Schüler-Export</strong> (Datenart <em>Schüler</em>)
+    <strong>kann</strong> — sofern die Schild-Export-Vorlage entsprechend
+    konfiguriert ist — dieselben Spalten enthalten, die der Erzieher-Workflow
+    erwartet: <code>Interne ID-Nummer</code>, <code>Erzieher 1: …</code> /
+    <code>Erzieher 2: …</code>, <code>Telefon-Nummern: …</code>,
+    <code>Geburtsdatum</code>, <code>Erzieher: Art (Klartext)</code>,
+    <code>Klasse</code>/<code>Vorname</code>/<code>Nachname</code>.</p>
+
+    <p class="alert alert-warning py-2 px-2 small mb-2">
+    ⚠️ <strong>Achtung:</strong> Die <code>Erzieher i: …</code>- und
+    <code>Telefon-Nummern: …</code>-Spalten sind in der für die Schüler-
+    Hauptverarbeitung dokumentierten Standard-Vorlage (siehe README Punkt 1)
+    <strong>nicht</strong> enthalten — sie müssen einmalig zur Export-Vorlage
+    hinzugefügt werden, sonst meldet die Status-Box „nicht tauglich" mit einer
+    Liste der konkreten fehlenden Spalten. Die genaue Spalten-Liste steht im
+    Abschnitt „<em>Erkennung &amp; benötigte Spalten</em>" weiter unten.
+    </p>
+
+    <p>Ist die Vorlage entsprechend erweitert, kann dieselbe Datei, die für die
+    <strong>Schüler-Hauptverarbeitung</strong> im <strong>🟦📥 Schild-Exporte-
+    Verzeichnis</strong> (Setting <code>schildexport_directory</code>) liegt,
+    zusätzlich als Quelle für den Erzieher-Workflow dienen — ein <em>separater</em>
+    Schild-Erzieher-Export ist dann überflüssig.</p>
+
+    <p><strong>Wann ist das sinnvoll?</strong> Vor allem für Schulen, die
+    den Aufwand „mehrere verschiedene Schild-Export-Vorlagen pflegen" vermeiden
+    wollen. Eine einzige (entsprechend angereicherte) Vorlage deckt dann
+    Schüler- und Erzieher-Workflow ab.</p>
+
+    <h6 class="mt-2">Mode-Auswahl</h6>
+    <p>Direkt unter dem Status-Block des Erzieher-Workflows — 3 Radio-Buttons:</p>
+    <table class="col-table">
+      <tr><td><strong>off</strong> <em>(Default)</em></td><td>Verhalten wie bisher — Quelle ist ausschließlich das Erzieher-Export-Verzeichnis. Schild-Exporte-Verzeichnis wird ignoriert.</td></tr>
+      <tr><td><strong>fallback</strong></td><td>Erzieher-Export-Verzeichnis hat Vorrang. Nur wenn dort keine CSV liegt, wird auf den Schüler-Export aus dem Schild-Exporte-Verzeichnis ausgewichen (sofern erkannt).</td></tr>
+      <tr><td><strong>always</strong></td><td>Schüler-Export aus dem Schild-Exporte-Verzeichnis wird <em>immer</em> verwendet, auch wenn ein separater Erzieher-Export existiert.</td></tr>
+    </table>
+
+    <h6 class="mt-3">Erkennung &amp; benötigte Spalten in der Schild-Vorlage</h6>
+    <p>Das Tool prüft beim Status-Laden zweistufig:</p>
+    <ol>
+      <li><strong>Ist es überhaupt ein Schüler-Export?</strong> Pflicht-Marker:
+          <code>Interne ID-Nummer</code> + mind. eine von <code>Vorname</code> /
+          <code>Nachname</code> / <code>Klasse</code>.</li>
+      <li><strong>Ist es für den Single-File-Modus tauglich?</strong> Zusätzlich
+          benötigt:
+        <ul>
+          <li><code>Interne ID-Nummer</code> (Pflicht, bereits durch Schritt 1 abgedeckt)</li>
+          <li>Mindestens eine von <code>Erzieher 1: Vorname</code> / <code>Erzieher 1: Nachname</code> / <code>Erzieher 1: E-Mail</code> — sonst wäre der Output leer.</li>
+          <li>Mindestens eine Spalte mit dem Muster <code>Erzieher N: …</code> im Header (für die Slot-Erkennung).</li>
+        </ul>
+      </li>
+    </ol>
+    <p>Wenn der zweite Schritt fehlschlägt, zeigt die Status-Box <em>genau</em>
+    an, welche Spalten fehlen — Sie können sie in der Schild-Export-Vorlage
+    nachträglich aktivieren und neu exportieren.</p>
+
+    <p class="mt-2"><strong>Empfohlene Spalten in der Schild-Export-Vorlage</strong>
+    (Datenart <em>Schüler</em>) — für volles Feature-Set im Single-File-Modus:</p>
+    <table class="col-table">
+      <tr><td><strong>Pflicht</strong></td><td><code>Interne ID-Nummer</code></td></tr>
+      <tr><td><strong>Pflicht (eine davon)</strong></td><td><code>Erzieher 1: Vorname</code> · <code>Erzieher 1: Nachname</code> · <code>Erzieher 1: E-Mail</code></td></tr>
+      <tr><td><strong>Erzieher 1 (empfohlen)</strong></td><td><code>Erzieher 1: Anrede</code> · <code>Erzieher 1: Briefanrede</code> · <code>Erzieher 1: Titel</code></td></tr>
+      <tr><td><strong>Erzieher 2 (empfohlen)</strong></td><td><code>Erzieher 2: Anrede/Briefanrede/Titel/Vorname/Nachname/E-Mail</code></td></tr>
+      <tr><td><strong>Schüler-Stammdaten</strong></td><td><code>Klasse</code> · <code>Vorname</code> · <code>Nachname</code> (für UI-Anzeige + Klassen-Whitelist)</td></tr>
+      <tr><td><strong>Volljährigkeit</strong></td><td><code>Geburtsdatum</code> (deterministisch) · <code>Erzieher: Art (Klartext)</code> (Heuristik-Fallback)</td></tr>
+      <tr><td><strong>Telefonnummer</strong></td><td><code>Telefon-Nummern: Telefon-Nummer</code> · <code>Telefon-Nummern: Anschluss-Art</code> · <code>Telefon-Nummern: Bemerkung</code></td></tr>
+    </table>
+    <p class="small text-muted mb-0 mt-2">💡 Achtung: Im Schüler-Export gibt es
+    pro Schüler nur EIN Spalten-Set <code>Erzieher 1: …</code> + <code>Erzieher 2: …</code>
+    und EIN <code>Telefon-Nummern: …</code>-Set. Wer mehr als 2 Erzieher oder
+    mehrere Telefonnummern pro Schüler braucht, kommt um den separaten Schild-
+    Erzieher- bzw. Ansprechpartner-Export nicht herum (Mode <code>off</code>
+    oder <code>fallback</code> lassen den separaten Export weiterhin gewinnen).</p>
+
+    <h6 class="mt-3">Limitierungen im Schüler-Export-Modus</h6>
+    <ul>
+      <li><strong>Max. 2 Erzieher pro Schüler.</strong> Der Schüler-Export hat genau
+          <code>Erzieher 1: …</code> + <code>Erzieher 2: …</code> als Spaltenpaare —
+          eine dritte Erziehungsberechtigte (z. B. Großmutter, ggf. der volljährige
+          Schüler selbst als Self-Ansprechpartner) fehlt damit. Der separate Schild-
+          Erzieher-Export kann beliebig viele Personen pro Schüler liefern.</li>
+      <li><strong>Max. 1 Telefonnummer pro Schüler.</strong> Der Schüler-Export hat
+          nur die Spaltengruppe <code>Telefon-Nummern: …</code> (eine Zeile).
+          Mehrere Telefonnummern (Mutter + Vater + Notfallnummer) liefert nur der
+          separate Schild-Ansprechpartner-Export.</li>
+    </ul>
+
+    <h6 class="mt-3">Was bleibt gleich?</h6>
+    <ul>
+      <li>Alle anderen Optionen (Smart-Match, Volljährig-Filter, E-Mail-Pflicht,
+          Klassen-Whitelist, Eltern-IDs, Dummy-Felder) wirken identisch.</li>
+      <li>Der Klassen-Report / die Vorschau / der Quelldateien-Viewer funktionieren
+          wie gewohnt — sie zeigen jetzt halt die Schüler-CSV als Quelle.</li>
+      <li>Der Ansprechpartner-Export bleibt unabhängig — kann zusätzlich verwendet
+          werden, um mehrere Telefonnummern pro Schüler beizusteuern.</li>
+    </ul>
+
+    <p class="alert alert-info py-2 px-2 small mb-0 mt-2">
+    💡 <strong>Empfehlung:</strong> Wer für den Ausbilder-Workflow ohnehin schon
+    den Schüler-Export pflegt, setzt den Modus auf <code>fallback</code> — dann
+    wird der separate Erzieher-Export genutzt, falls vorhanden, sonst die
+    Schüler-CSV. So ist keine Konfigurations-Reise nötig, wenn man später doch
+    wieder einen dedizierten Erzieher-Export einführen möchte.
+    </p>
   </div>
 </details>
 
@@ -1130,6 +1242,90 @@ Datei zu überschreiben.</p>
     können dann direkt in Schild über die Checkbox filtern. Wurde die Checkbox in der
     Vergangenheit jedoch jemals für etwas anderes (mit-)benutzt, ist die Datenbasis nicht
     mehr verlässlich, und dieses Tool ist der praktikable Workaround.</p>
+  </div>
+</details>
+
+<details class="ausb-detail">
+  <summary>📂 Single-File-Modus — Schüler-Export aus dem Schild-Exporte-Verzeichnis als Quelle (neu in 3.2)</summary>
+  <div class="ausb-body">
+    <p>Der Schild-<strong>Schüler-Export</strong> (Datenart <em>Schüler</em>)
+    <strong>kann</strong> — sofern die Schild-Export-Vorlage entsprechend
+    konfiguriert ist — sämtliche Spalten enthalten, die der Ausbilder-Workflow
+    braucht: <code>Interne ID-Nummer</code>, <code>Klasse</code>,
+    <code>Vorname</code>, <code>Nachname</code>, <code>Allg. Adresse: Name1</code>
+    (Firma) sowie alle <code>Allg. Adresse: Betreuer …</code>-Felder.</p>
+
+    <p class="alert alert-warning py-2 px-2 small mb-2">
+    ⚠️ <strong>Achtung:</strong> Die <code>Allg. Adresse: …</code>-Spalten
+    (insbesondere <code>Name1</code> und die Betreuer-Felder) sind in der für
+    die Schüler-Hauptverarbeitung dokumentierten Standard-Vorlage (siehe README
+    Punkt 1) <strong>nicht</strong> enthalten — sie müssen einmalig zur Export-
+    Vorlage hinzugefügt werden, sonst meldet die Status-Box „nicht tauglich"
+    mit einer Liste der konkreten fehlenden Spalten. Die genaue Spalten-Liste
+    steht im Abschnitt „<em>Erkennung &amp; benötigte Spalten</em>" weiter unten.
+    </p>
+
+    <p>Ist die Vorlage entsprechend erweitert, kann <em>dieselbe</em> Datei, die
+    für die Schüler-Hauptverarbeitung im <strong>🟦📥 Schild-Exporte-Verzeichnis</strong>
+    (Setting <code>schildexport_directory</code>) liegt, auch als Ausbilder-Quelle
+    dienen — eine separate CSV im <em>Ausbilder-Eingabeverzeichnis</em> ist dann
+    überflüssig.</p>
+
+    <p><strong>Symmetrisch</strong> zum <code>schueler_export_mode</code> im
+    Erzieher-Workflow. Wenn beide Modi aktiv sind, deckt eine einzige Datei
+    Schüler- + Erzieher- + Ausbilder-Workflow ab.</p>
+
+    <h6 class="mt-2">Mode-Auswahl</h6>
+    <p>Direkt unter dem Status-Block des Ausbilder-Workflows — 3 Radio-Buttons:</p>
+    <table class="col-table">
+      <tr><td><strong>off</strong> <em>(Default)</em></td><td>Verhalten wie bisher — Quelle ist ausschließlich das Ausbilder-Eingabeverzeichnis. Schild-Exporte-Verzeichnis wird ignoriert.</td></tr>
+      <tr><td><strong>fallback</strong></td><td>Ausbilder-Eingabeverzeichnis hat Vorrang. Nur wenn dort keine CSV liegt, wird auf den Schüler-Export aus dem Schild-Exporte-Verzeichnis ausgewichen (sofern erkannt).</td></tr>
+      <tr><td><strong>always</strong></td><td>Schüler-Export aus dem Schild-Exporte-Verzeichnis wird <em>immer</em> verwendet, auch wenn im Ausbilder-Eingabeverzeichnis eine CSV liegt.</td></tr>
+    </table>
+
+    <h6 class="mt-3">Erkennung &amp; benötigte Spalten in der Schild-Vorlage</h6>
+    <p>Das Tool prüft beim Status-Laden zweistufig:</p>
+    <ol>
+      <li><strong>Ist es überhaupt ein Schüler-Export?</strong> Pflicht-Marker:
+          <code>Interne ID-Nummer</code> + mind. eine von <code>Vorname</code> /
+          <code>Nachname</code> / <code>Klasse</code>.</li>
+      <li><strong>Ist es für den Ausbilder-Single-File-Modus tauglich?</strong>
+          Zusätzlich Pflicht: <code>Interne ID-Nummer</code>, <code>Klasse</code>,
+          <code>Vorname</code>, <code>Nachname</code>, <code>Allg. Adresse: Name1</code>.</li>
+    </ol>
+    <p>Wenn der zweite Schritt fehlschlägt, zeigt die Status-Box <em>genau</em>
+    an, welche Spalten fehlen — Sie können sie in der Schild-Export-Vorlage
+    nachträglich aktivieren und neu exportieren.</p>
+
+    <p class="mt-2"><strong>Empfohlene Spalten in der Schild-Export-Vorlage</strong>
+    (Datenart <em>Schüler</em>) — für volles Feature-Set im Single-File-Modus:</p>
+    <table class="col-table">
+      <tr><td><strong>Pflicht (Schüler-Identität)</strong></td><td><code>Interne ID-Nummer</code> · <code>Klasse</code> · <code>Vorname</code> · <code>Nachname</code></td></tr>
+      <tr><td><strong>Pflicht (Firma)</strong></td><td><code>Allg. Adresse: Name1</code> — wird für den Firmen-Filter sowie die Firma-Spalte in der Schüler-Tabelle gebraucht.</td></tr>
+      <tr><td><strong>Betreuer (empfohlen)</strong></td><td><code>Allg. Adresse: Betreuer Anrede</code> · <code>Betreuer Titel</code> · <code>Betreuer Vorname</code> · <code>Betreuer Name</code> · <code>Betreuer E-Mail</code> · <code>Betreuer Telefon</code> · <code>Betreuer Abteilung</code></td></tr>
+      <tr><td><strong>Sonstiges (optional)</strong></td><td><code>Allg. Adresse: Fax-Nr.</code></td></tr>
+    </table>
+    <p class="small text-muted mb-0 mt-2">💡 Im Vergleich zum separaten Schild-Export
+    <em>„Allgemeine Adressen"</em> liefert die <em>Schüler</em>-Vorlage sogar
+    <em>mehr</em> Betreuer-Felder (Anrede / Titel / Vorname / Name / E-Mail /
+    Telefon / Abteilung) — der separate Export hat nur ein Freitext-Feld
+    <code>Ausbilder</code>.</p>
+
+    <h6 class="mt-3">Was bleibt gleich?</h6>
+    <ul>
+      <li>Alle Filter (Klassen-Whitelist, Schüler-Blacklist, Firmen-Filter,
+          Output-Name-Template) wirken identisch.</li>
+      <li>Die Schüler-Tabelle / Detail-Aufklappung / das Suche-Feld funktionieren
+          wie gewohnt — zeigen jetzt halt die Schüler-CSV als Datenquelle.</li>
+    </ul>
+
+    <p class="alert alert-info py-2 px-2 small mb-0 mt-2">
+    💡 <strong>Empfehlung:</strong> Wer für die Schüler-Hauptverarbeitung ohnehin
+    schon einen Schild-Export pflegt, setzt den Modus auf <code>fallback</code> —
+    dann wird die Ausbilder-Eingabe-CSV genutzt, falls vorhanden, sonst der
+    Schüler-Export. So lässt sich der Workflow schrittweise konsolidieren, ohne
+    sofort alle bestehenden Schild-Vorlagen anfassen zu müssen.
+    </p>
   </div>
 </details>
 
