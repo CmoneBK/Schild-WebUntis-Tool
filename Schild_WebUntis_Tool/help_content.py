@@ -1330,6 +1330,80 @@ Datei zu überschreiben.</p>
 </details>
 
 <details class="ausb-detail">
+  <summary>📧 KL-Mail-Versand — Klassenlehrkräfte über aktuelle Ausbilder-Daten informieren</summary>
+  <div class="ausb-body">
+    <p><strong>Zweck:</strong> Klassenlehrkräften die aktuell in Schild
+    hinterlegten Ausbilder-/Betreuer-Daten ihrer Klasse zur <strong>Info und
+    Kontrolle</strong> zuschicken — typische Anwendung: KL sieht eine veraltete
+    Betreuer-E-Mail oder falsche Firma und gibt das ans Sekretariat weiter zur
+    Korrektur in Schild. Damit bleibt die Datenbasis sauber, ohne dass jemand
+    aktiv prüfen müsste.</p>
+
+    <h6 class="mt-2">Aufruf &amp; Ablauf</h6>
+    <ol>
+      <li>Im Ausbilder-Workflow auf <strong>📧 KL-Mails: Vorschau</strong> klicken.</li>
+      <li>Pro Klasse wird angezeigt: KL-Name + KL-E-Mail (+ Stv-KL als CC),
+          Schüleranzahl, Betreff und Body-HTML (genau wie die KL ihn sehen wird)
+          + Link zum Excel-Anhang vorab.</li>
+      <li>Klassen via Häkchen aus-/abwählen, dann <strong>📨 Ausgewählte
+          versenden</strong> klicken. Bestätigungs-Dialog vorher.</li>
+      <li>Versand-Ergebnis (pro Klasse Erfolg/Fehler/übersprungen) wird angezeigt;
+          die generierten Excel-Dateien werden zusätzlich im
+          <em>Ausbilder-Ausgabeverzeichnis</em> unter <code>KL_Mails/&lt;Zeitstempel&gt;/</code>
+          abgelegt (als Versand-Nachweis).</li>
+    </ol>
+
+    <h6 class="mt-3">Was steht in der Mail?</h6>
+    <ul>
+      <li><strong>Body-HTML:</strong> Anrede, Erklär-Absatz, Tabelle mit den
+          Spalten <em>Schüler</em>, <em>Firma</em>, <em>Betreuer</em>,
+          <em>E-Mail</em>, <em>Telefon</em>, <em>Abteilung</em>. Inline-Styles,
+          damit's in Outlook/Gmail/Thunderbird zuverlässig rendert.</li>
+      <li><strong>Excel-Anhang:</strong> Tabelle mit denselben Daten, aber
+          getrennten Spalten für Anrede/Titel/Vorname/Nachname/Fax — direkt
+          filter-/sortierbar, gedacht zur Weiterleitung an das Sekretariat
+          bzw. als Arbeitsdatei für die KL.</li>
+    </ul>
+
+    <h6 class="mt-3">Empfänger-Auflösung</h6>
+    <p>Identisch zu den anderen Mail-Funktionen des Tools
+    (<em>admin_warnings</em>, Schüler-Workflow-Warnungen): KL und Stv-KL werden
+    pro Klasse aus den Klassen-/Lehrer-CSVs aufgelöst (bzw. via SVWS-API im
+    Schild-3-Modus). Konkret: <code>read_classes()</code> liefert
+    <code>Klassenlehrkraft_1</code>/<code>_Email</code> + <code>Klassenlehrkraft_2</code>/<code>_Email</code>.
+    Wer keine KL-E-Mail aufgelöst bekommt, wird im Versand übersprungen — eine
+    Warnung in der Vorschau weist konkret darauf hin.</p>
+
+    <h6 class="mt-3">Filter (in den Ausbilder-Einstellungen)</h6>
+    <p>Welche Filter beim KL-Mail-Versand greifen, ist pro Eigenschaft umstellbar
+    (Default: alle drei greifen — gleicher DSGVO-Standard wie beim WebUntis-Export):</p>
+    <table class="col-table">
+      <tr><td><strong>Klassen-Whitelist respektieren</strong></td><td>Nur ausgewählte Klassen bekommen eine KL-Mail. Default: an.</td></tr>
+      <tr><td><strong>Schüler-Blacklist respektieren</strong></td><td>Geblacklistete Schüler (kein DV-Einwilligung) erscheinen <em>nicht</em> in der KL-Tabelle. Default: an. ⚠️ Wer das deaktiviert, sollte sicherstellen, dass keine Daten ohne Einwilligung weitergegeben werden.</td></tr>
+      <tr><td><strong>Firmen-Filter respektieren</strong></td><td>Whitelist/Blacklist-Modus greift identisch zur Verarbeitung. Default: an.</td></tr>
+      <tr><td><strong>Stv-KL als CC</strong></td><td>Stellv. Klassenlehrkraft bekommt jede Mail in Kopie. Default: an.</td></tr>
+      <tr><td><strong>Betreff-Präfix</strong></td><td>Optionales Prefix vor dem Betreff (z.B. <code>[TEST]</code> für Probeläufe).</td></tr>
+    </table>
+
+    <h6 class="mt-3">Vorlage anpassen</h6>
+    <p>Die Mail-Vorlage liegt im <strong>E-Mail-Editor des Schüler-Workflows</strong>
+    unter dem Namen <code>ausbilder_kl_uebersicht</code> (Subject + Body) und
+    lässt sich dort WYSIWYG bearbeiten. Verfügbare Platzhalter:</p>
+    <table class="col-table">
+      <tr><td><code>$Klasse</code></td><td>Klassenname, z.B. <em>DI24a</em></td></tr>
+      <tr><td><code>$Klassenlehrer_Anrede</code></td><td><em>Herr/Frau</em> — sehr grobe Heuristik aus dem Vornamen (Schild liefert die Anrede in der Klassen-CSV nicht separat)</td></tr>
+      <tr><td><code>$Klassenlehrer_Name</code></td><td>Voller Name aus den Lehrer-Stammdaten</td></tr>
+      <tr><td><code>$Klassenlehrer_E-Mail</code></td><td>E-Mail der KL</td></tr>
+      <tr><td><code>$Stand</code></td><td>Datum des Versands</td></tr>
+      <tr><td><code>$Schueler_Anzahl</code></td><td>Schüler in der Klasse (nach den aktivierten Filtern)</td></tr>
+      <tr><td><code>$Schueler_Tabelle_HTML</code></td><td>Die fertige HTML-Tabelle (Inline-Styles)</td></tr>
+    </table>
+    <p class="small text-muted mb-0">💡 Die Standardvorlage ist neutral
+    formuliert — passen Sie sie gerne an Ihre Schul-Tonalität an.</p>
+  </div>
+</details>
+
+<details class="ausb-detail">
   <summary>📋 Vorbereitende Schritte in SchildNRW</summary>
   <div class="ausb-body">
     <p><strong>1. Betreuer-Datenpflege:</strong> Damit der spätere Ausbilder-Import in

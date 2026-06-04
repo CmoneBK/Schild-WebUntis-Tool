@@ -23,6 +23,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const editorBodyNewStudent = new Quill('#editorBodyNewStudent', quillOptions);
     const editorBodyKarteileiche = new Quill('#editorBodyKarteileiche', quillOptions);
     const editorBodyInfoNotification = new Quill('#editorBodyInfoNotification', quillOptions);
+    // KL-Mail-Editor (Ausbilder-Workflow): nur initialisieren wenn das Container-
+    // Element vorhanden ist. Sonst wirft new Quill(...) eine Exception und der
+    // Rest des Editors initialisiert sich nicht (Schueler-Editor waere kaputt).
+    const klMailEditorEl = document.getElementById('editorBodyAusbilderKlUebersicht');
+    const editorBodyAusbilderKlUebersicht = klMailEditorEl
+        ? new Quill('#editorBodyAusbilderKlUebersicht', quillOptions)
+        : null;
 
     // Store editors in a global map for access
     window.editors = {
@@ -33,6 +40,9 @@ document.addEventListener("DOMContentLoaded", function () {
         'karteileiche':       editorBodyKarteileiche,
         'info_notification':  editorBodyInfoNotification,
     };
+    if (editorBodyAusbilderKlUebersicht) {
+        window.editors['ausbilder_kl_uebersicht'] = editorBodyAusbilderKlUebersicht;
+    }
 
     // Toast Notification System
     window.showToast = function(message) {
@@ -65,12 +75,13 @@ document.addEventListener("DOMContentLoaded", function () {
             const data = await response.json();
             if (data.subject && data.body) {
                 const subjectInputId = {
-                    'entlassdatum':      'subjectEntlassdatum',
-                    'aufnahmedatum':     'subjectAufnahmedatum',
-                    'klassenwechsel':    'subjectKlassenwechsel',
-                    'new_student':       'subjectNewStudent',
-                    'karteileiche':      'subjectKarteileiche',
-                    'info_notification': 'subjectInfoNotification',
+                    'entlassdatum':            'subjectEntlassdatum',
+                    'aufnahmedatum':           'subjectAufnahmedatum',
+                    'klassenwechsel':          'subjectKlassenwechsel',
+                    'new_student':             'subjectNewStudent',
+                    'karteileiche':            'subjectKarteileiche',
+                    'info_notification':       'subjectInfoNotification',
+                    'ausbilder_kl_uebersicht': 'subjectAusbilderKlUebersicht',
                 }[type];
                 document.getElementById(subjectInputId).value = data.subject || "";
                 window.editors[type].clipboard.dangerouslyPasteHTML(textToHtml(data.body || ""));
@@ -103,6 +114,17 @@ document.addEventListener("DOMContentLoaded", function () {
             editorBodyNewStudent.clipboard.dangerouslyPasteHTML(textToHtml(data.body_new_student || ""));
             editorBodyKarteileiche.clipboard.dangerouslyPasteHTML(textToHtml(data.body_karteileiche || ""));
             editorBodyInfoNotification.clipboard.dangerouslyPasteHTML(textToHtml(data.body_info_notification || ""));
+            // KL-Mail-Vorlage (Ausbilder-Workflow) — nur befuellen wenn der
+            // entsprechende Editor existiert (Element nur in der Ausbilder-
+            // Workflow-Section vorhanden). Defensives Pruefen jedes Targets,
+            // damit das Befuellen nicht reisst, falls jemand das Markup
+            // partiell entfernt.
+            const klSubj = document.getElementById('subjectAusbilderKlUebersicht');
+            if (klSubj) klSubj.value = data.subject_ausbilder_kl_uebersicht || '';
+            if (editorBodyAusbilderKlUebersicht) {
+                editorBodyAusbilderKlUebersicht.clipboard.dangerouslyPasteHTML(
+                    textToHtml(data.body_ausbilder_kl_uebersicht || ""));
+            }
 
             // Show/Hide class change hint based on initial value
             const classChangeSelect = document.getElementById("class_change_recipients");
@@ -156,6 +178,46 @@ document.addEventListener("DOMContentLoaded", function () {
                 alert("Fehler beim Speichern der E-Mail-Vorlagen.");
             });
     });
+
+    // KL-Mail-Vorlage (Ausbilder-Workflow) speichern — eigener Endpoint, der
+    // NUR diese eine Vorlage anfasst. Wuerde der bestehende /update_templates
+    // genutzt, wuerden die anderen Vorlagen (die im KL-Mail-Editor gar nicht
+    // existieren) als leere Strings ueberschrieben werden — daher diese
+    // dedizierte Save-Route.
+    const klMailSaveBtn = document.getElementById('saveAusbilderKlMailTemplate');
+    if (klMailSaveBtn && editorBodyAusbilderKlUebersicht) {
+        klMailSaveBtn.addEventListener('click', function () {
+            const subjEl   = document.getElementById('subjectAusbilderKlUebersicht');
+            const bodyEl   = document.getElementById('bodyAusbilderKlUebersicht');
+            const resultEl = document.getElementById('ausbilderKlMailTemplateResult');
+            if (!subjEl || !bodyEl) return;
+            // Quill-Inhalt in das Hidden-Textarea spiegeln (gleiches Muster
+            // wie beim Haupt-Save oben), damit FormData den HTML-Body
+            // mitnimmt.
+            bodyEl.value = editorBodyAusbilderKlUebersicht.root.innerHTML;
+            const fd = new FormData();
+            fd.append('subject_ausbilder_kl_uebersicht', subjEl.value);
+            fd.append('body_ausbilder_kl_uebersicht',    bodyEl.value);
+            klMailSaveBtn.disabled = true;
+            const orig = klMailSaveBtn.textContent;
+            klMailSaveBtn.textContent = '⌛ Speichere…';
+            if (resultEl) resultEl.textContent = '';
+            fetch('/api/ausbilder/update_kl_mail_template', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(d => {
+                    if (resultEl) resultEl.textContent = d.message || '';
+                    if (typeof showToast === 'function') showToast(d.message || 'Gespeichert.');
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Fehler beim Speichern der KL-Mail-Vorlage.');
+                })
+                .finally(() => {
+                    klMailSaveBtn.disabled = false;
+                    klMailSaveBtn.textContent = orig;
+                });
+        });
+    }
 
     // Tabs für den E-Mail-Editor initialisieren
     const emailTabs = document.querySelectorAll('#emailTabs .nav-link');

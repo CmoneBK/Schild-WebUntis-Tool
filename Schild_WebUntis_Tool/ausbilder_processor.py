@@ -536,6 +536,12 @@ def list_students():
         'schueler_export_source': source_info,
         'schildexport_directory': get_schildexport_dir(),
         'latest_schueler_export': os.path.basename(sch_csv) if sch_csv else None,
+        # KL-Mail-Versand (3.2) — fuer Settings-Panel-Hydration
+        'kl_mail_respect_class_whitelist': get_kl_mail_respect_class_whitelist(),
+        'kl_mail_respect_blacklist':       get_kl_mail_respect_blacklist(),
+        'kl_mail_respect_firma_filter':    get_kl_mail_respect_firma_filter(),
+        'kl_mail_include_stv_kl':          get_kl_mail_include_stv_kl(),
+        'kl_mail_subject_suffix':          get_kl_mail_subject_suffix(),
     }
 
 
@@ -615,3 +621,468 @@ def filter_and_write(input_path=None, classes=None, blacklist=None, output_dir=N
             writer.writerow({k: row.get(k, '') for k in fieldnames})
 
     return out_path, name, len(rows), len(filtered)
+
+
+# ===========================================================================
+# KL-Mail-Versand (3.2): Aktuelle Ausbilder-/Betreuer-Daten an Klassen-
+# lehrkraefte zur Info + Kontrolle (Korrektur ueber das Sekretariat in Schild).
+# ===========================================================================
+#
+# Designprinzip: dieselbe Quelle wie die WebUntis-Verarbeitung (Schueler-Export,
+# je nach schueler_export_mode aus AusbilderInput oder schildexport_directory).
+# KL/Stv-KL + E-Mails kommen aus dem bestehenden classes_by_name-Lookup (main.py
+# read_classes()) — identisch zu admin_warnings(), damit keine Sondersemantik.
+#
+# Optionen (alle in [Ausbilder]-Section, default = bisheriges Verhalten gespiegelt):
+#   kl_mail_respect_class_whitelist (bool, default True)
+#     Klassen-Whitelist greift auch auf die KL-Mail. False = ALLE Klassen aus
+#     dem Schueler-Export bekommen eine Mail, egal welche Whitelist-Konfiguration.
+#   kl_mail_respect_blacklist (bool, default True)
+#     Schueler-Blacklist greift. False = auch geblacklistete Schueler tauchen in
+#     der KL-Mail-Tabelle auf (DSGVO-relevant — pruefen!).
+#   kl_mail_respect_firma_filter (bool, default True)
+#     Firmen-Whitelist/-Blacklist greift identisch zur Verarbeitung.
+#   kl_mail_include_stv_kl (bool, default True)
+#     Stv-Klassenlehrkraft als CC-Empfaenger der Mail.
+#   kl_mail_subject_suffix (str, default '')
+#     Optionaler Zusatz im Betreff (z.B. '[TEST]' fuer Probelaeufe).
+# ---------------------------------------------------------------------------
+
+# Default-Templates fuer die KL-Mail. Werden bei Bedarf in email_settings.ini
+# als [Templates].subject_ausbilder_kl_uebersicht / body_ausbilder_kl_uebersicht
+# ergaenzt — der bestehende E-Mail-Editor kann sie dann WYSIWYG anpassen.
+DEFAULT_KL_MAIL_SUBJECT = (
+    'Ausbilder-/Betreuer-Daten Ihrer Klasse $Klasse — Stand $Stand'
+)
+DEFAULT_KL_MAIL_BODY = (
+    '<p>Sehr geehrte/r $Klassenlehrer_Anrede $Klassenlehrer_Name,</p>'
+    '<p>anbei die aktuell in Schild hinterlegten Ausbilder-/Betreuer-Daten '
+    'Ihrer Klasse <strong>$Klasse</strong> (Stand $Stand). Diese werden in '
+    'WebUntis übernommen, damit die Ausbilder die Fehlstunden ihrer '
+    'Auszubildenden einsehen können.</p>'
+    '<p><strong>Bitte prüfen</strong> Sie die Daten und veranlassen Sie ggf. '
+    'eine Korrektur über das Sekretariat in Schild. Eine Excel-Datei mit '
+    'denselben Daten finden Sie zusätzlich im Anhang (zur Weiterleitung an '
+    'das Sekretariat oder zur Bearbeitung).</p>'
+    '$Schueler_Tabelle_HTML'
+    '<p>Mit freundlichen Grüßen<br>'
+    'Ihre WebUntis-Pflege</p>'
+)
+
+
+def _get_bool(key, default):
+    """Liest [Ausbilder].<key> als bool (Default identisch zu allen
+    bisherigen Settings-Gettern in dieser Datei)."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Ausbilder', key, fallback=default)
+
+
+def _set_bool(key, value):
+    """Speichert [Ausbilder].<key> als True/False."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Ausbilder'):
+        config.add_section('Ausbilder')
+    config.set('Ausbilder', key, 'True' if value else 'False')
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+def get_kl_mail_respect_class_whitelist(): return _get_bool('kl_mail_respect_class_whitelist', True)
+def get_kl_mail_respect_blacklist():       return _get_bool('kl_mail_respect_blacklist', True)
+def get_kl_mail_respect_firma_filter():    return _get_bool('kl_mail_respect_firma_filter', True)
+def get_kl_mail_include_stv_kl():          return _get_bool('kl_mail_include_stv_kl', True)
+
+
+def get_kl_mail_subject_suffix():
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.get('Ausbilder', 'kl_mail_subject_suffix', fallback='').strip()
+
+
+def save_kl_mail_settings(settings):
+    """Bulk-Speichern aller KL-Mail-Einstellungen aus einem Dict.
+    Akzeptierte Keys: kl_mail_respect_class_whitelist, kl_mail_respect_blacklist,
+    kl_mail_respect_firma_filter, kl_mail_include_stv_kl, kl_mail_subject_suffix."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Ausbilder'):
+        config.add_section('Ausbilder')
+    bool_keys = ('kl_mail_respect_class_whitelist', 'kl_mail_respect_blacklist',
+                 'kl_mail_respect_firma_filter', 'kl_mail_include_stv_kl')
+    for k in bool_keys:
+        if k in settings:
+            config.set('Ausbilder', k, 'True' if settings[k] else 'False')
+    if 'kl_mail_subject_suffix' in settings:
+        config.set('Ausbilder', 'kl_mail_subject_suffix',
+                   str(settings['kl_mail_subject_suffix'] or '').strip())
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+# ---------------------------------------------------------------------------
+# Datenaufbereitung
+# ---------------------------------------------------------------------------
+
+def _student_passes_kl_mail_filters(row, class_whitelist_set, none_mode,
+                                    blacklist_set, firma_white_set,
+                                    firma_black_set, opts):
+    """Wiederverwendung der filter_and_write()-Logik, aber mit pro-Filter
+    Toggle (siehe opts). True = Schueler darf in die KL-Mail-Tabelle.
+
+    opts ist ein Tupel (respect_class, respect_blacklist, respect_firma) —
+    zwecks Hot-Path-Klarheit hier inline statt eines Dicts."""
+    respect_class, respect_blacklist, respect_firma = opts
+    sid    = row.get('Interne ID-Nummer', '').strip()
+    klasse = row.get('Klasse', '').strip()
+    firma  = row.get('Allg. Adresse: Name1', '').strip()
+    if respect_class:
+        if none_mode:
+            return False
+        if class_whitelist_set and klasse not in class_whitelist_set:
+            return False
+    if respect_blacklist and sid in blacklist_set:
+        return False
+    if respect_firma:
+        # Identische Semantik wie filter_and_write(): Whitelist verlangt
+        # Treffer, Blacklist schlaegt zu wenn Firma drin steht.
+        if firma_white_set and firma not in firma_white_set:
+            return False
+        if firma and firma in firma_black_set:
+            return False
+    return True
+
+
+def build_kl_mail_data(classes_by_name=None, input_path=None):
+    """Liefert die Pro-Klasse-Daten fuer den KL-Mail-Versand.
+
+    Args:
+        classes_by_name: dict {klasse.lower(): {Klassenlehrkraft_1, ...,
+            Klassenlehrkraft_2_Email}} aus main.read_classes(). Wenn None,
+            wird leer angenommen — Empfaenger sind dann nicht aufloesbar
+            (UI muss das anzeigen).
+        input_path: optional, sonst Resolver wie list_students/filter_and_write.
+
+    Returns:
+        {
+          'csv_path':      genutzte Quelle (str),
+          'classes':       [{
+              'klasse':        'DI24a',
+              'kl_name':       'Mones, Christoph' (oder ''),
+              'kl_email':      'mones@... ' (oder ''),
+              'stv_kl_name':   '...',
+              'stv_kl_email':  '...',
+              'students':      [{
+                  'id', 'vorname', 'nachname', 'firma',
+                  'betreuer_anrede', 'betreuer_titel',
+                  'betreuer_vorname', 'betreuer_nachname',
+                  'betreuer_email', 'betreuer_telefon',
+                  'betreuer_abteilung', 'betreuer_fax',
+              }, ...],
+          }, ...],
+          'stats': {
+              'students_total': int, 'students_after_filters': int,
+              'classes_total': int, 'classes_without_kl_email': int,
+              'classes_dropped_no_students': int,
+          },
+          'options_used': {respect_class, respect_blacklist, respect_firma,
+                           include_stv_kl, subject_suffix},
+        }
+    """
+    if input_path is None:
+        input_path, _ = _resolve_input_path()
+    if not input_path or not os.path.isfile(input_path):
+        raise FileNotFoundError("Keine Schild-CSV fuer den KL-Mail-Versand gefunden.")
+    _, rows = _read_csv_rows(input_path)
+    if not rows:
+        return {'csv_path': input_path, 'classes': [],
+                'stats': {'students_total': 0, 'students_after_filters': 0,
+                          'classes_total': 0, 'classes_without_kl_email': 0,
+                          'classes_dropped_no_students': 0},
+                'options_used': {}}
+
+    # Filter-Optionen
+    respect_class     = get_kl_mail_respect_class_whitelist()
+    respect_blacklist = get_kl_mail_respect_blacklist()
+    respect_firma     = get_kl_mail_respect_firma_filter()
+    include_stv_kl    = get_kl_mail_include_stv_kl()
+    subject_suffix    = get_kl_mail_subject_suffix()
+    opts = (respect_class, respect_blacklist, respect_firma)
+
+    # Filter-Sets vorbereiten (identisch zu filter_and_write())
+    classes_list      = get_class_filter()
+    klassen_set       = {c.strip() for c in classes_list if c.strip()}
+    none_mode         = '__NONE__' in klassen_set
+    if none_mode:
+        klassen_set = set()
+    blacklist_set     = get_blacklist()
+    firma_mode        = get_firma_filter_mode()
+    if firma_mode == 'whitelist':
+        firma_white_set = set(get_firma_whitelist())
+        firma_black_set = set()
+    else:
+        firma_white_set = set()
+        firma_black_set = set(get_firma_blacklist())
+
+    students_total           = 0
+    students_after_filters   = 0
+    by_class                 = {}  # klasse -> list of student dicts
+    for row in rows:
+        if not row.get('Interne ID-Nummer', '').strip():
+            continue
+        students_total += 1
+        if not _student_passes_kl_mail_filters(
+                row, klassen_set, none_mode, blacklist_set,
+                firma_white_set, firma_black_set, opts):
+            continue
+        students_after_filters += 1
+        klasse = row.get('Klasse', '').strip() or '(ohne Klasse)'
+        by_class.setdefault(klasse, []).append({
+            'id':                  row.get('Interne ID-Nummer', '').strip(),
+            'vorname':             row.get('Vorname', '').strip(),
+            'nachname':            row.get('Nachname', '').strip(),
+            'firma':               row.get('Allg. Adresse: Name1', '').strip(),
+            'betreuer_anrede':     row.get('Allg. Adresse: Betreuer Anrede', '').strip(),
+            'betreuer_titel':      row.get('Allg. Adresse: Betreuer Titel', '').strip(),
+            'betreuer_vorname':    row.get('Allg. Adresse: Betreuer Vorname', '').strip(),
+            'betreuer_nachname':   row.get('Allg. Adresse: Betreuer Name', '').strip(),
+            'betreuer_email':      row.get('Allg. Adresse: Betreuer E-Mail', '').strip(),
+            'betreuer_telefon':    row.get('Allg. Adresse: Betreuer Telefon', '').strip(),
+            'betreuer_abteilung':  row.get('Allg. Adresse: Betreuer Abteilung', '').strip(),
+            'betreuer_fax':        row.get('Allg. Adresse: Fax-Nr.', '').strip(),
+        })
+
+    # KL-Lookup
+    classes_by_name = classes_by_name or {}
+    classes_out = []
+    classes_without_kl_email = 0
+    for klasse, students in sorted(by_class.items()):
+        students.sort(key=lambda s: (s['nachname'].lower(), s['vorname'].lower()))
+        klasse_lower = klasse.lower()
+        kl_info = classes_by_name.get(klasse_lower, {}) or {}
+        kl_email     = (kl_info.get('Klassenlehrkraft_1_Email') or '').strip()
+        stv_kl_email = (kl_info.get('Klassenlehrkraft_2_Email') or '').strip() if include_stv_kl else ''
+        # 'Keine E-Mail gefunden' ist die Sentinel-Loesung in read_classes() —
+        # behandeln wie leer, damit das Frontend dasselbe sieht.
+        if kl_email == 'Keine E-Mail gefunden': kl_email = ''
+        if stv_kl_email == 'Keine E-Mail gefunden': stv_kl_email = ''
+        if not kl_email:
+            classes_without_kl_email += 1
+        classes_out.append({
+            'klasse':       klasse,
+            'kl_name':      (kl_info.get('Klassenlehrkraft_1') or '').strip(),
+            'kl_email':     kl_email,
+            'stv_kl_name':  (kl_info.get('Klassenlehrkraft_2') or '').strip(),
+            'stv_kl_email': stv_kl_email,
+            'students':     students,
+        })
+
+    return {
+        'csv_path':     input_path,
+        'classes':      classes_out,
+        'stats': {
+            'students_total':              students_total,
+            'students_after_filters':      students_after_filters,
+            'classes_total':               len(classes_out),
+            'classes_without_kl_email':    classes_without_kl_email,
+            'classes_dropped_no_students': 0,  # by_class enthaelt nur nicht-leere Klassen
+        },
+        'options_used': {
+            'respect_class':     respect_class,
+            'respect_blacklist': respect_blacklist,
+            'respect_firma':     respect_firma,
+            'include_stv_kl':    include_stv_kl,
+            'subject_suffix':    subject_suffix,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# HTML-Tabelle + Subject/Body-Rendering (Platzhalter aus Template ersetzen)
+# ---------------------------------------------------------------------------
+
+def _kl_anrede_short(kl_full_name):
+    """Sehr grobe Heuristik fuer 'Herr/Frau' aus 'Vorname Nachname'. Liefert ''
+    wenn unklar — das Template hat dann nur den Nachnamen. Schild liefert
+    die Anrede nicht separat in der Klassen-CSV, deshalb diese Naeherung."""
+    if not kl_full_name:
+        return ''
+    # Vorname extrahieren (alles vor dem ersten Leerzeichen)
+    first = kl_full_name.strip().split(' ', 1)[0]
+    # Sehr typisches deutsches weibl.-endung — alles andere lassen wir leer
+    if first.endswith(('a', 'e', 'i')) and len(first) > 2:
+        return 'Frau'
+    return 'Herr'
+
+
+def render_student_table_html(students):
+    """Baut die HTML-Tabelle, die {Schueler_Tabelle_HTML} im Body ersetzt.
+    Inline-Styles, damit's in Outlook/Gmail/Thunderbird zuverlaessig rendert."""
+    if not students:
+        return '<p><em>Keine Schueler in dieser Klasse nach den aktiven Filtern.</em></p>'
+    th = ('background:#f0f0f0; border:1px solid #ccc; padding:6px 8px; '
+          'text-align:left; font-size:0.9em;')
+    td = 'border:1px solid #ccc; padding:5px 8px; font-size:0.9em; vertical-align:top;'
+    out = ['<table style="border-collapse:collapse; border:1px solid #ccc; '
+           'margin:8px 0; width:100%;">']
+    out.append('<thead><tr>'
+               f'<th style="{th}">Schüler</th>'
+               f'<th style="{th}">Firma</th>'
+               f'<th style="{th}">Betreuer</th>'
+               f'<th style="{th}">E-Mail</th>'
+               f'<th style="{th}">Telefon</th>'
+               f'<th style="{th}">Abteilung</th>'
+               '</tr></thead><tbody>')
+    for s in students:
+        schueler  = _html_escape(f"{s['nachname']}, {s['vorname']}")
+        firma     = _html_escape(s['firma'] or '—')
+        betreuer  = _html_escape(' '.join(p for p in (
+            s['betreuer_anrede'], s['betreuer_titel'],
+            s['betreuer_vorname'], s['betreuer_nachname']) if p).strip() or '—')
+        email     = _html_escape(s['betreuer_email'] or '—')
+        if s['betreuer_email']:
+            email = f'<a href="mailto:{email}">{email}</a>'
+        telefon   = _html_escape(s['betreuer_telefon'] or '—')
+        abteilung = _html_escape(s['betreuer_abteilung'] or '—')
+        out.append('<tr>'
+                   f'<td style="{td}">{schueler}</td>'
+                   f'<td style="{td}">{firma}</td>'
+                   f'<td style="{td}">{betreuer}</td>'
+                   f'<td style="{td}">{email}</td>'
+                   f'<td style="{td}">{telefon}</td>'
+                   f'<td style="{td}">{abteilung}</td>'
+                   '</tr>')
+    out.append('</tbody></table>')
+    return '\n'.join(out)
+
+
+def _html_escape(s):
+    """Minimaler HTML-Escape ohne Modulabhaengigkeit (csv ist auch import)."""
+    s = str(s or '')
+    return (s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+             .replace('"', '&quot;'))
+
+
+def render_kl_mail(class_data, subject_template=None, body_template=None,
+                   stand_date=None, subject_suffix=''):
+    """Setzt die Template-Platzhalter ein.
+
+    Returns: (subject_str, body_html_str).
+    """
+    subject_template = subject_template or DEFAULT_KL_MAIL_SUBJECT
+    body_template    = body_template    or DEFAULT_KL_MAIL_BODY
+    stand_date       = stand_date       or datetime.now().strftime('%d.%m.%Y')
+    kl_full          = class_data.get('kl_name') or ''
+    kl_anrede        = _kl_anrede_short(kl_full)
+    # Reihenfolge wichtig: laengere Keys zuerst, damit '$Klassenlehrer_Name' nicht
+    # versehentlich nur das '$Klasse'-Praefix sieht und der Rest stehen bleibt.
+    # OrderedDict-Verhalten ist seit Python 3.7 fuer dicts garantiert; wir
+    # listen sie bewusst in fallender Laenge.
+    repl_pairs = [
+        ('$Schueler_Tabelle_HTML', render_student_table_html(class_data.get('students', []))),
+        ('$Klassenlehrer_Anrede',  kl_anrede),
+        ('$Klassenlehrer_Name',    kl_full),
+        ('$Klassenlehrer_E-Mail',  class_data.get('kl_email', '')),
+        ('$Schueler_Anzahl',       str(len(class_data.get('students', [])))),
+        ('$Klasse',                class_data.get('klasse', '')),
+        ('$Stand',                 stand_date),
+    ]
+    subject = subject_template
+    body    = body_template
+    for k, v in repl_pairs:
+        subject = subject.replace(k, v)
+        body    = body.replace(k, v)
+    if subject_suffix:
+        subject = f"{subject_suffix} {subject}".strip()
+    return subject, body
+
+
+# ---------------------------------------------------------------------------
+# Excel-Anhang (.xlsx) — eine Mappe pro Klasse, identische Datenbasis wie HTML
+# ---------------------------------------------------------------------------
+
+def build_kl_mail_xlsx(class_data, stand_date=None):
+    """Erzeugt eine xlsx-Mappe (in-memory bytes) fuer eine Klasse.
+    Reine Daten-Output, kein File-System-Side-Effect — Caller entscheidet,
+    ob Datei oder Mail-Anhang.
+
+    Spalten ausfuehrlicher als die HTML-Tabelle, damit das Sekretariat direkt
+    danach filter/sortieren kann.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    import io
+
+    stand_date = stand_date or datetime.now().strftime('%d.%m.%Y')
+    wb = Workbook()
+    ws = wb.active
+    ws.title = (class_data.get('klasse') or 'Klasse')[:31]  # xlsx-Limit
+
+    # Kopfblock (Klasse, Stand) ueber der Tabelle — KL-Mail soll auch nach
+    # 'gespeichert + offline geschickt' verstaendlich bleiben.
+    ws['A1'] = f"Ausbilder-/Betreuer-Daten Klasse {class_data.get('klasse', '')}"
+    ws['A1'].font = Font(bold=True, size=13)
+    ws['A2'] = f"Stand: {stand_date}"
+    ws['A2'].font = Font(italic=True, size=10)
+    kl_line = []
+    if class_data.get('kl_name'):
+        kl_line.append(f"KL: {class_data['kl_name']}")
+    if class_data.get('stv_kl_name'):
+        kl_line.append(f"Stv-KL: {class_data['stv_kl_name']}")
+    if kl_line:
+        ws['A3'] = ' · '.join(kl_line)
+        ws['A3'].font = Font(italic=True, size=10)
+
+    header_row = 5
+    headers = [
+        'Schüler-ID', 'Klasse', 'Nachname', 'Vorname',
+        'Firma',
+        'Betreuer-Anrede', 'Betreuer-Titel',
+        'Betreuer-Vorname', 'Betreuer-Nachname',
+        'Betreuer-E-Mail', 'Betreuer-Telefon', 'Betreuer-Abteilung', 'Fax',
+    ]
+    header_fill = PatternFill('solid', fgColor='DDDDDD')
+    header_font = Font(bold=True)
+    for ci, h in enumerate(headers, 1):
+        c = ws.cell(row=header_row, column=ci, value=h)
+        c.font = header_font
+        c.fill = header_fill
+        c.alignment = Alignment(vertical='top')
+
+    klasse_name = class_data.get('klasse', '')
+    for ri, s in enumerate(class_data.get('students', []), start=header_row + 1):
+        ws.cell(row=ri, column=1,  value=s.get('id', ''))
+        ws.cell(row=ri, column=2,  value=klasse_name)
+        ws.cell(row=ri, column=3,  value=s.get('nachname', ''))
+        ws.cell(row=ri, column=4,  value=s.get('vorname', ''))
+        ws.cell(row=ri, column=5,  value=s.get('firma', ''))
+        ws.cell(row=ri, column=6,  value=s.get('betreuer_anrede', ''))
+        ws.cell(row=ri, column=7,  value=s.get('betreuer_titel', ''))
+        ws.cell(row=ri, column=8,  value=s.get('betreuer_vorname', ''))
+        ws.cell(row=ri, column=9,  value=s.get('betreuer_nachname', ''))
+        ws.cell(row=ri, column=10, value=s.get('betreuer_email', ''))
+        ws.cell(row=ri, column=11, value=s.get('betreuer_telefon', ''))
+        ws.cell(row=ri, column=12, value=s.get('betreuer_abteilung', ''))
+        ws.cell(row=ri, column=13, value=s.get('betreuer_fax', ''))
+
+    # Spaltenbreiten grob an typische Inhalte angepasst.
+    widths = [10, 8, 18, 16, 28, 8, 8, 16, 18, 32, 18, 22, 14]
+    for ci, w in enumerate(widths, 1):
+        ws.column_dimensions[chr(ord('A') + ci - 1)].width = w
+
+    # Autofilter ueber dem Header-Block
+    last_col_letter = chr(ord('A') + len(headers) - 1)
+    ws.auto_filter.ref = f"A{header_row}:{last_col_letter}{header_row + len(class_data.get('students', []))}"
+    ws.freeze_panes = ws.cell(row=header_row + 1, column=1)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def safe_class_filename(klasse):
+    """Macht aus 'BSM-3,5 jähr.' einen Datei-Namen-tauglichen String —
+    behaelt Lesbarkeit. Spiegelt das Pattern aus write_missing_report_zip im
+    erzieher_processor."""
+    return re.sub(r'[<>:"/\\|?*]', '_', klasse or 'Klasse')

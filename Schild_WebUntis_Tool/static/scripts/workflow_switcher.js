@@ -14,6 +14,10 @@ document.addEventListener("DOMContentLoaded", function () {
         "fotoPanel", "historyPanel",
         "settingsPanel", "emailEditor", "shortcutCreator", "uploadArea",
         "erzieherSettingsPanel", "ausbilderSettingsPanel",
+        // Ausbilder-spezifischer KL-Mail-Editor (3.2): bei Workflow-Wechsel
+        // ebenfalls schliessen, sonst bleibt er sichtbar wenn man auf
+        // Schueler/Erzieher umschaltet.
+        "emailEditorAusbilderKlMail",
     ];
 
     function showWorkflow(wf) {

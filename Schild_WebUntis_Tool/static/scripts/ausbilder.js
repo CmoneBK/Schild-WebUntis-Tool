@@ -664,6 +664,15 @@ document.addEventListener("DOMContentLoaded", function () {
             state.firmaBlacklist = new Set(d.firma_blacklist || []);
             state.firmaMode      = (d.firma_filter_mode === 'whitelist') ? 'whitelist' : 'blacklist';
             state.haveCsv        = !!d.csv_path;
+            // KL-Mail-Settings vom Backend; werden beim Open des Settings-
+            // Panels in die Form-Felder reflektiert (siehe panel-Toggle).
+            state.klMail = {
+                kl_mail_respect_class_whitelist: !!d.kl_mail_respect_class_whitelist,
+                kl_mail_respect_blacklist:       !!d.kl_mail_respect_blacklist,
+                kl_mail_respect_firma_filter:    !!d.kl_mail_respect_firma_filter,
+                kl_mail_include_stv_kl:          !!d.kl_mail_include_stv_kl,
+                kl_mail_subject_suffix:          d.kl_mail_subject_suffix || '',
+            };
 
             renderStatus(d);
             renderClassChips();
@@ -773,6 +782,170 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // -------------------------------------------------------------------
+    // KL-Mail-Versand (3.2): aktuelle Ausbilder-/Betreuer-Daten an
+    // Klassenlehrkraefte mailen (Vorschau-Aufklapper + Auswahl + Versand)
+    // -------------------------------------------------------------------
+    const klMailBtn       = document.getElementById('ausbilderToggleKlMail');
+    const klMailArea      = document.getElementById('ausbilderKlMailArea');
+    const klMailStats     = document.getElementById('ausbilderKlMailStats');
+    const klMailList      = document.getElementById('ausbilderKlMailList');
+    const klMailSend      = document.getElementById('ausbilderKlMailSend');
+    const klMailSelAll    = document.getElementById('ausbilderKlMailSelectAll');
+    const klMailSelNone   = document.getElementById('ausbilderKlMailSelectNone');
+    const klMailResult    = document.getElementById('ausbilderKlMailResult');
+    let klMailData = null;
+
+    function selectedKlMailClasses() {
+        return Array.from(klMailList?.querySelectorAll('.klmail-cls-cb:checked') || [])
+            .map(cb => cb.dataset.klasse);
+    }
+    function updateKlMailSendBtn() {
+        if (!klMailSend) return;
+        klMailSend.disabled = selectedKlMailClasses().length === 0;
+    }
+
+    function renderKlMailStats() {
+        if (!klMailStats || !klMailData) return;
+        const s   = klMailData.stats || {};
+        const opt = klMailData.options_used || {};
+        const filterBits = [];
+        filterBits.push(opt.respect_class     ? 'Klassen-Whitelist ✓' : 'Klassen-Whitelist ✗');
+        filterBits.push(opt.respect_blacklist ? 'Schüler-Blacklist ✓' : 'Schüler-Blacklist ✗');
+        filterBits.push(opt.respect_firma     ? 'Firmen-Filter ✓'      : 'Firmen-Filter ✗');
+        filterBits.push(opt.include_stv_kl    ? 'Stv-KL als CC ✓'      : 'Stv-KL als CC ✗');
+        const cls = klMailData.classes || [];
+        const noKlCount = cls.filter(c => !c.kl_email).length;
+        const noKlBlock = noKlCount
+            ? ` · <span class="text-warning">${noKlCount} Klasse(n) ohne aufgelöste KL-E-Mail</span>`
+            : '';
+        klMailStats.className = (s.classes_total === 0)
+            ? 'alert alert-warning py-2 mb-2'
+            : 'alert alert-info py-2 mb-2';
+        klMailStats.innerHTML =
+            `<strong>${s.classes_total}</strong> Klasse(n) · `
+            + `<strong>${s.students_after_filters}</strong> von ${s.students_total} Schülern nach Filtern${noKlBlock}<br>`
+            + `<span class="small text-muted">Quelle: <code>${escapeHtml(klMailData.csv_path || '')}</code> · Stand <strong>${escapeHtml(klMailData.stand || '')}</strong></span><br>`
+            + `<span class="small text-muted">Filter-Optionen: ${filterBits.join(' · ')} — änderbar in den Einstellungen.</span>`;
+    }
+
+    function renderKlMailList() {
+        if (!klMailList || !klMailData) return;
+        const cls = klMailData.classes || [];
+        if (!cls.length) {
+            klMailList.innerHTML = '<p class="text-muted small m-0">Keine Klassen — vermutlich filtern Ihre KL-Mail-Einstellungen alles weg.</p>';
+            updateKlMailSendBtn();
+            return;
+        }
+        const html = cls.map(c => {
+            const id = `klmail_cls_${c.klasse.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+            const hasMail = !!c.kl_email;
+            const noEmailWarn = hasMail
+                ? ''
+                : `<div class="text-danger small ml-4 mt-1">⚠️ Keine KL-E-Mail aufgelöst — Versand wird übersprungen. Lehrkräfte-CSV im Klassen-/Lehrer-Verzeichnis prüfen.</div>`;
+            const ccPart = c.cc?.length
+                ? ` <span class="text-muted small">CC: ${c.cc.map(e => `<code>${escapeHtml(e)}</code>`).join(', ')}</span>`
+                : '';
+            const xlsxLink = `<a href="/api/ausbilder/kl_mail/download_xlsx?klasse=${encodeURIComponent(c.klasse)}" class="badge badge-light border ml-1" title="Excel-Anhang vorab herunterladen">📎 ${escapeHtml(c.xlsx_filename)}</a>`;
+            return `<div class="mb-2 pb-2 border-bottom">
+                <div class="form-check">
+                    <input class="form-check-input klmail-cls-cb" type="checkbox" id="${id}" data-klasse="${escapeHtml(c.klasse)}" ${hasMail ? 'checked' : ''} ${hasMail ? '' : 'disabled'}>
+                    <label class="form-check-label font-weight-bold" for="${id}">
+                        Klasse <code>${escapeHtml(c.klasse)}</code>
+                        <span class="badge badge-info ml-1">${c.students_count} Schüler</span>
+                    </label>
+                </div>
+                <div class="small text-muted ml-4">
+                    KL: ${escapeHtml(c.kl_name || '—')}${hasMail ? ` <code>${escapeHtml(c.kl_email)}</code>` : ''}${ccPart}
+                </div>
+                ${noEmailWarn}
+                <details class="ml-4 mt-1">
+                    <summary class="text-info small" style="cursor:pointer;">👁️ Vorschau (Subject + Body) · ${xlsxLink}</summary>
+                    <div class="mt-2 border rounded p-2 bg-light">
+                        <div class="small text-muted">Betreff:</div>
+                        <div class="mb-2"><code>${escapeHtml(c.subject)}</code></div>
+                        <div class="small text-muted">Body (HTML, wie sie ihn sehen):</div>
+                        <div class="border bg-white p-2" style="font-size:0.9em;">${c.body_html}</div>
+                    </div>
+                </details>
+            </div>`;
+        }).join('');
+        klMailList.innerHTML = html;
+        klMailList.querySelectorAll('.klmail-cls-cb').forEach(cb => {
+            cb.addEventListener('change', updateKlMailSendBtn);
+        });
+        updateKlMailSendBtn();
+    }
+
+    async function loadKlMailPreview() {
+        if (!klMailArea) return;
+        klMailArea.style.display = '';
+        if (klMailStats) { klMailStats.className = 'alert alert-secondary py-2 mb-2'; klMailStats.textContent = 'Lade KL-Mail-Vorschau…'; }
+        if (klMailList) klMailList.innerHTML = '';
+        try {
+            const r = await fetch('/api/ausbilder/kl_mail/preview');
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || r.statusText);
+            klMailData = d;
+            renderKlMailStats();
+            renderKlMailList();
+        } catch (e) {
+            if (klMailStats) {
+                klMailStats.className = 'alert alert-danger py-2 mb-2';
+                klMailStats.textContent = 'Fehler: ' + e;
+            }
+        }
+    }
+
+    klMailBtn?.addEventListener('click', () => {
+        if (!klMailArea) return;
+        const visible = klMailArea.style.display !== 'none';
+        if (visible) klMailArea.style.display = 'none';
+        else         loadKlMailPreview();
+    });
+
+    klMailSelAll?.addEventListener('click', () => {
+        klMailList?.querySelectorAll('.klmail-cls-cb:not(:disabled)').forEach(cb => cb.checked = true);
+        updateKlMailSendBtn();
+    });
+    klMailSelNone?.addEventListener('click', () => {
+        klMailList?.querySelectorAll('.klmail-cls-cb').forEach(cb => cb.checked = false);
+        updateKlMailSendBtn();
+    });
+
+    klMailSend?.addEventListener('click', async () => {
+        const classes = selectedKlMailClasses();
+        if (!classes.length) return;
+        const cnt = classes.length;
+        if (!confirm(`Wirklich KL-Mails an ${cnt} Klassenlehrkraft/-kräfte versenden?\n\nDieser Versand kann nicht rückgängig gemacht werden.`)) return;
+        klMailSend.disabled = true;
+        const orig = klMailSend.textContent;
+        klMailSend.textContent = '⌛ Versende…';
+        if (klMailResult) klMailResult.textContent = '';
+        try {
+            const r = await fetch('/api/ausbilder/kl_mail/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ classes }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) {
+                if (klMailResult) klMailResult.innerHTML = `<span class="text-danger">❌ ${escapeHtml(d.error || r.statusText)}</span>`;
+                return;
+            }
+            if (klMailResult) {
+                klMailResult.innerHTML = `✅ Gesendet: <strong>${d.sent}</strong> · Übersprungen: ${d.skipped} · Fehler: ${d.failed} · `
+                    + `Excel-Anhänge: <code>${escapeHtml(d.xlsx_directory || '')}</code>`;
+            }
+            if (typeof showToast === 'function') showToast(`KL-Mails: ${d.sent} gesendet, ${d.failed} Fehler.`);
+        } catch (e) {
+            if (klMailResult) klMailResult.innerHTML = `<span class="text-danger">❌ ${escapeHtml(String(e))}</span>`;
+        } finally {
+            klMailSend.disabled = false; klMailSend.textContent = orig;
+            updateKlMailSendBtn();
+        }
+    });
+
     // Initialisierung: Status laden, sobald der Workflow sichtbar wird.
     // workflow_switcher.js dispatcht 'workflow:shown' sowohl beim Tab-Klick
     // als auch beim initialen Restore aus localStorage (F5).
@@ -790,6 +963,16 @@ document.addEventListener("DOMContentLoaded", function () {
             // Aktuellen Firma-Mode in den Radios reflektieren (kommt aus state)
             const radio = document.getElementById(`firma_filter_mode_${state.firmaMode}`);
             if (radio) radio.checked = true;
+            // KL-Mail-Felder aus state spiegeln (werden ueber loadStudents()
+            // in state.klMail gespeichert — siehe loadStudents-Callback).
+            const klm = state.klMail || {};
+            const setCb = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+            setCb('ausbilder_kl_mail_respect_class_whitelist', klm.kl_mail_respect_class_whitelist);
+            setCb('ausbilder_kl_mail_respect_blacklist',       klm.kl_mail_respect_blacklist);
+            setCb('ausbilder_kl_mail_respect_firma_filter',    klm.kl_mail_respect_firma_filter);
+            setCb('ausbilder_kl_mail_include_stv_kl',          klm.kl_mail_include_stv_kl);
+            setVal('ausbilder_kl_mail_subject_suffix',         klm.kl_mail_subject_suffix);
             setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
         }
     });
@@ -804,13 +987,22 @@ document.addEventListener("DOMContentLoaded", function () {
         btn.textContent = "⌛ Speichere…";
         try {
             // Trenne nach Section: Directories vs. [Ausbilder] (firma_filter_mode).
-            // 'ausb_source_mode' wird per saveAusbilderSchuelerExportMode() auto-
-            // gespeichert (separater Endpoint) — hier explizit ueberspringen,
-            // sonst landet er versehentlich in [Directories].
+            // KL-Mail-Felder gehen ueber den dedizierten kl_mail/save_settings-
+            // Endpoint, weil FormData unchecked Boxes weglaesst — so wuerden
+            // ausgeschaltete Filter-Booleans NICHT als False persistiert. Der
+            // dedizierte Endpoint nimmt das ganze Set explizit entgegen.
+            const klMailKeys = new Set([
+                'kl_mail_respect_class_whitelist',
+                'kl_mail_respect_blacklist',
+                'kl_mail_respect_firma_filter',
+                'kl_mail_include_stv_kl',
+                'kl_mail_subject_suffix',
+            ]);
             const directories = {};
             const ausbilder = {};
             new FormData(form).forEach((value, key) => {
                 if (key === 'ausb_source_mode')   return;  // separater Endpoint
+                if (klMailKeys.has(key))          return;  // separater Endpoint
                 if (key === 'firma_filter_mode')  ausbilder[key] = value;
                 else                              directories[key] = value;
             });
@@ -823,13 +1015,29 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: JSON.stringify({ settings: sectionsToSave }),
             });
             const d = await r.json().catch(() => ({}));
-            if (r.ok && d.status === "success") {
-                if (typeof showToast === "function") showToast("Ausbilder-Einstellungen gespeichert.");
-                // Neu laden – zeigt ob nun im neuen Eingabeverzeichnis Dateien gefunden werden
-                setTimeout(loadStudents, 100);
-            } else {
-                alert("Fehler beim Speichern: " + (d.error || r.statusText));
+            if (!r.ok || d.status !== "success") {
+                throw new Error(d.error || r.statusText);
             }
+            // KL-Mail-Felder separat via dediziertem Endpoint (Checkboxen
+            // direkt per .checked, damit unchecked auch als False ankommt).
+            const cbVal = (id) => !!document.getElementById(id)?.checked;
+            const txtVal = (id) => document.getElementById(id)?.value || '';
+            const klMailPayload = {
+                kl_mail_respect_class_whitelist: cbVal('ausbilder_kl_mail_respect_class_whitelist'),
+                kl_mail_respect_blacklist:       cbVal('ausbilder_kl_mail_respect_blacklist'),
+                kl_mail_respect_firma_filter:    cbVal('ausbilder_kl_mail_respect_firma_filter'),
+                kl_mail_include_stv_kl:          cbVal('ausbilder_kl_mail_include_stv_kl'),
+                kl_mail_subject_suffix:          txtVal('ausbilder_kl_mail_subject_suffix').trim(),
+            };
+            const r2 = await fetch('/api/ausbilder/kl_mail/save_settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(klMailPayload),
+            });
+            const d2 = await r2.json().catch(() => ({}));
+            if (!r2.ok || !d2.success) throw new Error(d2.error || r2.statusText);
+            if (typeof showToast === "function") showToast("Ausbilder-Einstellungen gespeichert.");
+            setTimeout(loadStudents, 100);
         } catch (e) {
             alert("Fehler beim Speichern: " + e);
         } finally {

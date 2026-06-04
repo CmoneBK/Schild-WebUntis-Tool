@@ -785,9 +785,37 @@
 
                     <div class="d-inline-block">
                         <button id="ausbilderProcess" type="button" class="btn btn-primary mr-2">▶️ Verarbeiten &amp; CSV erzeugen</button>
-                        <button id="ausbilderDownload" type="button" class="btn btn-outline-primary" disabled>⬇️ CSV herunterladen</button>
+                        <button id="ausbilderDownload" type="button" class="btn btn-outline-primary mr-2" disabled>⬇️ CSV herunterladen</button>
+                        <button id="ausbilderToggleKlMail" type="button" class="btn btn-outline-info">📧 KL-Mails: Vorschau</button>
                     </div>
                     <span id="ausbilderResult" class="ml-2 text-muted small"></span>
+
+                    <!-- KL-Mail-Versand-Bereich (initial versteckt). Pro Klasse
+                         eine Vorschau-Klappe mit Subject, Body-HTML, Empfaengern
+                         und xlsx-Download-Link. Filter-Optionen + Versand-Status
+                         in der Stats-Box oben. -->
+                    <div id="ausbilderKlMailArea" class="mt-3" style="display:none;">
+                        <div class="alert alert-info py-2 mb-2" id="ausbilderKlMailStats">Lade KL-Mail-Vorschau…</div>
+                        <p class="small text-muted mb-2">
+                            <strong>Zweck:</strong> Klassenlehrkräfte bekommen pro Klasse eine
+                            E-Mail mit Tabelle der aktuell in Schild hinterlegten
+                            Ausbilder-/Betreuer-Daten (zur Info + Kontrolle, ggf.
+                            Veranlassung der Korrektur über das Sekretariat). Excel mit
+                            denselben Daten ist Anhang.
+                        </p>
+                        <div class="d-flex flex-wrap align-items-center mb-2">
+                            <div class="btn-group btn-group-sm mr-3 mb-1" role="group">
+                                <button type="button" class="btn btn-outline-secondary" id="ausbilderKlMailSelectAll">✓ Alle wählen</button>
+                                <button type="button" class="btn btn-outline-secondary" id="ausbilderKlMailSelectNone">✗ Keine</button>
+                            </div>
+                            <button type="button" id="ausbilderKlMailSend" class="btn btn-warning btn-sm mr-2 mb-1" disabled>
+                                📨 Ausgewählte versenden
+                            </button>
+                            <small class="text-muted mb-1">⚠️ Tatsächlicher Mail-Versand — bitte zuerst Vorschau prüfen.</small>
+                        </div>
+                        <div id="ausbilderKlMailList" class="border rounded p-2" style="max-height:600px; overflow-y:auto;"></div>
+                        <span id="ausbilderKlMailResult" class="ml-1 text-muted small d-block mt-2"></span>
+                    </div>
                 </div>
             </div>
 
@@ -805,6 +833,64 @@
                                 </div>
                             </button>
                         </div>
+                        <div class="col-md-3 mb-2">
+                            <button id="toggleEditorAusbilderKlMail" type="button" class="btn btn-secondary w-100 shadow-sm" title="E-Mail-Vorlage 'KL-Mail: Ausbilder-Übersicht' (gleicher Editor wie im Schüler-Workflow, hier auf diese eine Vorlage eingeschränkt)">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <span class="mr-2">✉️</span> KL-Mail-Vorlage
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ausbilder-spezifischer E-Mail-Editor (nur eine Vorlage:
+                 ausbilder_kl_uebersicht). Gleiche Quill-Infrastruktur wie der
+                 Haupt-Editor (#emailEditor) im Schueler-Workflow; init in
+                 email_editor.js conditional, falls dieses Element existiert. -->
+            <div id="emailEditorAusbilderKlMail" class="mt-4" style="display:none;">
+                <div class="card shadow">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <span>✉️ Email-Vorlagen Editor — KL-Mail (Ausbilder-Übersicht)</span>
+                        <button type="button" class="close text-white" aria-label="Schließen"
+                                onclick="document.getElementById('emailEditorAusbilderKlMail').style.display='none'"
+                                style="opacity:0.9;">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Diese Vorlage wird beim KL-Mail-Versand im Ausbilder-Workflow verwendet.
+                            Verfügbare Platzhalter:
+                            <code>$Klasse</code> ·
+                            <code>$Klassenlehrer_Anrede</code> ·
+                            <code>$Klassenlehrer_Name</code> ·
+                            <code>$Klassenlehrer_E-Mail</code> ·
+                            <code>$Stand</code> ·
+                            <code>$Schueler_Anzahl</code> ·
+                            <code>$Schueler_Tabelle_HTML</code> (HTML-Tabelle wird automatisch eingesetzt).
+                            <br>
+                            <em>Hinweis:</em> Ein <strong>Betreff-Präfix</strong> (z.&nbsp;B. <code>[TEST]</code>) lässt sich in den Ausbilder-Einstellungen separat festlegen — wird vor dem hier gespeicherten Betreff eingesetzt.
+                        </p>
+                        <form id="ausbilderKlMailTemplateForm">
+                            <div class="form-group">
+                                <label for="subjectAusbilderKlUebersicht">📧 Betreff:</label>
+                                <input type="text" class="form-control" id="subjectAusbilderKlUebersicht"
+                                    name="subject_ausbilder_kl_uebersicht">
+                            </div>
+                            <div class="form-group">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="mb-0" for="bodyAusbilderKlUebersicht">📜 Nachricht:</label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            onclick="resetTemplate('ausbilder_kl_uebersicht')">🔄 Standard-Vorlage laden</button>
+                                </div>
+                                <div id="editorBodyAusbilderKlUebersicht" class="quill-editor"></div>
+                                <textarea id="bodyAusbilderKlUebersicht" name="body_ausbilder_kl_uebersicht"
+                                          class="form-control d-none"></textarea>
+                            </div>
+                        </form>
+                        <button id="saveAusbilderKlMailTemplate" type="button" class="btn btn-primary mt-2">💾 Vorlage speichern</button>
+                        <span id="ausbilderKlMailTemplateResult" class="ml-2 text-muted small"></span>
                     </div>
                 </div>
             </div>
@@ -894,6 +980,62 @@
                                 <label class="form-check-label" for="firma_filter_mode_whitelist">
                                     <span class="text-success"><strong>Whitelist</strong></span> — nur ausgewählte Firmen exportieren (z.B. Pilotphase)
                                 </label>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <!-- KL-Mail-Versand (3.2): Optionen fuer den Mail-
+                                 Versand an die Klassenlehrkraefte. Defaults
+                                 spiegeln die Filter-Logik der WebUntis-Verarbeitung
+                                 (was rausgefiltert ist, wandert auch nicht in die
+                                 KL-Mail) — pro Filter abschaltbar. -->
+                            <h5 class="mb-1">📧 KL-Mail-Versand</h5>
+                            <p class="text-muted small mb-3">
+                                Pro Klasse eine Mail an die Klassenlehrkraft mit
+                                Tabelle der aktuell in Schild hinterlegten
+                                Ausbilder-/Betreuer-Daten (+ Excel-Anhang). Trigger
+                                ist der <em>📧 KL-Mails: Vorschau</em>-Button im Workflow.
+                                Eigentliche Mail-Vorlage ist im E-Mail-Editor des
+                                Schüler-Workflows editierbar (Vorlage
+                                <code>ausbilder_kl_uebersicht</code>).
+                            </p>
+
+                            <h6 class="mb-1">Welche Filter sollen auch beim KL-Mail-Versand greifen?</h6>
+                            <p class="text-muted small mb-2">Standard: identisch zur
+                                WebUntis-Verarbeitung — wer aus dem Export gefiltert
+                                ist, taucht auch in der KL-Mail nicht auf.</p>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="ausbilder_kl_mail_respect_class_whitelist" name="kl_mail_respect_class_whitelist">
+                                <label class="form-check-label" for="ausbilder_kl_mail_respect_class_whitelist">
+                                    <strong>Klassen-Whitelist</strong> respektieren — nur ausgewählte Klassen bekommen eine KL-Mail
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="ausbilder_kl_mail_respect_blacklist" name="kl_mail_respect_blacklist">
+                                <label class="form-check-label" for="ausbilder_kl_mail_respect_blacklist">
+                                    <strong>Schüler-Blacklist</strong> respektieren — geblacklistete Schüler tauchen <em>nicht</em> in der KL-Mail auf
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="ausbilder_kl_mail_respect_firma_filter" name="kl_mail_respect_firma_filter">
+                                <label class="form-check-label" for="ausbilder_kl_mail_respect_firma_filter">
+                                    <strong>Firmen-Filter</strong> respektieren — Whitelist/Blacklist-Modus greift identisch zur Verarbeitung
+                                </label>
+                            </div>
+
+                            <h6 class="mb-1">Empfänger-Optionen</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="ausbilder_kl_mail_include_stv_kl" name="kl_mail_include_stv_kl">
+                                <label class="form-check-label" for="ausbilder_kl_mail_include_stv_kl">
+                                    <strong>Stv-Klassenlehrkraft</strong> als zusätzlichen Empfänger (CC)
+                                </label>
+                            </div>
+
+                            <div class="form-group mt-3">
+                                <label for="ausbilder_kl_mail_subject_suffix" class="mb-1">Betreff-Präfix <small class="text-muted">(optional, z.B. <code>[TEST]</code> für Probeläufe)</small>:</label>
+                                <input type="text" class="form-control form-control-sm" id="ausbilder_kl_mail_subject_suffix" name="kl_mail_subject_suffix" placeholder="">
+                                <small class="form-text text-muted">Wird vor den eigentlichen Betreff gesetzt.</small>
                             </div>
 
                         </form>

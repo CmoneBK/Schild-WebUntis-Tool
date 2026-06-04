@@ -213,6 +213,16 @@ DEFAULT_TEMPLATES = {
     "info_notification": {
         "subject": "WebUntis-Änderungsinfo: $Vorname $Nachname ($Klasse)",
         "body": "<p>Sehr geehrte/r $Klassenlehrkraft_1,</p><p>die folgenden Daten von <strong>$Vorname $Nachname</strong> (Klasse: <strong>$Klasse</strong>) wurden in der aktuellen WebUntis-Importdatei aktualisiert und werden mit dem nächsten Import wirksam:</p>$aenderungen_html$nachteilsausgleich_details<p>&nbsp;</p><p><strong>Hinweis:</strong> Es ist nicht möglich, auf diese E-Mail zu antworten.</p><p>Mit freundlichen Grüßen,<br>Das WebUntis Team</p>"
+    },
+    "ausbilder_kl_uebersicht": {
+        # KL-Mail-Versand fuer den Ausbilder-Workflow (3.2): aktuelle Ausbilder-/
+        # Betreuer-Daten je Klasse an die Klassenlehrkraft, zur Info + Kontrolle
+        # (Korrektur in Schild via Sekretariat). Platzhalter: $Klasse,
+        # $Klassenlehrer_Anrede, $Klassenlehrer_Name, $Klassenlehrer_E-Mail,
+        # $Stand, $Schueler_Tabelle_HTML, $Schueler_Anzahl. Spiegelt die
+        # Defaults aus ausbilder_processor.DEFAULT_KL_MAIL_SUBJECT/BODY.
+        "subject": "Ausbilder-/Betreuer-Daten Ihrer Klasse $Klasse — Stand $Stand",
+        "body": "<p>Sehr geehrte/r $Klassenlehrer_Anrede $Klassenlehrer_Name,</p><p>anbei die aktuell in Schild hinterlegten Ausbilder-/Betreuer-Daten Ihrer Klasse <strong>$Klasse</strong> (Stand $Stand). Diese werden in WebUntis übernommen, damit die Ausbilder die Fehlstunden ihrer Auszubildenden einsehen können.</p><p><strong>Bitte prüfen</strong> Sie die Daten und veranlassen Sie ggf. eine Korrektur über das Sekretariat in Schild. Eine Excel-Datei mit denselben Daten finden Sie zusätzlich im Anhang (zur Weiterleitung an das Sekretariat oder zur Bearbeitung).</p>$Schueler_Tabelle_HTML<p>Mit freundlichen Grüßen<br>Ihre WebUntis-Pflege</p>"
     }
 }
 
@@ -379,6 +389,14 @@ firma_filter_mode = blacklist
 # JSON, weil Firmen-Namen Kommas enthalten koennen.
 firma_whitelist = []
 firma_blacklist = []
+# KL-Mail-Versand (3.2): Optionen fuer den Funktion 'Aktuelle Ausbilder-Daten
+# an Klassenlehrkraefte mailen'. Defaults gespiegelt vom WebUntis-Export
+# (Datensparsamkeit: was nicht in den Export wandert, geht auch nicht an die KL).
+kl_mail_respect_class_whitelist = True
+kl_mail_respect_blacklist = True
+kl_mail_respect_firma_filter = True
+kl_mail_include_stv_kl = True
+kl_mail_subject_suffix =
 # Single-File-Konsolidierung (3.2): nutzt den Schueler-Export aus dem
 # 'Schild Exporte'-Hauptverzeichnis (Setting schildexport_directory) auch
 # als Ausbilder-Quelle. Werte:
@@ -428,6 +446,8 @@ subject_karteileiche = {DEFAULT_TEMPLATES['karteileiche']['subject']}
 body_karteileiche = {DEFAULT_TEMPLATES['karteileiche']['body']}
 subject_info_notification = {DEFAULT_TEMPLATES['info_notification']['subject']}
 body_info_notification = {DEFAULT_TEMPLATES['info_notification']['body']}
+subject_ausbilder_kl_uebersicht = {DEFAULT_TEMPLATES['ausbilder_kl_uebersicht']['subject']}
+body_ausbilder_kl_uebersicht = {DEFAULT_TEMPLATES['ausbilder_kl_uebersicht']['body']}
 [WebUntisAPI]
 use_api = False
 server_url = https://neptun.webuntis.com/WebUntis/jsonrpc.do
@@ -591,6 +611,18 @@ client_name = Schild-WebUntis-Tool
             if not config.has_option('Ausbilder', 'schueler_export_mode'):
                 config.set('Ausbilder', 'schueler_export_mode', 'off')
                 updated = True
+            # KL-Mail-Versand (3.2): pro Setting einzeln pruefen, damit alte
+            # Configs nahtlos die Defaults erben.
+            for _k, _v in (
+                ('kl_mail_respect_class_whitelist', 'True'),
+                ('kl_mail_respect_blacklist',       'True'),
+                ('kl_mail_respect_firma_filter',    'True'),
+                ('kl_mail_include_stv_kl',          'True'),
+                ('kl_mail_subject_suffix',          ''),
+            ):
+                if not config.has_option('Ausbilder', _k):
+                    config.set('Ausbilder', _k, _v)
+                    updated = True
 
             if updated:
                 with open("settings.ini", "w", encoding="utf-8-sig") as configfile:
@@ -617,7 +649,7 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             
             # Ensure other templates are also present (Silent Update)
-            for t_type in ['entlassdatum', 'aufnahmedatum', 'klassenwechsel', 'new_student', 'info_notification']:
+            for t_type in ['entlassdatum', 'aufnahmedatum', 'klassenwechsel', 'new_student', 'info_notification', 'ausbilder_kl_uebersicht']:
                 if not config.has_option('Templates', f'subject_{t_type}'):
                     config.set('Templates', f'subject_{t_type}', DEFAULT_TEMPLATES[t_type]['subject'])
                     updated = True
@@ -809,15 +841,16 @@ def admin_warnings(send_email_flag=False):
 def test_route(): return 'TEST OK', 200
 
 _PANEL_LABELS = {
-    'settingsPanel':   'Einstellungspanel',
-    'emailEditor':     'E-Mail-Editor',
-    'shortcutCreator': 'Shortcut-Tool',
-    'uploadArea':      'Datei-Upload',
-    'historyPanel':    'Historie',
-    'warningsPanel':   'Warnungen',
-    'dashboardPanel':  'Dashboard',
-    'adminPanel':      'Admin-Check',
-    'infoMailPanel':   'Info-Mails',
+    'settingsPanel':                 'Einstellungspanel',
+    'emailEditor':                   'E-Mail-Editor',
+    'emailEditorAusbilderKlMail':    'E-Mail-Editor (Ausbilder: KL-Mail)',
+    'shortcutCreator':               'Shortcut-Tool',
+    'uploadArea':                    'Datei-Upload',
+    'historyPanel':                  'Historie',
+    'warningsPanel':                 'Warnungen',
+    'dashboardPanel':                'Dashboard',
+    'adminPanel':                    'Admin-Check',
+    'infoMailPanel':                 'Info-Mails',
 }
 
 @app.route('/api/panel_opened', methods=['POST'])
@@ -1276,6 +1309,10 @@ def get_templates():
             "body_karteileiche": config.get("Templates", "body_karteileiche", fallback=""),
             "subject_info_notification": config.get("Templates", "subject_info_notification", fallback=""),
             "body_info_notification": config.get("Templates", "body_info_notification", fallback=""),
+            # KL-Mail-Vorlage (3.2/3.3) — Ausbilder-Workflow-spezifisch, wird im
+            # eigenen Editor im Ausbilder-Modul-Bereich angezeigt + editiert.
+            "subject_ausbilder_kl_uebersicht": config.get("Templates", "subject_ausbilder_kl_uebersicht", fallback=""),
+            "body_ausbilder_kl_uebersicht": config.get("Templates", "body_ausbilder_kl_uebersicht", fallback=""),
         }
         return jsonify(templates)
     except Exception as e:
@@ -1321,6 +1358,35 @@ def get_default_template(template_type):
     if template_type in DEFAULT_TEMPLATES:
         return jsonify(DEFAULT_TEMPLATES[template_type])
     return jsonify({"error": "Template type not found"}), 404
+
+
+@app.route('/api/ausbilder/update_kl_mail_template', methods=['POST'])
+def ausbilder_update_kl_mail_template():
+    """Speichert NUR die KL-Mail-Vorlage (subject + body) in
+    [Templates].subject_ausbilder_kl_uebersicht / body_ausbilder_kl_uebersicht.
+
+    Bewusst eigene Route (nicht /update_templates), weil der bestehende
+    Bulk-Endpoint alle Templates aus den Form-Feldern uebernimmt — fehlende
+    Felder wuerden andere Vorlagen leerschreiben. Hier ist nur dieses eine
+    Paar wirksam, die anderen Vorlagen bleiben unangetastet."""
+    print_info("Aktualisiere KL-Mail-Vorlage in 'email_settings.ini'...")
+    try:
+        email_config = configparser.ConfigParser()
+        safe_read_config(email_config, 'email_settings.ini')
+        if not email_config.has_section('Templates'):
+            email_config.add_section('Templates')
+        subject = request.form.get('subject_ausbilder_kl_uebersicht', '')
+        body    = request.form.get('body_ausbilder_kl_uebersicht', '')
+        email_config['Templates']['subject_ausbilder_kl_uebersicht'] = subject
+        email_config['Templates']['body_ausbilder_kl_uebersicht']    = body
+        with open('email_settings.ini', 'w', encoding='utf-8-sig') as f:
+            email_config.write(f)
+        print_success("KL-Mail-Vorlage gespeichert.")
+        return jsonify({'message': '✅ KL-Mail-Vorlage erfolgreich gespeichert!'})
+    except Exception as e:
+        msg = f"Fehler beim Speichern der KL-Mail-Vorlage: {e}"
+        print_error(msg)
+        return jsonify({'message': f'❌ {msg}'}), 500
 
 
 # Route und Funktion hinter dem "E-Mails Senden" Button im WebEnd zum Senden der E-Mails auf Grundlage der generierten Warnugen und gespeicherten Einstellungen 
@@ -2051,6 +2117,214 @@ def ausbilder_download():
         as_attachment=True,
         download_name=last_ausbilder_csv['name'],
     )
+
+
+# =========================================================================
+# KL-Mail-Versand (3.2): aktuelle Ausbilder-/Betreuer-Daten an Klassenlehr-
+# kraefte mailen, zur Info + Kontrolle (Korrektur via Sekretariat in Schild).
+# =========================================================================
+# Backend-Logik komplett in ausbilder_processor; hier nur Glue + KL-Lookup
+# via read_classes() (identisch zu admin_warnings).
+
+def _kl_mail_load_templates():
+    """Liest Subject- und Body-Template aus email_settings.ini. Liefert die
+    Defaults aus ausbilder_processor, falls die Datei oder die Section
+    nicht existiert. Wird sowohl von Preview als auch Send genutzt."""
+    import ausbilder_processor
+    cfg = configparser.ConfigParser()
+    safe_read_config(cfg, 'email_settings.ini')
+    subject = cfg.get('Templates', 'subject_ausbilder_kl_uebersicht',
+                      fallback=ausbilder_processor.DEFAULT_KL_MAIL_SUBJECT)
+    body    = cfg.get('Templates', 'body_ausbilder_kl_uebersicht',
+                      fallback=ausbilder_processor.DEFAULT_KL_MAIL_BODY)
+    return subject, body
+
+
+def _kl_mail_classes_by_name():
+    """Wrapper um main.read_classes(), damit Routes nicht direkt main
+    importieren muessen (verhindert Zyklen) und einfache Fehlerbehandlung
+    bei nicht erreichbaren CSV-Verzeichnissen."""
+    from main import read_classes
+    cfg = configparser.ConfigParser()
+    safe_read_config(cfg, 'settings.ini')
+    classes_dir  = cfg.get('Directories', 'classes_directory',  fallback='Klassendaten')
+    teachers_dir = cfg.get('Directories', 'teachers_directory', fallback='Lehrerdaten')
+    try:
+        classes_by_name, _teachers = read_classes(classes_dir, teachers_dir, return_teachers=True)
+        return classes_by_name
+    except Exception:
+        return {}
+
+
+@app.route('/api/ausbilder/kl_mail/preview', methods=['GET'])
+def ausbilder_kl_mail_preview():
+    """Liefert Pro-Klasse-Vorschau aller KL-Mails (Subject, Body-HTML,
+    Empfaenger, Schueler-Tabelle) — KEIN Versand. UI rendert daraus die
+    Auswahl-Liste pro Klasse + Vorschau auf Klick."""
+    import ausbilder_processor
+    try:
+        classes_by_name = _kl_mail_classes_by_name()
+        data = ausbilder_processor.build_kl_mail_data(classes_by_name=classes_by_name)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Aufbau der KL-Mail-Daten: {e}"}), 500
+    subject_tpl, body_tpl = _kl_mail_load_templates()
+    stand_date = datetime.now().strftime('%d.%m.%Y')
+    suffix = (data.get('options_used') or {}).get('subject_suffix', '')
+    out_classes = []
+    for c in data['classes']:
+        subject, body = ausbilder_processor.render_kl_mail(
+            c, subject_template=subject_tpl, body_template=body_tpl,
+            stand_date=stand_date, subject_suffix=suffix)
+        recipients = [c['kl_email']] if c['kl_email'] else []
+        cc = [c['stv_kl_email']] if c.get('stv_kl_email') else []
+        out_classes.append({
+            'klasse':         c['klasse'],
+            'kl_name':        c['kl_name'],
+            'kl_email':       c['kl_email'],
+            'stv_kl_name':    c['stv_kl_name'],
+            'stv_kl_email':   c['stv_kl_email'],
+            'recipients':     recipients,
+            'cc':             cc,
+            'subject':        subject,
+            'body_html':      body,
+            'students_count': len(c['students']),
+            'xlsx_filename':  f"KL_Mail_{ausbilder_processor.safe_class_filename(c['klasse'])}.xlsx",
+        })
+    return jsonify({
+        'csv_path':     data['csv_path'],
+        'stand':        stand_date,
+        'classes':      out_classes,
+        'stats':        data['stats'],
+        'options_used': data['options_used'],
+        'kl_mail_settings': {
+            'kl_mail_respect_class_whitelist': ausbilder_processor.get_kl_mail_respect_class_whitelist(),
+            'kl_mail_respect_blacklist':       ausbilder_processor.get_kl_mail_respect_blacklist(),
+            'kl_mail_respect_firma_filter':    ausbilder_processor.get_kl_mail_respect_firma_filter(),
+            'kl_mail_include_stv_kl':          ausbilder_processor.get_kl_mail_include_stv_kl(),
+            'kl_mail_subject_suffix':          ausbilder_processor.get_kl_mail_subject_suffix(),
+        },
+    })
+
+
+@app.route('/api/ausbilder/kl_mail/download_xlsx', methods=['GET'])
+def ausbilder_kl_mail_download_xlsx():
+    """Excel-Anhang einer einzelnen Klasse zum Vorschau-Check (vor dem Versand).
+    Query: ?klasse=DI24a"""
+    import ausbilder_processor
+    from flask import send_file
+    import io
+    klasse = (request.args.get('klasse') or '').strip()
+    if not klasse:
+        return jsonify({"error": "Parameter 'klasse' fehlt."}), 400
+    try:
+        classes_by_name = _kl_mail_classes_by_name()
+        data = ausbilder_processor.build_kl_mail_data(classes_by_name=classes_by_name)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Aufbau der KL-Mail-Daten: {e}"}), 500
+    target = next((c for c in data['classes'] if c['klasse'] == klasse), None)
+    if not target:
+        return jsonify({"error": f"Klasse {klasse} ist in den aktuellen Daten nicht enthalten."}), 404
+    xlsx_bytes = ausbilder_processor.build_kl_mail_xlsx(target, stand_date=datetime.now().strftime('%d.%m.%Y'))
+    fname = f"KL_Mail_{ausbilder_processor.safe_class_filename(klasse)}.xlsx"
+    return send_file(
+        io.BytesIO(xlsx_bytes),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=fname,
+    )
+
+
+# Letzte KL-Mail-Versand-Stats (fuer das Frontend-Result-Feld nach Versand)
+last_kl_mail_send = None  # {sent: int, failed: int, skipped: int, details: [...]}
+
+
+@app.route('/api/ausbilder/kl_mail/send', methods=['POST'])
+def ausbilder_kl_mail_send():
+    """Versendet die ausgewaehlten KL-Mails inkl. Excel-Anhang pro Klasse.
+    Body: {"classes": ["DI24a", "DI24b", ...]} — leere/fehlende Liste = alle
+    Klassen mit gueltiger KL-E-Mail.
+
+    Schreibt die xlsx-Anhaenge ins ausbilder_output_directory unter dem
+    Unterordner 'KL_Mails/' — dient gleichzeitig als Versand-Nachweis."""
+    import ausbilder_processor
+    global last_kl_mail_send
+    data_req = request.json or {}
+    selected = data_req.get('classes')
+    selected_set = set(selected) if isinstance(selected, list) else None  # None = alle
+    try:
+        classes_by_name = _kl_mail_classes_by_name()
+        data = ausbilder_processor.build_kl_mail_data(classes_by_name=classes_by_name)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Aufbau der KL-Mail-Daten: {e}"}), 500
+    subject_tpl, body_tpl = _kl_mail_load_templates()
+    stand_date = datetime.now().strftime('%d.%m.%Y')
+    suffix = (data.get('options_used') or {}).get('subject_suffix', '')
+    out_dir = ausbilder_processor.get_output_dir()
+    kl_mail_dir = os.path.join(out_dir, 'KL_Mails', datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+    os.makedirs(kl_mail_dir, exist_ok=True)
+
+    sent = 0
+    failed = 0
+    skipped = 0
+    details = []
+    for c in data['classes']:
+        if selected_set is not None and c['klasse'] not in selected_set:
+            continue
+        if not c['kl_email']:
+            skipped += 1
+            details.append({'klasse': c['klasse'], 'status': 'skipped',
+                            'reason': 'Keine KL-E-Mail aufgeloesst.'})
+            continue
+        try:
+            subject, body = ausbilder_processor.render_kl_mail(
+                c, subject_template=subject_tpl, body_template=body_tpl,
+                stand_date=stand_date, subject_suffix=suffix)
+            xlsx_bytes = ausbilder_processor.build_kl_mail_xlsx(c, stand_date=stand_date)
+            fname = f"KL_Mail_{ausbilder_processor.safe_class_filename(c['klasse'])}.xlsx"
+            xlsx_path = os.path.join(kl_mail_dir, fname)
+            with open(xlsx_path, 'wb') as f:
+                f.write(xlsx_bytes)
+            to_addrs = [c['kl_email']]
+            if c.get('stv_kl_email'):
+                to_addrs.append(c['stv_kl_email'])
+            send_email(subject, body, to_addrs, attachment_path=xlsx_path)
+            sent += 1
+            details.append({'klasse': c['klasse'], 'status': 'sent',
+                            'recipients': to_addrs, 'xlsx_path': xlsx_path,
+                            'students_count': len(c['students'])})
+        except Exception as e:
+            failed += 1
+            details.append({'klasse': c['klasse'], 'status': 'failed',
+                            'error': str(e)})
+    last_kl_mail_send = {'sent': sent, 'failed': failed, 'skipped': skipped,
+                         'xlsx_directory': kl_mail_dir, 'details': details}
+    return jsonify({'success': True, **last_kl_mail_send})
+
+
+@app.route('/api/ausbilder/kl_mail/save_settings', methods=['POST'])
+def ausbilder_kl_mail_save_settings():
+    """Speichert die KL-Mail-Filter-/Optionen-Settings bulk. Erwartet alle
+    Felder im Body (UI sendet sie zusammen, da auto-save per Toggle)."""
+    import ausbilder_processor
+    data = request.json or {}
+    try:
+        ausbilder_processor.save_kl_mail_settings(data)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True,
+                    "kl_mail_settings": {
+                        'kl_mail_respect_class_whitelist': ausbilder_processor.get_kl_mail_respect_class_whitelist(),
+                        'kl_mail_respect_blacklist':       ausbilder_processor.get_kl_mail_respect_blacklist(),
+                        'kl_mail_respect_firma_filter':    ausbilder_processor.get_kl_mail_respect_firma_filter(),
+                        'kl_mail_include_stv_kl':          ausbilder_processor.get_kl_mail_include_stv_kl(),
+                        'kl_mail_subject_suffix':          ausbilder_processor.get_kl_mail_subject_suffix(),
+                    }})
 
 
 # Route zum Generieren von Info-Mails aus den Feldänderungen des letzten Laufs

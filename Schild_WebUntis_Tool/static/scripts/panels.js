@@ -2,29 +2,33 @@ document.addEventListener("DOMContentLoaded", function () {
     console.log("Main DOMContentLoaded fired");
     // Unified Panel Configuration
     const panels = {
-        settingsPanel:  document.getElementById("settingsPanel"),
-        emailEditor:    document.getElementById("emailEditor"),
-        shortcutCreator: document.getElementById("shortcutCreator"),
-        uploadArea:     document.getElementById("uploadArea"),
-        historyPanel:   document.getElementById("historyPanel"),
-        warningsPanel:  document.getElementById("warningsPanel"),
-        dashboardPanel: document.getElementById("dashboardPanel"),
-        adminPanel:     document.getElementById("adminPanel"),
-        infoMailPanel:  document.getElementById("infoMailPanel"),
-        fotoPanel:      document.getElementById("fotoPanel"),
+        settingsPanel:                document.getElementById("settingsPanel"),
+        emailEditor:                  document.getElementById("emailEditor"),
+        // Ausbilder-spezifischer E-Mail-Editor (nur KL-Mail-Vorlage). Wird ueber
+        // den Button 'toggleEditorAusbilderKlMail' im Ausbilder-Workflow geoeffnet.
+        emailEditorAusbilderKlMail:   document.getElementById("emailEditorAusbilderKlMail"),
+        shortcutCreator:              document.getElementById("shortcutCreator"),
+        uploadArea:                   document.getElementById("uploadArea"),
+        historyPanel:                 document.getElementById("historyPanel"),
+        warningsPanel:                document.getElementById("warningsPanel"),
+        dashboardPanel:               document.getElementById("dashboardPanel"),
+        adminPanel:                   document.getElementById("adminPanel"),
+        infoMailPanel:                document.getElementById("infoMailPanel"),
+        fotoPanel:                    document.getElementById("fotoPanel"),
     };
     console.log("Panels:", panels);
 
     const toggleButtons = {
-        toggleSettingsButton:   document.getElementById("toggle-settings"),
-        toggleEditorButton:     document.getElementById("toggleEditor"),
-        toggleShortcutButton:   document.getElementById("toggleShortcutCreator"),
-        toggleUploadButton:     document.getElementById("toggleUploadArea"),
-        toggleHistoryButton:    document.getElementById("toggleHistory"),
-        toggleWarningsButton:   document.getElementById("toggleWarnings"),
-        toggleDashboardButton:  document.getElementById("toggleDashboard"),
-        toggleAdminCheckButton: document.getElementById("toggleAdminCheck"),
-        toggleInfoMailsButton:  document.getElementById("toggleInfoMails"),
+        toggleSettingsButton:                document.getElementById("toggle-settings"),
+        toggleEditorButton:                  document.getElementById("toggleEditor"),
+        toggleEditorAusbilderKlMailButton:   document.getElementById("toggleEditorAusbilderKlMail"),
+        toggleShortcutButton:                document.getElementById("toggleShortcutCreator"),
+        toggleUploadButton:                  document.getElementById("toggleUploadArea"),
+        toggleHistoryButton:                 document.getElementById("toggleHistory"),
+        toggleWarningsButton:                document.getElementById("toggleWarnings"),
+        toggleDashboardButton:               document.getElementById("toggleDashboard"),
+        toggleAdminCheckButton:              document.getElementById("toggleAdminCheck"),
+        toggleInfoMailsButton:               document.getElementById("toggleInfoMails"),
     };
 
     const settingsTabs = document.querySelectorAll("#settingsPanel .nav-link");
@@ -463,6 +467,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (toggleButtons.toggleEditorButton) {
         toggleButtons.toggleEditorButton.addEventListener("click", () => togglePanel("emailEditor"));
+    }
+    if (toggleButtons.toggleEditorAusbilderKlMailButton) {
+        toggleButtons.toggleEditorAusbilderKlMailButton.addEventListener("click", () => togglePanel("emailEditorAusbilderKlMail"));
     }
     if (toggleButtons.toggleUploadButton) {
         toggleButtons.toggleUploadButton.addEventListener("click", () => togglePanel("uploadArea"));
