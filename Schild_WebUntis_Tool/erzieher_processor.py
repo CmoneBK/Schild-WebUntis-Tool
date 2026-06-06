@@ -1873,3 +1873,1106 @@ def write_zip(result_files, output_dir=None, name_template=None):
     with open(zip_path, 'wb') as f:
         f.write(buf.getvalue())
     return zip_path, zip_name
+
+
+# ===========================================================================
+# KL-Mail-Versand fuer den Erzieher-Workflow (3.3): Aktuelle Erzieher-/
+# Ansprechpartner-ROHDATEN je Klasse an die Klassenlehrkraefte, zur Info +
+# Kontrolle (Korrektur ueber das Sekretariat in Schild).
+# ===========================================================================
+#
+# Designprinzip: "Rohdaten" = ohne Smart-Match, ohne Dummy-Fill, ohne
+# E-Mail-Pflicht-Aussortierung. Pro Schueler ALLE Erzieher-Slots aus dem
+# Erzieher-Export plus ALLE Telefon-Eintraege (primaere aus Erz, zusaetzliche
+# aus Anspr) — das ist genau das, was die KL ggf. korrigieren lassen soll.
+#
+# Symmetrisch zum Ausbilder-KL-Mail-Feature (siehe ausbilder_processor):
+# gleiche Settings-Strukturen, gleiches Route-Set, gleicher Vorschau-
+# Klappbereich, gleicher dedizierter Vorlagen-Editor im Modul-Bereich.
+# Unterschiede aus der Datenstruktur:
+#   - mehrere Erzieher pro Schueler (statt 1 Firma + 1 Betreuer)
+#   - mehrere Telefon-Nummern pro Schueler (Erz-Pseudo + Anspr-Zeilen)
+#   - Volljaehrigkeit relevant (Volljaehrige haben i.d.R. keine Erzieher)
+#
+# Optionen (alle in [Erzieher]-Section):
+#   kl_mail_respect_class_whitelist (bool, default True)
+#   kl_mail_only_minor              (bool, default False) — Volljaehrige
+#                                                            ausblenden
+#   kl_mail_include_stv_kl          (bool, default True)
+#   kl_mail_subject_suffix          (str, default '')
+# ---------------------------------------------------------------------------
+
+DEFAULT_ERZ_KL_MAIL_SUBJECT = (
+    'Erzieher-/Ansprechpartner-Daten Ihrer Klasse $Klasse — Stand $Stand'
+)
+DEFAULT_ERZ_KL_MAIL_BODY = (
+    '<p>Sehr geehrte/r $Klassenlehrer_Anrede $Klassenlehrer_Name,</p>'
+    '<p>anbei die aktuell in Schild hinterlegten Erzieher-/Ansprechpartner-'
+    'Daten Ihrer Klasse <strong>$Klasse</strong> (Stand $Stand) — '
+    '<em>Rohdaten</em>, also genau so, wie sie aus Schild kommen (ohne '
+    'Smart-Match, Dummy-Fill o.&nbsp;ä.).</p>'
+    '<p><strong>Bitte prüfen</strong> Sie die Daten auf Vollständigkeit '
+    '(insbesondere fehlende E-Mail-Adressen / fehlende zweite Eltern-'
+    'datensätze) und veranlassen Sie ggf. eine Korrektur über das Sekretariat '
+    'in Schild. Eine Excel-Datei mit denselben Daten finden Sie zusätzlich '
+    'im Anhang (zur Weiterleitung an das Sekretariat oder zur Bearbeitung).</p>'
+    '$Erzieher_Tabelle_HTML'
+    '<p>Mit freundlichen Grüßen<br>'
+    'Ihre WebUntis-Pflege</p>'
+)
+
+
+def get_kl_mail_respect_class_whitelist():
+    """Klassen-Whitelist (analog Ausbilder) greift auch beim KL-Mail-Versand
+    des Erzieher-Workflows."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'kl_mail_respect_class_whitelist', fallback=True)
+
+
+def get_kl_mail_only_minor():
+    """True = nur minderjaehrige Schueler in die KL-Mail-Tabelle (Volljaehrige
+    haben i.d.R. keine Erzieher im klassischen Sinn — nur sich selbst als
+    Self-Ansprechpartner). Default False, weil 'Rohdaten' bedeutet, auch
+    diese Eintraege zu zeigen, damit die KL z.B. eine fehlende Vollj.-
+    Markierung erkennt."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'kl_mail_only_minor', fallback=False)
+
+
+def get_kl_mail_include_stv_kl():
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.getboolean('Erzieher', 'kl_mail_include_stv_kl', fallback=True)
+
+
+def get_kl_mail_subject_suffix():
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    return config.get('Erzieher', 'kl_mail_subject_suffix', fallback='').strip()
+
+
+def save_kl_mail_settings(settings):
+    """Bulk-Speichern aller KL-Mail-Einstellungen. Akzeptierte Keys siehe
+    Modul-Docstring."""
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+    if not config.has_section('Erzieher'):
+        config.add_section('Erzieher')
+    for k in ('kl_mail_respect_class_whitelist', 'kl_mail_only_minor',
+              'kl_mail_include_stv_kl'):
+        if k in settings:
+            config.set('Erzieher', k, 'True' if settings[k] else 'False')
+    if 'kl_mail_subject_suffix' in settings:
+        config.set('Erzieher', 'kl_mail_subject_suffix',
+                   str(settings['kl_mail_subject_suffix'] or '').strip())
+    with open('settings.ini', 'w', encoding='utf-8-sig') as f:
+        config.write(f)
+
+
+# ---------------------------------------------------------------------------
+# Datenaufbereitung (Rohdaten — bewusst KEIN Smart-Match / Dummy-Fill)
+# ---------------------------------------------------------------------------
+
+def _extract_all_erzieher_slots(erz_row, max_slots):
+    """Liefert alle gefuellten Erzieher-Slots eines Schueler-Erz-Rows als
+    Liste von Dicts. 'Gefuellt' = mind. eine Stamm-Spalte (Vorname/Nachname/
+    E-Mail/Anrede) hat Inhalt. Slot-Nummer (1..N) wird beibehalten, damit
+    die KL nachvollziehen kann welcher Slot wo steht."""
+    out = []
+    for i in range(1, max_slots + 1):
+        slot = {fld: (erz_row.get(f'Erzieher {i}: {fld}', '') or '').strip()
+                for fld in ERZIEHER_FIELDS}
+        if any(slot.values()):
+            slot['nr'] = i
+            out.append(slot)
+    return out
+
+
+def _collect_phone_rows(sid, erz_row, ansp_by_sid):
+    """Sammelt alle Telefon-Eintraege fuer einen Schueler — primaere aus dem
+    Erzieher-Export (Pseudo-Anspr-Zeile) PLUS alle aus dem Anspr-Export.
+    Duplikate (gleiche normalisierte Nummer) werden entfernt; Reihenfolge:
+    Erz-Pseudo zuerst, dann Anspr in CSV-Reihenfolge."""
+    phones = []
+    erz_phone = _erz_phone_pseudo(erz_row)
+    if erz_phone:
+        phones.append({
+            'anschluss':  erz_phone.get('Anschluss-Art', ''),
+            'bemerkung':  erz_phone.get('Bemerkung', ''),
+            'telefon':    erz_phone.get('Telefon-Nummer', ''),
+            'from_erz':   True,
+        })
+    seen_keys = {_normalize_phone(p['telefon']) for p in phones if p['telefon']}
+    for a in ansp_by_sid.get(sid, []):
+        nr = (a.get('Telefon-Nummer', '') or '').strip()
+        if not nr:
+            continue
+        key = _normalize_phone(nr)
+        if key and key in seen_keys:
+            continue
+        seen_keys.add(key)
+        phones.append({
+            'anschluss':  (a.get('Anschluss-Art', '') or '').strip(),
+            'bemerkung':  (a.get('Bemerkung', '')      or '').strip(),
+            'telefon':    nr,
+            'from_erz':   False,
+        })
+    return phones
+
+
+def _load_main_schueler_birthdates():
+    """Liefert {sid: 'DD.MM.YYYY'} aus der Schueler-Hauptverarbeitung.
+    Quelle automatisch ueber main.read_students() — wird zur Laufzeit
+    entweder die CSV aus schildexport_directory einlesen ODER (wenn aktiv)
+    die SVWS-API abfragen. Damit ist der Lookup transparent fuer beide Pfade.
+
+    Bei Fehlern (Quelle nicht erreichbar, leere CSV, API-Timeout) wird ein
+    leerer Lookup zurueckgegeben — build_kl_mail_data() faellt dann pro
+    Schueler auf das Geburtsdatum aus der Erzieher-Quelle zurueck (sofern
+    dort eines steht). Damit bleibt das Feature in jeder Konfiguration
+    funktionsfaehig.
+
+    Hinweis zu Performance/Logging: read_students() loggt Schritte auf der
+    Konsole und kann im API-Modus einige Sekunden brauchen — pro
+    KL-Mail-Preview/-Send wird der Call einmal gemacht."""
+    try:
+        from main import read_students
+        _, students_by_id = read_students(use_abschlussdatum=False)
+        out = {}
+        for sid, data in (students_by_id or {}).items():
+            geb = (data.get('Geburtsdatum') or '').strip()
+            if geb and sid:
+                out[str(sid).strip()] = geb
+        return out
+    except Exception:
+        return {}
+
+
+def build_kl_mail_data(classes_by_name=None, erzieher_path=None,
+                       ansprechpartner_path=None):
+    """Sammelt pro Klasse die KL-Mail-Daten — Rohdaten aus Erzieher-Export
+    (+ optional Anspr-Export fuer mehr Telefonnummern).
+
+    Args:
+        classes_by_name: dict {klasse.lower(): {Klassenlehrkraft_1, ...}} aus
+            main.read_classes(). None = leere Lookup, Empfaenger werden nicht
+            aufgeloest (UI muss das anzeigen).
+        erzieher_path / ansprechpartner_path: optional, sonst Resolver +
+            Default-Verzeichnis.
+
+    Returns dict mit:
+        csv_path:     genutzte Erzieher-CSV
+        anspr_path:   genutzte Anspr-CSV (oder None)
+        classes:      [{klasse, kl_name, kl_email, stv_kl_name, stv_kl_email,
+                         students: [{id, vorname, nachname, geburtsdatum,
+                                     volljaehrig, erzieher_art, erzieher: [...],
+                                     telefone: [...]}, ...]}, ...]
+        stats:        {students_total, students_after_filters, classes_total,
+                       classes_without_kl_email}
+        options_used: {respect_class, only_minor, include_stv_kl, subject_suffix}
+    """
+    if erzieher_path is None:
+        erzieher_path, _src = _resolve_erzieher_path()
+    if not erzieher_path or not os.path.isfile(erzieher_path):
+        raise FileNotFoundError("Keine Erzieher-Quelle gefunden (siehe Erzieher-Workflow-Status).")
+    erz_rows = _read_csv_rows(erzieher_path)
+    if not erz_rows:
+        return {'csv_path': erzieher_path, 'anspr_path': None, 'classes': [],
+                'stats': {'students_total': 0, 'students_after_filters': 0,
+                          'classes_total': 0, 'classes_without_kl_email': 0},
+                'options_used': {}}
+
+    # Optional: Anspr-Export fuer mehr Telefonnummern.
+    anspr_path = ansprechpartner_path or _latest_csv(get_ansprechpartner_export_dir())
+    ansp_rows = []
+    if anspr_path and os.path.isfile(anspr_path):
+        try:
+            ansp_rows = _read_csv_rows(anspr_path)
+        except Exception:
+            ansp_rows = []
+    ansp_by_sid = {}
+    for r in ansp_rows:
+        ansp_by_sid.setdefault((r.get('Schüler_ID', '') or '').strip(), []).append(r)
+
+    # Filter-Optionen
+    respect_class    = get_kl_mail_respect_class_whitelist()
+    only_minor       = get_kl_mail_only_minor()
+    include_stv_kl   = get_kl_mail_include_stv_kl()
+    subject_suffix   = get_kl_mail_subject_suffix()
+
+    # Klassen-Whitelist auswerten (gleiche Sentinel-Logik wie process())
+    class_mode, classes_set = _resolve_class_filter(get_class_filter())
+
+    # Schueler-Stammdaten (Klasse / Vorname / Nachname) kombinieren —
+    # gleiche Quelle wie preview()/missing_report.
+    student_lookup = _merge_student_lookups(
+        _student_lookup_from_anspr(anspr_path),
+        _student_lookup_from_erz(erz_rows),
+    )
+
+    # Geburtsdatum-Lookup PRIMAER aus der Schueler-Hauptverarbeitung
+    # (schildexport_directory bzw. SVWS-API). Erzieher-Quelle bleibt als
+    # Fallback — siehe Pro-Schueler-Block unten.
+    main_birthdates = _load_main_schueler_birthdates()
+    geb_source_stats = {'main_schueler': 0, 'erzieher_quelle': 0, 'none': 0}
+
+    # Max-Slot-Nr fuer Erzieher-Slots aus dem Header
+    max_slots = 0
+    for col in (erz_rows[0].keys() if erz_rows else []):
+        m = re.match(r'Erzieher\s+(\d+):', col)
+        if m:
+            max_slots = max(max_slots, int(m.group(1)))
+
+    students_total = 0
+    students_after_filters = 0
+    by_class = {}
+    for er in erz_rows:
+        sid = (er.get('Interne ID-Nummer', '') or '').strip()
+        if not sid:
+            continue
+        students_total += 1
+        stamm = student_lookup.get(sid, {})
+        # Klassen-Whitelist respektieren
+        if respect_class and not _student_passes_class(stamm, class_mode, classes_set):
+            continue
+        # Geburtsdatum-Auflösung in zwei Stufen:
+        #   1) PRIMAER aus dem Haupt-Schueler-Datensatz (CSV-Hauptverzeichnis
+        #      oder SVWS-API) — das ist die kanonische Quelle, die immer
+        #      gepflegt sein sollte.
+        #   2) FALLBACK aus der Erzieher-Quelle (wie bisher) — falls die
+        #      Hauptquelle nicht erreichbar ist ODER die Schueler-ID dort
+        #      nicht auftaucht (Stale-Erzieher-Eintrag o.ae.).
+        # Quelle wird auf jedem Student-Entry vermerkt (geb_source), damit die
+        # KL in der UI/Mail Transparenz hat woher das Datum kommt.
+        geb_str_main = main_birthdates.get(sid, '')
+        geb_str_erz = ''
+        for col in _GEBURTSDATUM_COLS:
+            v = (er.get(col, '') or '').strip()
+            if v:
+                geb_str_erz = v
+                break
+        if geb_str_main:
+            geb_str = geb_str_main
+            geb_source = 'main_schueler'
+        elif geb_str_erz:
+            geb_str = geb_str_erz
+            geb_source = 'erzieher_quelle'
+        else:
+            geb_str = ''
+            geb_source = None
+        geb_source_stats[geb_source or 'none'] += 1
+        geb_parsed = None
+        for fmt in ('%d.%m.%Y', '%Y-%m-%d'):
+            try:
+                geb_parsed = datetime.strptime(geb_str, fmt).date() if geb_str else None
+                if geb_parsed:
+                    break
+            except (ValueError, TypeError):
+                continue
+        # Per Geburtsdatum (deterministisch, None wenn nicht parsbar):
+        age = _calc_age_from_str(geb_str) if geb_str else None
+        vollj_per_geb    = (age is not None and age >= 18)
+        vollj_per_geb_known = (age is not None)
+        # Per Schild-Heuristik (Spaltenwert 'Erzieher: Art (Klartext)'):
+        erz_art       = (er.get('Erzieher: Art (Klartext)', '') or '').strip()
+        vollj_per_schild = ('volljährig' in erz_art.lower()
+                            or 'volljaehrig' in erz_art.lower())
+        # Kombiniert (wie bisher): True wenn eine der beiden Quellen anschlaegt.
+        is_vollj = vollj_per_geb or vollj_per_schild
+        if only_minor and is_vollj:
+            continue
+        students_after_filters += 1
+        klasse = stamm.get('klasse', '') or '(ohne Klasse)'
+        student_entry = {
+            'id':            sid,
+            'vorname':       stamm.get('vorname', '')  or (er.get('Vorname', '')  or '').strip(),
+            'nachname':      stamm.get('nachname', '') or (er.get('Nachname', '') or '').strip(),
+            'geburtsdatum':         geb_str,
+            'geburtsdatum_parsed':  geb_parsed,   # datetime.date oder None — fuer Excel
+            'geburtsdatum_source':  geb_source,   # 'main_schueler' | 'erzieher_quelle' | None
+            'volljaehrig':              is_vollj,
+            'volljaehrig_per_geb':      vollj_per_geb,
+            'volljaehrig_per_geb_known': vollj_per_geb_known,
+            'volljaehrig_per_schild':   vollj_per_schild,
+            # Konflikt = Schild sagt volljaehrig, Geburtsdatum (sofern bekannt)
+            # sagt minderjaehrig. Anderer Fall (Schild leer + Geb-Datum sagt
+            # volljaehrig) ist kein Fehler — Schild markiert das oft nicht.
+            'volljaehrig_konflikt':     (vollj_per_schild and vollj_per_geb_known and not vollj_per_geb),
+            'erzieher_art':  erz_art,
+            'erzieher':      _extract_all_erzieher_slots(er, max_slots),
+            'telefone':      _collect_phone_rows(sid, er, ansp_by_sid),
+            # Roh-Zugriff fuer die KL-Mail-Tabelle 'alle Spalten als Zeilen'
+            'raw_erz_row':   dict(er),
+            'raw_ansp_rows': [dict(r) for r in ansp_by_sid.get(sid, [])],
+        }
+        by_class.setdefault(klasse, []).append(student_entry)
+
+    # KL-Lookup
+    classes_by_name = classes_by_name or {}
+    classes_out = []
+    classes_without_kl_email = 0
+    for klasse, students in sorted(by_class.items()):
+        students.sort(key=lambda s: (s['nachname'].lower(), s['vorname'].lower()))
+        klasse_lower = klasse.lower()
+        kl_info = classes_by_name.get(klasse_lower, {}) or {}
+        kl_email     = (kl_info.get('Klassenlehrkraft_1_Email') or '').strip()
+        stv_kl_email = (kl_info.get('Klassenlehrkraft_2_Email') or '').strip() if include_stv_kl else ''
+        if kl_email == 'Keine E-Mail gefunden':     kl_email = ''
+        if stv_kl_email == 'Keine E-Mail gefunden': stv_kl_email = ''
+        if not kl_email:
+            classes_without_kl_email += 1
+        classes_out.append({
+            'klasse':       klasse,
+            'kl_name':      (kl_info.get('Klassenlehrkraft_1') or '').strip(),
+            'kl_email':     kl_email,
+            'stv_kl_name':  (kl_info.get('Klassenlehrkraft_2') or '').strip(),
+            'stv_kl_email': stv_kl_email,
+            'students':     students,
+        })
+
+    return {
+        'csv_path':   erzieher_path,
+        'anspr_path': anspr_path if (anspr_path and os.path.isfile(anspr_path)) else None,
+        'classes':    classes_out,
+        'stats': {
+            'students_total':           students_total,
+            'students_after_filters':   students_after_filters,
+            'classes_total':            len(classes_out),
+            'classes_without_kl_email': classes_without_kl_email,
+            # Transparenz: Quell-Verteilung des Geburtsdatums (main vs. fallback
+            # vs. komplett unbekannt). Frontend kann daraus anzeigen, wieviele
+            # Schueler ueber den Haupt-Schueler-Datensatz / Fallback / gar nicht
+            # versorgt wurden — laesst Pflege-Luecken im Schild-Export erkennen.
+            'geb_source_main_schueler':   geb_source_stats.get('main_schueler', 0),
+            'geb_source_erzieher_quelle': geb_source_stats.get('erzieher_quelle', 0),
+            'geb_source_none':            geb_source_stats.get('none', 0),
+        },
+        'options_used': {
+            'respect_class':   respect_class,
+            'only_minor':      only_minor,
+            'include_stv_kl':  include_stv_kl,
+            'subject_suffix':  subject_suffix,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# HTML-Tabelle + Subject/Body-Rendering
+# ---------------------------------------------------------------------------
+
+def _kl_anrede_short_erz(kl_full_name):
+    """Anrede-Heuristik aus dem Vornamen — analog ausbilder_processor."""
+    if not kl_full_name:
+        return ''
+    first = kl_full_name.strip().split(' ', 1)[0]
+    if first.endswith(('a', 'e', 'i')) and len(first) > 2:
+        return 'Frau'
+    return 'Herr'
+
+
+def _html_escape_erz(s):
+    """Minimaler HTML-Escape (duplikat zu ausbilder_processor — bewusst, um
+    keine Cross-Modul-Importe einzufuehren)."""
+    s = str(s or '')
+    return (s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+             .replace('"', '&quot;'))
+
+
+def render_erzieher_table_html(students, stand_date=None):
+    """Baut die HTML-Tabelle fuer den Mail-Body — 3 Spalten:
+       (1) Schueler  (2) Erzieher Rohdaten  (3) Ansprechpartner Rohdaten
+    In den Roh-Spalten werden ALLE Spalten der jeweiligen CSV-Zeile als
+    'Spaltenname: Wert'-Zeilen aufgelistet (Pflicht- + optional-Felder), so
+    dass die KL exakt sieht, was in Schild hinterlegt ist — auch leere Felder.
+    Inline-Styles fuer Outlook/Gmail/Thunderbird-Kompatibilitaet."""
+    if not students:
+        return '<p><em>Keine Schueler in dieser Klasse nach den aktiven Filtern.</em></p>'
+    stand_date = stand_date or datetime.now().strftime('%d.%m.%Y')
+    th = ('background:#f0f0f0; border:1px solid #ccc; padding:6px 8px; '
+          'text-align:left; font-size:0.9em;')
+    td = 'border:1px solid #ccc; padding:5px 8px; font-size:0.85em; vertical-align:top;'
+    out = ['<table style="border-collapse:collapse; border:1px solid #ccc; '
+           'margin:8px 0; width:100%; table-layout:fixed;">']
+    out.append('<thead><tr>'
+               f'<th style="{th} width:18%;">Schüler</th>'
+               f'<th style="{th} width:41%;">Erzieher Rohdaten</th>'
+               f'<th style="{th} width:41%;">Ansprechpartner Rohdaten</th>'
+               '</tr></thead><tbody>')
+    for s in students:
+        schueler_cell = _format_schueler_meta_html(s, stand_date)
+        erz_html      = _format_erz_rohdaten_html(s.get('raw_erz_row') or {})
+        ansp_html     = _format_anspr_rohdaten_html(s.get('raw_ansp_rows') or [])
+        out.append('<tr>'
+                   f'<td style="{td}">{schueler_cell}</td>'
+                   f'<td style="{td}">{erz_html}</td>'
+                   f'<td style="{td}">{ansp_html}</td>'
+                   '</tr>')
+    out.append('</tbody></table>')
+    return '\n'.join(out)
+
+
+def _format_schueler_meta_html(s, stand_date):
+    """Linke Spalte: Name, ID, Geb-Datum, Volljaehrig-Status (mit Quellenangabe
+    + Konflikt-Marker), Erzieher-Art (Klartext) wenn vorhanden."""
+    parts = []
+    parts.append(f'<strong>{_html_escape_erz(s["nachname"])}, {_html_escape_erz(s["vorname"])}</strong>')
+    parts.append(f'<div style="color:#888; font-size:0.85em;">ID {_html_escape_erz(s["id"])}</div>')
+    # Geburtsdatum + Quell-Hinweis: 'main_schueler' (primaer, kein Marker noetig),
+    # 'erzieher_quelle' (Fallback — diskreter grauer Hinweis), None (keine Quelle).
+    geb_src = s.get('geburtsdatum_source')
+    if geb_src == 'erzieher_quelle':
+        src_hint = ' <span style="color:#888; font-size:0.75em;" title="Aus dem Erzieher-Export gezogen — die Schüler-Hauptverarbeitung lieferte für diese ID nichts.">(Quelle: Erzieher-Export)</span>'
+    elif geb_src is None and s.get('geburtsdatum'):
+        # Quelle leer aber Wert da? Sollte nicht passieren, sicherheitshalber neutral.
+        src_hint = ''
+    else:
+        src_hint = ''
+    parts.append(f'<div style="margin-top:4px;"><strong>🎂</strong> {_html_escape_erz(s["geburtsdatum"] or "—")}{src_hint}</div>')
+    # Volljaehrigkeit: explizit MIT Quellenangabe (Geburtsdatum vs. Schild-
+    # Heuristik), damit die KL erkennt warum 'volljaehrig' steht — und vor
+    # allem ob ein Konflikt vorliegt (Schild markiert, Geb-Datum widerspricht).
+    if s.get('volljaehrig_konflikt'):
+        parts.append('<div style="margin-top:4px; padding:3px 5px; background:#fff3cd; border:1px solid #ffc107; border-radius:3px; font-size:0.85em;">'
+                     '<strong>⚠️ Konflikt:</strong> Schild markiert als <em>volljährig</em>, das Geburtsdatum sagt aber <strong>minderjährig</strong>. '
+                     'Bitte in Schild prüfen/korrigieren.</div>')
+    elif s.get('volljaehrig_per_geb_known'):
+        # Deterministischer Fall: Geb-Datum kennen wir.
+        label = 'ja' if s['volljaehrig_per_geb'] else 'nein'
+        color = '#c0392b' if s['volljaehrig_per_geb'] else '#27ae60'
+        parts.append(f'<div style="margin-top:4px;"><strong>Volljährig (per Geburtsdatum, Stand {_html_escape_erz(stand_date)}):</strong> '
+                     f'<span style="color:{color}; font-weight:bold;">{label}</span></div>')
+        if s['volljaehrig_per_schild'] and not s['volljaehrig_per_geb']:
+            # Eigentlich schon im Konflikt-Block oben — dieser Pfad sollte
+            # nicht erreicht werden. Defensive.
+            pass
+    else:
+        # Geb-Datum fehlt: Fallback Schild-Heuristik mit deutlichem Marker.
+        if s['volljaehrig_per_schild']:
+            parts.append('<div style="margin-top:4px;"><strong>Volljährig:</strong> '
+                         '<span style="color:#c0392b; font-weight:bold;">ja*</span> '
+                         '<span style="color:#888; font-size:0.85em;">(nur per Schild-Markierung — kein Geburtsdatum hinterlegt!)</span></div>')
+        else:
+            parts.append('<div style="margin-top:4px; padding:3px 5px; background:#fff3cd; border:1px solid #ffc107; border-radius:3px; font-size:0.85em;">'
+                         '<strong>⚠️ Geburtsdatum fehlt</strong> — Volljährigkeit kann nicht eindeutig bestimmt werden.</div>')
+    if s.get('erzieher_art'):
+        parts.append(f'<div style="margin-top:4px; color:#666; font-size:0.85em;"><em>Erzieher: Art (Klartext) = {_html_escape_erz(s["erzieher_art"])}</em></div>')
+    return ''.join(parts)
+
+
+# Kolumnen, die wir in der Erzieher-Rohdaten-Zelle als 'fuer den Erzieher-
+# Workflow relevant' anzeigen. Filter wird auf den raw_erz_row Schluesseln
+# angewendet — Schueler-Stamm-Spalten (Klasse/Vorname/Nachname/Geburtsdatum/
+# Interne ID-Nummer) werden ausgeblendet, weil sie schon in der linken Spalte
+# stehen oder dort impliziert sind.
+_HIDDEN_ERZ_ROHDATEN_COLS = {
+    'Interne ID-Nummer', 'Klasse', 'Schüler-Klasse', 'Schüler: Klasse',
+    'Vorname', 'Schüler-Vorname', 'Schüler: Vorname',
+    'Nachname', 'Schüler-Nachname', 'Schüler: Nachname',
+    'Geburtsdatum', 'Schüler-Geburtsdatum', 'Schüler: Geburtsdatum',
+    'Schüler-Jahrgang',
+}
+
+
+def _format_erz_rohdaten_html(erz_row):
+    """Listet alle Erzieher-relevanten Spalten der erz_row auf — gruppiert
+    nach Erzieher-Slot ('Erzieher 1: ...', 'Erzieher 2: ...', ...) plus
+    eigener Block fuer globale 'Erzieher: ...'-Spalten."""
+    if not erz_row:
+        return '<em style="color:#888;">—</em>'
+    # Slot-spezifische Spalten gruppieren
+    slot_groups = {}  # int -> [(col_full, col_short, value), ...]
+    global_cols = []  # [(col, value), ...] fuer 'Erzieher: ...' + 'Erhält Anschreiben'
+    other_cols  = []  # alle anderen erlaubten Spalten
+    for k, v in erz_row.items():
+        if k in _HIDDEN_ERZ_ROHDATEN_COLS:
+            continue
+        m = re.match(r'Erzieher\s+(\d+):\s*(.+)$', k)
+        if m:
+            slot_idx = int(m.group(1))
+            col_short = m.group(2)
+            slot_groups.setdefault(slot_idx, []).append((col_short, v))
+            continue
+        if k.startswith('Erzieher:') or k == 'Erhält Anschreiben' \
+                or k in ('Ortsname', 'Postleitzahl', 'Straße', 'Ortsteil',
+                         'Postleitzahl-Land'):
+            global_cols.append((k, v))
+            continue
+        # andere Spalten ueberspringen (waeren Schueler-spezifisch)
+    out = []
+    for slot_idx in sorted(slot_groups.keys()):
+        cols = slot_groups[slot_idx]
+        any_filled = any(v for _, v in cols)
+        if not any_filled:
+            continue  # leere Slots nicht anzeigen — wuerden die Zelle aufblaehen
+        out.append(f'<div style="margin-bottom:6px; padding:4px 6px; background:#f4f4f4; border-left:3px solid #6f42c1; border-radius:2px;">')
+        out.append(f'<strong style="color:#6f42c1;">Erzieher {slot_idx}</strong>')
+        out.append(_format_kv_list_html(cols))
+        out.append('</div>')
+    if global_cols and any(v for _, v in global_cols):
+        out.append(f'<div style="margin-bottom:6px; padding:4px 6px; background:#eef4f8; border-left:3px solid #17a2b8; border-radius:2px;">')
+        out.append('<strong style="color:#17a2b8;">Allgemein (Erzieher-Stamm)</strong>')
+        out.append(_format_kv_list_html(global_cols))
+        out.append('</div>')
+    if not out:
+        return '<em style="color:#c0392b;">⚠️ Keine Erzieher-Daten</em>'
+    return '\n'.join(out)
+
+
+# Spalten die in der Anspr-Rohdaten-Zelle ausgeblendet werden (Schueler-Stamm,
+# der schon links steht).
+_HIDDEN_ANSPR_ROHDATEN_COLS = {
+    'Schüler_ID', 'Schüler-ID', 'Interne ID-Nummer',
+    'Schüler-Klasse', 'Schueler-Klasse', 'Klasse',
+    'Schüler-Vorname', 'Schueler-Vorname', 'Vorname',
+    'Schüler-Nachname', 'Schueler-Nachname', 'Nachname',
+}
+
+
+def _format_anspr_rohdaten_html(anspr_rows):
+    """Pro Anspr-Zeile eine Box mit ALLEN Spalten als 'Spaltenname: Wert'-
+    Zeilen. Schueler-Stamm-Spalten weggelassen (links bereits sichtbar)."""
+    if not anspr_rows:
+        return ('<em style="color:#888;">— Keine Eintraege im Ansprechpartner-'
+                'Export (oder Anspr-CSV gar nicht geladen)</em>')
+    out = []
+    for i, row in enumerate(anspr_rows, 1):
+        cols = [(k, v) for k, v in row.items()
+                if k not in _HIDDEN_ANSPR_ROHDATEN_COLS]
+        out.append(f'<div style="margin-bottom:6px; padding:4px 6px; background:#f4f4f4; border-left:3px solid #28a745; border-radius:2px;">')
+        out.append(f'<strong style="color:#28a745;">Anspr-Zeile #{i}</strong>')
+        out.append(_format_kv_list_html(cols))
+        out.append('</div>')
+    return '\n'.join(out)
+
+
+def _format_kv_list_html(cols):
+    """Liste von (Spaltenname, Wert)-Tupeln als kompakte HTML-Liste —
+    leere Werte werden als '—' grau dargestellt, damit man sieht dass die
+    Spalte da ist aber nicht gefuellt wurde."""
+    if not cols:
+        return ''
+    out = ['<ul style="margin:3px 0 0 0; padding-left:16px; list-style:none;">']
+    for k, v in cols:
+        if v:
+            # E-Mail-Spalten anklickbar machen
+            v_html = _html_escape_erz(v)
+            if 'E-Mail' in k or 'e-mail' in k.lower():
+                v_html = f'<a href="mailto:{_html_escape_erz(v)}">{v_html}</a>'
+            out.append(f'<li style="margin-bottom:1px;"><span style="color:#666; font-size:0.9em;">{_html_escape_erz(k)}:</span> {v_html}</li>')
+        else:
+            out.append(f'<li style="margin-bottom:1px;"><span style="color:#666; font-size:0.9em;">{_html_escape_erz(k)}:</span> <span style="color:#bbb;">—</span></li>')
+    out.append('</ul>')
+    return '\n'.join(out)
+
+
+def render_kl_mail(class_data, subject_template=None, body_template=None,
+                   stand_date=None, subject_suffix=''):
+    """Setzt die Platzhalter in Subject + Body ein. Symmetrisch zur
+    ausbilder_processor-Variante; eigene Platzhalter
+    $Erzieher_Tabelle_HTML + $Schueler_Anzahl."""
+    subject_template = subject_template or DEFAULT_ERZ_KL_MAIL_SUBJECT
+    body_template    = body_template    or DEFAULT_ERZ_KL_MAIL_BODY
+    stand_date       = stand_date       or datetime.now().strftime('%d.%m.%Y')
+    kl_full          = class_data.get('kl_name') or ''
+    kl_anrede        = _kl_anrede_short_erz(kl_full)
+    students = class_data.get('students', [])
+    repl_pairs = [
+        ('$Erzieher_Tabelle_HTML', render_erzieher_table_html(students, stand_date=stand_date)),
+        ('$Klassenlehrer_Anrede',  kl_anrede),
+        ('$Klassenlehrer_Name',    kl_full),
+        ('$Klassenlehrer_E-Mail',  class_data.get('kl_email', '')),
+        ('$Schueler_Anzahl',       str(len(students))),
+        ('$Klasse',                class_data.get('klasse', '')),
+        ('$Stand',                 stand_date),
+    ]
+    subject = subject_template
+    body    = body_template
+    for k, v in repl_pairs:
+        subject = subject.replace(k, v)
+        body    = body.replace(k, v)
+    if subject_suffix:
+        subject = f"{subject_suffix} {subject}".strip()
+    return subject, body
+
+
+# ---------------------------------------------------------------------------
+# Excel-Anhang (2 Sheets: Erzieher (1 Zeile pro Slot) + Telefonnummern)
+# ---------------------------------------------------------------------------
+
+def build_kl_mail_xlsx(class_data, stand_date=None):
+    """Erzeugt eine xlsx-Mappe (in-memory bytes) mit zwei Sheets:
+      Sheet 1 'Erzieher':       1 Zeile pro Erzieher-Slot (Schueler-Spalten wiederholt)
+      Sheet 2 'Telefonnummern': 1 Zeile pro Telefonnummer
+    Beide Sheets filterbar (Autofilter), Freeze Panes ueber dem Header.
+    Schueler ohne Erzieher / ohne Telefon werden trotzdem mit aufgenommen
+    (Spalten leer) — sonst wuerden Luecken im Sheet verschwinden."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    import io
+
+    stand_date = stand_date or datetime.now().strftime('%d.%m.%Y')
+    wb = Workbook()
+
+    # --- Sheet 1: Erzieher -------------------------------------------------
+    ws1 = wb.active
+    ws1.title = 'Erzieher'
+    ws1['A1'] = f"Erzieher-/Ansprechpartner-Daten Klasse {class_data.get('klasse', '')}"
+    ws1['A1'].font = Font(bold=True, size=13)
+    ws1['A2'] = f"Stand: {stand_date}"
+    ws1['A2'].font = Font(italic=True, size=10)
+    kl_line = []
+    if class_data.get('kl_name'):
+        kl_line.append(f"KL: {class_data['kl_name']}")
+    if class_data.get('stv_kl_name'):
+        kl_line.append(f"Stv-KL: {class_data['stv_kl_name']}")
+    if kl_line:
+        ws1['A3'] = ' · '.join(kl_line)
+        ws1['A3'].font = Font(italic=True, size=10)
+    # Legende in Zeile 4 — erklaert den wichtigen Unterschied zwischen den zwei
+    # Volljaehrigkeits-Spalten: dynamisch berechnet vs. statischer Schild-Stand.
+    # Ueber 7 Spalten gemerged, damit der Text in voller Laenge lesbar ist.
+    ws1['A4'] = (
+        'ℹ️ "Volljährig (heute)" wird dynamisch aus dem Geburtsdatum per Excel-Formel '
+        'berechnet (HEUTE/TODAY) und ist deshalb beim Öffnen immer aktuell. '
+        '"Erzieher: Art" hingegen stammt statisch aus dem Schild-Export und zeigt '
+        'NUR den Stand des oben angegebenen Datums — in Schild wird diese Markierung '
+        'i.d.R. nachgehalten, in dieser Excel-Datei nicht.'
+    )
+    ws1['A4'].font = Font(italic=True, size=9, color='555555')
+    ws1['A4'].alignment = Alignment(wrap_text=True, vertical='top')
+    ws1.merge_cells(start_row=4, start_column=1, end_row=4, end_column=7)
+    ws1.row_dimensions[4].height = 38
+
+    header_row = 5
+    # Layout: 1 Zeile pro Schueler, links die Stammdaten, dann pro Erzieher-Slot
+    # ein eigener Spaltenblock (Anrede / Titel / Vorname / Nachname / Briefanrede
+    # / E-Mail). Spiegelt 1:1 das Schild-Schueler-Export-Schema und macht die
+    # Erzieher-1-/Erzieher-2-Zuordnung sofort sichtbar — ohne dass man pro
+    # Schueler durch zwei Zeilen scrollen muss.
+    # Mehrzeilige Header-Texte mit '\n' — kombiniert mit wrap_text=True + ueber
+    # Row-Height-Anpassung sichtbar gemacht. Damit passt 'Volljährig (heute)'
+    # auch ohne uebermaessig breite Spalte rein, und die Stand-Export-Praezisierung
+    # bei 'Erzieher: Art' steht direkt im Header (Cell-Comment fuer Details unten).
+    STAMM_HEADERS = [
+        'Schüler-ID', 'Klasse', 'Nachname', 'Vorname',
+        'Geb.-Datum',
+        'Volljährig\n(heute,\nformelberechnet)',
+        'Erzieher: Art\n(Klartext, Stand\nletzter Export)',
+    ]
+    ERZ_SLOT_SUFFIXES = ['Anrede', 'Titel', 'Vorname', 'Nachname',
+                         'Briefanrede', 'E-Mail']
+    # Slot-Breite klassenweit ermitteln (mind. 2 = Schild-Standard, damit das
+    # Reihen-Layout ueber Klassen hinweg stabil bleibt — KL kennt das
+    # Format nach der ersten Mail).
+    students = class_data.get('students', [])
+    max_slots = 2
+    for s in students:
+        for e in s.get('erzieher', []):
+            n = e.get('nr')
+            if isinstance(n, int) and n > max_slots:
+                max_slots = n
+
+    headers1 = list(STAMM_HEADERS)
+    for i in range(1, max_slots + 1):
+        for sfx in ERZ_SLOT_SUFFIXES:
+            headers1.append(f'Erzieher {i}: {sfx}')
+
+    # Header-Styling: Stamm-Block grau, Slot-Bloecke je nach Slot-Nummer
+    # farblich abgehoben — Auge erkennt sofort welche Spalte zu welchem
+    # Erzieher gehoert. Pastell-Farben, damit's nicht knallt.
+    stamm_fill = PatternFill('solid', fgColor='DDDDDD')
+    slot_fills = [
+        PatternFill('solid', fgColor='D6EAF8'),  # Slot 1 — hellblau
+        PatternFill('solid', fgColor='D5F5E3'),  # Slot 2 — hellgruen
+        PatternFill('solid', fgColor='FDEBD0'),  # Slot 3 — hellorange
+        PatternFill('solid', fgColor='FADBD8'),  # Slot 4 — hellrosa
+        PatternFill('solid', fgColor='E8DAEF'),  # Slot 5 — helllila
+    ]
+    from openpyxl.comments import Comment
+    header_font = Font(bold=True)
+    for ci, h in enumerate(headers1, 1):
+        c = ws1.cell(row=header_row, column=ci, value=h)
+        c.font = header_font
+        if ci <= len(STAMM_HEADERS):
+            c.fill = stamm_fill
+        else:
+            slot_idx = (ci - len(STAMM_HEADERS) - 1) // len(ERZ_SLOT_SUFFIXES)
+            c.fill = slot_fills[slot_idx % len(slot_fills)]
+        c.alignment = Alignment(vertical='top', wrap_text=True, horizontal='left')
+    # Cell-Comments fuer die zwei besonderen Spalten — Detail-Tooltip beim
+    # Hover, damit der Header schmal bleiben kann und die Erklaerung trotzdem
+    # an der Zelle haftet.
+    ws1.cell(row=header_row, column=6).comment = Comment(
+        'Diese Spalte wird beim Öffnen der Datei dynamisch aus dem '
+        'Geburtsdatum berechnet (Formel: DATEDIF mit TODAY). Der Wert ist '
+        'also immer aktuell — auch wenn die Datei Wochen oder Monate später '
+        'geöffnet wird.',
+        'KL-Mail-Tool')
+    ws1.cell(row=header_row, column=7).comment = Comment(
+        'Diese Markierung kommt 1:1 aus dem Schild-Export — also dem Stand, '
+        'der oben unter "Stand:" steht. In Schild wird diese Angabe i.d.R. '
+        'aktualisiert (z.B. wenn ein Schüler 18 wird), in dieser Excel-Datei '
+        'aber NICHT — die zeigt nur den Stand vom Export-Zeitpunkt.\n\n'
+        'Für eine immer aktuelle Volljährigkeit siehe Spalte links '
+        '("Volljährig (heute)").',
+        'KL-Mail-Tool')
+    # Header-Zeile hoeher, damit die 3 Zeilen in den Multi-Line-Headern sichtbar
+    # sind (Volljaehrig (heute, formelberechnet) und Erzieher: Art (Klartext,
+    # Stand letzter Export) brauchen je 3 Zeilen).
+    ws1.row_dimensions[header_row].height = 45
+
+    klasse_name = class_data.get('klasse', '')
+    row_idx = header_row + 1
+    for s in students:
+        # Stamm-Block (Spalten 1-7)
+        ws1.cell(row=row_idx, column=1, value=s.get('id', ''))
+        ws1.cell(row=row_idx, column=2, value=klasse_name)
+        ws1.cell(row=row_idx, column=3, value=s.get('nachname', ''))
+        ws1.cell(row=row_idx, column=4, value=s.get('vorname', ''))
+        # Geburtsdatum: echtes date-Objekt wenn parsbar, sonst Roh-String.
+        # Damit funktioniert die Volljaehrig-Formel in Spalte F mit DATEDIF
+        # und Excel zeigt das Datum lokalisiert (Number-Format DD.MM.YYYY).
+        geb_p = s.get('geburtsdatum_parsed')
+        geb_cell = ws1.cell(row=row_idx, column=5)
+        if geb_p is not None:
+            geb_cell.value = geb_p
+            geb_cell.number_format = 'DD.MM.YYYY'
+        else:
+            geb_cell.value = s.get('geburtsdatum', '')
+        # Volljaehrig: dynamische Formel, damit auch bei spaeterem Oeffnen der
+        # Mappe das Alter aktuell ausgewertet wird. Englische Funktionsnamen
+        # (Excel lokalisiert sie beim Anzeigen).
+        vollj_cell = ws1.cell(row=row_idx, column=6)
+        vollj_cell.value = (
+            f'=IF(ISNUMBER(E{row_idx}),'
+            f'IF(DATEDIF(E{row_idx},TODAY(),"Y")>=18,"ja","nein"),"?")'
+        )
+        ws1.cell(row=row_idx, column=7, value=s.get('erzieher_art', ''))
+        # Erzieher-Slots (Spalten 8 aufwaerts) — pro Slot ein 6er-Block. Wenn
+        # ein Schueler den Slot nicht gefuellt hat, bleiben die Zellen leer.
+        erz_by_nr = {e.get('nr'): e for e in s.get('erzieher', [])
+                     if isinstance(e.get('nr'), int)}
+        col_idx = len(STAMM_HEADERS) + 1
+        for slot_i in range(1, max_slots + 1):
+            e = erz_by_nr.get(slot_i, {})
+            for sfx in ERZ_SLOT_SUFFIXES:
+                ws1.cell(row=row_idx, column=col_idx, value=e.get(sfx, ''))
+                col_idx += 1
+        row_idx += 1
+
+    # Spaltenbreiten: Stamm-Block + pro Slot die 6 Slot-Spalten.
+    # Spalte F (Volljaehrig) auf 14 erhoeht (vorher 10), damit '(heute,
+    # formelberechnet)' im 3-zeiligen Header sauber umbricht ohne abzuschneiden.
+    from openpyxl.utils import get_column_letter
+    stamm_widths = [10, 8, 18, 16, 11, 14, 24]
+    slot_widths  = [8, 8, 16, 18, 22, 32]  # Anrede / Titel / Vorname / Nachname / Briefanrede / E-Mail
+    widths1 = list(stamm_widths) + slot_widths * max_slots
+    for ci, w in enumerate(widths1, 1):
+        ws1.column_dimensions[get_column_letter(ci)].width = w
+    last_col1 = get_column_letter(len(headers1))
+    ws1.auto_filter.ref = f"A{header_row}:{last_col1}{max(header_row, row_idx - 1)}"
+    # Freeze: Header-Zeile + 4 Stamm-Spalten (ID/Klasse/Nachname/Vorname)
+    # bleiben sichtbar — beim horizontalen Scrollen durch die Slot-Bloecke
+    # bleibt der Schueler erkennbar.
+    ws1.freeze_panes = ws1.cell(row=header_row + 1, column=5)
+
+    # --- Sheet 2: Telefonnummern -----------------------------------------
+    ws2 = wb.create_sheet(title='Telefonnummern')
+    ws2['A1'] = f"Telefonnummern Klasse {class_data.get('klasse', '')}"
+    ws2['A1'].font = Font(bold=True, size=13)
+    ws2['A2'] = f"Stand: {stand_date}"
+    ws2['A2'].font = Font(italic=True, size=10)
+    headers2 = [
+        'Schüler-ID', 'Klasse', 'Nachname', 'Vorname',
+        'Anschluss-Art', 'Telefon-Nummer', 'Bemerkung', 'Quelle',
+    ]
+    for ci, h in enumerate(headers2, 1):
+        c = ws2.cell(row=header_row, column=ci, value=h)
+        c.font = header_font
+        c.fill = stamm_fill  # gleiche graue Headerfarbe wie Stamm-Block in Sheet 1
+        c.alignment = Alignment(vertical='top')
+    row_idx2 = header_row + 1
+    for s in class_data.get('students', []):
+        phones = s.get('telefone', [])
+        if not phones:
+            ws2.cell(row=row_idx2, column=1, value=s.get('id', ''))
+            ws2.cell(row=row_idx2, column=2, value=klasse_name)
+            ws2.cell(row=row_idx2, column=3, value=s.get('nachname', ''))
+            ws2.cell(row=row_idx2, column=4, value=s.get('vorname', ''))
+            row_idx2 += 1
+            continue
+        for p in phones:
+            ws2.cell(row=row_idx2, column=1, value=s.get('id', ''))
+            ws2.cell(row=row_idx2, column=2, value=klasse_name)
+            ws2.cell(row=row_idx2, column=3, value=s.get('nachname', ''))
+            ws2.cell(row=row_idx2, column=4, value=s.get('vorname', ''))
+            ws2.cell(row=row_idx2, column=5, value=p.get('anschluss', ''))
+            ws2.cell(row=row_idx2, column=6, value=p.get('telefon', ''))
+            ws2.cell(row=row_idx2, column=7, value=p.get('bemerkung', ''))
+            ws2.cell(row=row_idx2, column=8, value='Erzieher-Export' if p.get('from_erz') else 'Ansprechpartner-Export')
+            row_idx2 += 1
+
+    widths2 = [10, 8, 18, 16, 18, 22, 22, 22]
+    for ci, w in enumerate(widths2, 1):
+        ws2.column_dimensions[chr(ord('A') + ci - 1)].width = w
+    last_col2 = chr(ord('A') + len(headers2) - 1)
+    ws2.auto_filter.ref = f"A{header_row}:{last_col2}{max(header_row, row_idx2 - 1)}"
+    ws2.freeze_panes = ws2.cell(row=header_row + 1, column=1)
+
+    # --- Sheet 3 + 4: Mailverteiler (alle / nur Minderj.) -----------------
+    # Zwei Varianten in eigenen Sheets, damit die KL nicht filtern muss —
+    # einfach das richtige Sheet auswaehlen, Direkt-Liste markieren, in BCC.
+    _build_mailverteiler_sheet(wb, class_data, stand_date,
+                                title='Mailverteiler (alle)',
+                                exclude_volljaehrige=False,
+                                description=(
+                                    'Diese Variante enthält ALLE in Schild '
+                                    'hinterlegten Eltern-/Ansprechpartner-E-Mail-'
+                                    'Adressen — inklusive Adressen, die zu '
+                                    'volljährigen Schülern gehören (z.B. die '
+                                    'eigene E-Mail-Adresse eines volljährigen '
+                                    'Schülers als Self-Ansprechpartner).'))
+    _build_mailverteiler_sheet(wb, class_data, stand_date,
+                                title='Mailverteiler (nur Minderj.)',
+                                exclude_volljaehrige=True,
+                                description=(
+                                    'Diese Variante schließt E-Mail-Adressen '
+                                    'aus, die zu volljährigen Schülern gehören '
+                                    '(Stand der Volljährigkeit dynamisch aus '
+                                    'dem Geburtsdatum berechnet, mit Schild-'
+                                    'Heuristik als Fallback). Sinnvoll z.B. '
+                                    'für Eltern-Kommunikation, die die '
+                                    'Sorgeberechtigten voraussetzt.'))
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _build_mailverteiler_sheet(wb, class_data, stand_date, title,
+                                exclude_volljaehrige, description):
+    """Baut ein Mailverteiler-Sheet in der gegebenen Workbook ein.
+    Layout:
+       Row 1: Titel
+       Row 2: Stand + Klasse
+       Row 3: KL/Stv-KL (optional)
+       Row 4-5: Hinweis-Box (gemerged ueber 5 Spalten)
+       Row 7: 'DIREKT-LISTE'-Header
+       Row 8: ein gemergedes Zellen-Block A:E mit semikolon-getrennter Liste
+              (wrap_text + grosse Row-Hoehe). KL kann markieren+kopieren.
+       Row 10: Tabellenheader (E-Mail / Erzieher / Schüler / Klasse / Vollj.)
+       Row 11+: Daten
+       Row N+2: Statistik
+    """
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    ws = wb.create_sheet(title=title[:31])  # Excel-Limit
+    klasse_name = class_data.get('klasse', '')
+    students = class_data.get('students', [])
+    emails = _collect_parent_emails(class_data, exclude_volljaehrige=exclude_volljaehrige)
+
+    # Hilfsstyles
+    header_fill = PatternFill('solid', fgColor='DDDDDD')
+    accent_fill = PatternFill('solid', fgColor='D6EAF8') if not exclude_volljaehrige \
+                  else PatternFill('solid', fgColor='D5F5E3')
+    hint_fill   = PatternFill('solid', fgColor='FFF9E6')
+    thin_border = Border(left=Side(style='thin', color='CCCCCC'),
+                         right=Side(style='thin', color='CCCCCC'),
+                         top=Side(style='thin', color='CCCCCC'),
+                         bottom=Side(style='thin', color='CCCCCC'))
+
+    # Zeile 1: Titel
+    ws['A1'] = f"{title} — Klasse {klasse_name}"
+    ws['A1'].font = Font(bold=True, size=13)
+    ws.merge_cells('A1:E1')
+    # Zeile 2: Stand
+    ws['A2'] = f"Stand: {stand_date}"
+    ws['A2'].font = Font(italic=True, size=10)
+    # Zeile 3: KL-Info
+    kl_parts = []
+    if class_data.get('kl_name'):
+        kl_parts.append(f"KL: {class_data['kl_name']}")
+    if class_data.get('stv_kl_name'):
+        kl_parts.append(f"Stv-KL: {class_data['stv_kl_name']}")
+    if kl_parts:
+        ws['A3'] = ' · '.join(kl_parts)
+        ws['A3'].font = Font(italic=True, size=10)
+    # Zeile 4-5: Hinweis-Box gemerged
+    ws['A4'] = f"ℹ️ {description}"
+    ws['A4'].font = Font(italic=True, size=9, color='555555')
+    ws['A4'].alignment = Alignment(wrap_text=True, vertical='top')
+    ws['A4'].fill = hint_fill
+    ws.merge_cells(start_row=4, start_column=1, end_row=5, end_column=5)
+    ws.row_dimensions[4].height = 30
+    ws.row_dimensions[5].height = 30
+
+    # Zeile 7: Direkt-Listen-Header
+    ws['A7'] = 'DIREKT-LISTE (Semikolon-getrennt — markieren, kopieren, in BCC einfügen):'
+    ws['A7'].font = Font(bold=True, size=10)
+    ws.merge_cells('A7:E7')
+    # Zeile 8: semikolon-getrennte Liste als EIN gemergedes Feld — KL kann
+    # einfach markieren + kopieren (Excel uebernimmt nur den Text der ersten Zelle,
+    # also reicht es, A8 zu befuellen).
+    if emails:
+        joined = '; '.join(e['email'] for e in emails)
+    else:
+        joined = '— Keine gültigen E-Mail-Adressen in dieser Klasse (mit aktiver Filterung).'
+    ws['A8'] = joined
+    ws['A8'].font = Font(name='Consolas', size=10)
+    ws['A8'].alignment = Alignment(wrap_text=True, vertical='top')
+    ws['A8'].fill = accent_fill
+    ws['A8'].border = thin_border
+    ws.merge_cells('A8:E8')
+    # Row-Hoehe abhaengig von Email-Anzahl (grobe Schaetzung: 1 Zeile pro 4 Mails)
+    approx_lines = max(2, (len(emails) // 4) + 1)
+    ws.row_dimensions[8].height = min(20 * approx_lines, 250)
+
+    # Zeile 10: Tabellen-Header
+    table_header_row = 10
+    table_headers = ['E-Mail', 'Erzieher', 'Schüler', 'Klasse',
+                     'Volljährig\n(heute)']
+    for ci, h in enumerate(table_headers, 1):
+        c = ws.cell(row=table_header_row, column=ci, value=h)
+        c.font = Font(bold=True)
+        c.fill = header_fill
+        c.alignment = Alignment(wrap_text=True, vertical='top')
+    ws.row_dimensions[table_header_row].height = 32
+
+    # Zeile 11+: Daten
+    row_idx = table_header_row + 1
+    for e in emails:
+        ws.cell(row=row_idx, column=1, value=e['email'])
+        erz_name_parts = [p for p in (e['erz_anrede'], e['erz_vorname'],
+                                      e['erz_nachname']) if p]
+        erz_name = ' '.join(erz_name_parts).strip() or '(Name unbekannt)'
+        if e['slot_nr']:
+            erz_name = f"{erz_name} (Slot {e['slot_nr']})"
+        ws.cell(row=row_idx, column=2, value=erz_name)
+        schueler_name = f"{e['schueler_nachname']}, {e['schueler_vorname']}".strip(', ')
+        if e['schueler_id']:
+            schueler_name = f"{schueler_name} [ID {e['schueler_id']}]"
+        ws.cell(row=row_idx, column=3, value=schueler_name)
+        ws.cell(row=row_idx, column=4, value=klasse_name)
+        if e['schueler_volljaehrig']:
+            ws.cell(row=row_idx, column=5, value='ja')
+        elif not e['volljaehrig_per_geb_known']:
+            ws.cell(row=row_idx, column=5, value='?')
+        else:
+            ws.cell(row=row_idx, column=5, value='nein')
+        row_idx += 1
+    last_data_row = row_idx - 1
+
+    # Spalten-Breiten
+    widths = [32, 28, 28, 10, 12]
+    for ci, w in enumerate(widths, 1):
+        ws.column_dimensions[get_column_letter(ci)].width = w
+
+    # Autofilter nur wenn Daten vorhanden
+    if emails:
+        ws.auto_filter.ref = (f"A{table_header_row}:E"
+                              f"{max(table_header_row, last_data_row)}")
+
+    # Statistik-Block unten
+    stat_row = max(row_idx + 1, table_header_row + 2)
+    ws.cell(row=stat_row, column=1, value='Statistik:').font = Font(bold=True)
+    # Mehrwert-Statistik: Schueler-Counts (gesamt + die mit/ohne Mail)
+    students_with_mail = sum(
+        1 for s in students
+        if any((slot.get('E-Mail') or '').strip() for slot in s.get('erzieher', []))
+    )
+    vollj_count_in_class = sum(1 for s in students if s.get('volljaehrig'))
+    excluded_by_volljaehrigkeit = vollj_count_in_class if exclude_volljaehrige else 0
+    stats_lines = [
+        f"Schüler in Klasse: {len(students)}",
+        f"Schüler mit mind. einer Eltern-Mail: {students_with_mail}",
+        f"Schüler OHNE Eltern-Mail: {len(students) - students_with_mail}",
+        f"Eindeutige E-Mail-Adressen im Verteiler: {len(emails)}",
+    ]
+    if exclude_volljaehrige:
+        stats_lines.append(
+            f"Wegen Volljährigkeit ausgeschlossene Schüler: {excluded_by_volljaehrigkeit}")
+    for i, line in enumerate(stats_lines):
+        ws.cell(row=stat_row + 1 + i, column=1, value=line).font = Font(size=10)
+
+    ws.freeze_panes = ws.cell(row=table_header_row + 1, column=1)
+
+
+def safe_class_filename(klasse):
+    """Dateinamen-sicheres Aequivalent — Duplikat zu ausbilder_processor."""
+    return re.sub(r'[<>:"/\\|?*]', '_', klasse or 'Klasse')
+
+
+# ---------------------------------------------------------------------------
+# Eltern-Mailverteiler (3.3): zweiter Mail-Anhang neben dem Excel
+# ---------------------------------------------------------------------------
+
+# Dummy-E-Mail aus dem fill_dummies-Feature darf NIE in den Verteiler — wuerde
+# bouncen + Eltern-Mailverteilern keine seriose Adressen mehr beibringen.
+_INVALID_EMAIL_DOMAINS = ('invalid.local', 'invalid', 'example.com', 'example.org')
+
+
+def _collect_parent_emails(class_data, exclude_volljaehrige=False):
+    """Sammelt alle Erzieher-/Ansprechpartner-E-Mail-Adressen der Klasse —
+    dedupliziert (case-insensitive), mit Zuordnung zu Schueler + Slot.
+
+    Args:
+        exclude_volljaehrige: wenn True, werden ALLE E-Mail-Adressen von
+            Schuelern uebersprungen, deren 'volljaehrig'-Status True ist
+            (Kombi-Quelle: Geburtsdatum >= 18 ODER Schild-Markierung). Damit
+            kann der Aufrufer eine 'nur Minderj.'-Variante des Verteilers
+            bauen. Konservativ: wenn IRGENDEINE Quelle 'volljaehrig' sagt,
+            wird der Eintrag ausgeschlossen.
+
+    Returns: Liste von Dicts in stabiler Reihenfolge (Schueler-Sortierung,
+    dann Slot-Nr aufsteigend):
+        {email, email_lower, schueler_id, schueler_vorname, schueler_nachname,
+         erz_vorname, erz_nachname, erz_anrede, slot_nr,
+         schueler_volljaehrig, volljaehrig_per_geb_known}
+    Ungueltige/leere Adressen werden uebersprungen.
+    """
+    seen = set()
+    out = []
+    for s in class_data.get('students', []):
+        is_vollj = bool(s.get('volljaehrig'))
+        if exclude_volljaehrige and is_vollj:
+            continue
+        # Erzieher-Liste ist bereits nach 'nr' aufsteigend sortiert (siehe
+        # _extract_all_erzieher_slots), wir behalten die Reihenfolge bei.
+        for e in s.get('erzieher', []):
+            email = (e.get('E-Mail') or '').strip()
+            if not email or '@' not in email:
+                continue
+            # Dummy-/Beispiel-Adressen filtern
+            domain = email.split('@', 1)[1].lower()
+            if any(domain == d or domain.endswith('.' + d) for d in _INVALID_EMAIL_DOMAINS):
+                continue
+            key = email.lower()
+            if key in seen:
+                # Dedup: gleiche Adresse fuer beide Eltern (sehr selten) oder
+                # ueber Geschwister hinweg (kann in Mischklassen passieren).
+                continue
+            seen.add(key)
+            out.append({
+                'email':            email,
+                'email_lower':      key,
+                'schueler_id':      s.get('id', ''),
+                'schueler_vorname': s.get('vorname', ''),
+                'schueler_nachname': s.get('nachname', ''),
+                'erz_vorname':      (e.get('Vorname') or '').strip(),
+                'erz_nachname':     (e.get('Nachname') or '').strip(),
+                'erz_anrede':       (e.get('Anrede') or '').strip(),
+                'slot_nr':          e.get('nr', ''),
+                'schueler_volljaehrig':       is_vollj,
+                'volljaehrig_per_geb_known':  bool(s.get('volljaehrig_per_geb_known')),
+            })
+    return out
+
+
+# build_parent_distribution_text() + safe_distribution_filename() wurden in
+# 3.3 wieder entfernt — die Eltern-Mailverteiler werden jetzt direkt als
+# weitere Sheets in die KL-Mail-Excel integriert (Sheets 3 + 4), inkl. einer
+# Variante mit / ohne volljaehrige Schueler. Sheet-Builder siehe
+# _build_mailverteiler_sheet() weiter unten.

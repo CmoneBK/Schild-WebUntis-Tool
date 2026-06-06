@@ -30,6 +30,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const editorBodyAusbilderKlUebersicht = klMailEditorEl
         ? new Quill('#editorBodyAusbilderKlUebersicht', quillOptions)
         : null;
+    // KL-Mail-Editor (Erzieher-Workflow), symmetrisch zum Ausbilder-Editor.
+    const erzKlMailEditorEl = document.getElementById('editorBodyErzieherKlUebersicht');
+    const editorBodyErzieherKlUebersicht = erzKlMailEditorEl
+        ? new Quill('#editorBodyErzieherKlUebersicht', quillOptions)
+        : null;
 
     // Store editors in a global map for access
     window.editors = {
@@ -42,6 +47,9 @@ document.addEventListener("DOMContentLoaded", function () {
     };
     if (editorBodyAusbilderKlUebersicht) {
         window.editors['ausbilder_kl_uebersicht'] = editorBodyAusbilderKlUebersicht;
+    }
+    if (editorBodyErzieherKlUebersicht) {
+        window.editors['erzieher_kl_uebersicht'] = editorBodyErzieherKlUebersicht;
     }
 
     // Toast Notification System
@@ -82,6 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     'karteileiche':            'subjectKarteileiche',
                     'info_notification':       'subjectInfoNotification',
                     'ausbilder_kl_uebersicht': 'subjectAusbilderKlUebersicht',
+                    'erzieher_kl_uebersicht':  'subjectErzieherKlUebersicht',
                 }[type];
                 document.getElementById(subjectInputId).value = data.subject || "";
                 window.editors[type].clipboard.dangerouslyPasteHTML(textToHtml(data.body || ""));
@@ -124,6 +133,13 @@ document.addEventListener("DOMContentLoaded", function () {
             if (editorBodyAusbilderKlUebersicht) {
                 editorBodyAusbilderKlUebersicht.clipboard.dangerouslyPasteHTML(
                     textToHtml(data.body_ausbilder_kl_uebersicht || ""));
+            }
+            // KL-Mail-Vorlage (Erzieher-Workflow)
+            const erzKlSubj = document.getElementById('subjectErzieherKlUebersicht');
+            if (erzKlSubj) erzKlSubj.value = data.subject_erzieher_kl_uebersicht || '';
+            if (editorBodyErzieherKlUebersicht) {
+                editorBodyErzieherKlUebersicht.clipboard.dangerouslyPasteHTML(
+                    textToHtml(data.body_erzieher_kl_uebersicht || ""));
             }
 
             // Show/Hide class change hint based on initial value
@@ -215,6 +231,40 @@ document.addEventListener("DOMContentLoaded", function () {
                 .finally(() => {
                     klMailSaveBtn.disabled = false;
                     klMailSaveBtn.textContent = orig;
+                });
+        });
+    }
+
+    // KL-Mail-Vorlage (Erzieher-Workflow) speichern — eigener Endpoint,
+    // analog zum Ausbilder-Save (Begruendung dort).
+    const erzKlMailSaveBtn = document.getElementById('saveErzieherKlMailTemplate');
+    if (erzKlMailSaveBtn && editorBodyErzieherKlUebersicht) {
+        erzKlMailSaveBtn.addEventListener('click', function () {
+            const subjEl   = document.getElementById('subjectErzieherKlUebersicht');
+            const bodyEl   = document.getElementById('bodyErzieherKlUebersicht');
+            const resultEl = document.getElementById('erzieherKlMailTemplateResult');
+            if (!subjEl || !bodyEl) return;
+            bodyEl.value = editorBodyErzieherKlUebersicht.root.innerHTML;
+            const fd = new FormData();
+            fd.append('subject_erzieher_kl_uebersicht', subjEl.value);
+            fd.append('body_erzieher_kl_uebersicht',    bodyEl.value);
+            erzKlMailSaveBtn.disabled = true;
+            const orig = erzKlMailSaveBtn.textContent;
+            erzKlMailSaveBtn.textContent = '⌛ Speichere…';
+            if (resultEl) resultEl.textContent = '';
+            fetch('/api/erzieher/update_kl_mail_template', { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(d => {
+                    if (resultEl) resultEl.textContent = d.message || '';
+                    if (typeof showToast === 'function') showToast(d.message || 'Gespeichert.');
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Fehler beim Speichern der Erzieher-KL-Mail-Vorlage.');
+                })
+                .finally(() => {
+                    erzKlMailSaveBtn.disabled = false;
+                    erzKlMailSaveBtn.textContent = orig;
                 });
         });
     }

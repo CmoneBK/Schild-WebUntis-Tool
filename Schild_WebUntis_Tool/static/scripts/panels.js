@@ -7,6 +7,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // Ausbilder-spezifischer E-Mail-Editor (nur KL-Mail-Vorlage). Wird ueber
         // den Button 'toggleEditorAusbilderKlMail' im Ausbilder-Workflow geoeffnet.
         emailEditorAusbilderKlMail:   document.getElementById("emailEditorAusbilderKlMail"),
+        // Erzieher-spezifischer E-Mail-Editor (3.3), symmetrisch zum Ausbilder.
+        emailEditorErzieherKlMail:    document.getElementById("emailEditorErzieherKlMail"),
         shortcutCreator:              document.getElementById("shortcutCreator"),
         uploadArea:                   document.getElementById("uploadArea"),
         historyPanel:                 document.getElementById("historyPanel"),
@@ -22,6 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
         toggleSettingsButton:                document.getElementById("toggle-settings"),
         toggleEditorButton:                  document.getElementById("toggleEditor"),
         toggleEditorAusbilderKlMailButton:   document.getElementById("toggleEditorAusbilderKlMail"),
+        toggleEditorErzieherKlMailButton:    document.getElementById("toggleEditorErzieherKlMail"),
         toggleShortcutButton:                document.getElementById("toggleShortcutCreator"),
         toggleUploadButton:                  document.getElementById("toggleUploadArea"),
         toggleHistoryButton:                 document.getElementById("toggleHistory"),
@@ -470,6 +473,9 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (toggleButtons.toggleEditorAusbilderKlMailButton) {
         toggleButtons.toggleEditorAusbilderKlMailButton.addEventListener("click", () => togglePanel("emailEditorAusbilderKlMail"));
+    }
+    if (toggleButtons.toggleEditorErzieherKlMailButton) {
+        toggleButtons.toggleEditorErzieherKlMailButton.addEventListener("click", () => togglePanel("emailEditorErzieherKlMail"));
     }
     if (toggleButtons.toggleUploadButton) {
         toggleButtons.toggleUploadButton.addEventListener("click", () => togglePanel("uploadArea"));

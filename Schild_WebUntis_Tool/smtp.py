@@ -48,7 +48,7 @@ def print_creation(message):
 
 from utils import safe_read_config
 
-def send_email(subject, body, to_addresses, attachment_path=None):
+def send_email(subject, body, to_addresses, attachment_path=None, attachment_paths=None):
     # Konfigurationsdatei einlesen
     config = configparser.ConfigParser()
     safe_read_config(config, 'email_settings.ini')
@@ -86,12 +86,19 @@ def send_email(subject, body, to_addresses, attachment_path=None):
     # Nachrichtentext hinzufügen
     msg.attach(MIMEText(body, 'html', _charset='utf-8'))
 
-    # Anhang hinzufügen (falls vorhanden)
+    # Anhaenge hinzufuegen (falls vorhanden). Akzeptiert sowohl den alten
+    # Einzel-Parameter (attachment_path, Backward-Compat) als auch eine Liste
+    # via attachment_paths — Aufrufer kann beides kombinieren oder einzeln nutzen.
+    _paths = []
     if attachment_path:
-        with open(attachment_path, 'rb') as attachment:
-            part = MIMEApplication(attachment.read(), Name=os.path.basename(attachment_path))
-        part['Content-Disposition'] = f'attachment; filename="{os.path.basename(attachment_path)}"'
-        msg.attach(part)
+        _paths.append(attachment_path)
+    if attachment_paths:
+        _paths.extend([p for p in attachment_paths if p])
+    for _p in _paths:
+        with open(_p, 'rb') as _att:
+            _part = MIMEApplication(_att.read(), Name=os.path.basename(_p))
+        _part['Content-Disposition'] = f'attachment; filename="{os.path.basename(_p)}"'
+        msg.attach(_part)
 
     # SMTP Verbindung aufbauen und E-Mail senden
     try:

@@ -18,6 +18,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // ebenfalls schliessen, sonst bleibt er sichtbar wenn man auf
         // Schueler/Erzieher umschaltet.
         "emailEditorAusbilderKlMail",
+        // Erzieher-spezifischer KL-Mail-Editor (3.3), analog dazu.
+        "emailEditorErzieherKlMail",
     ];
 
     function showWorkflow(wf) {

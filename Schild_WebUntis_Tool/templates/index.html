@@ -376,9 +376,37 @@
                         <button id="erzieherDownload" type="button" class="btn btn-outline-primary mr-2" disabled>⬇️ ZIP herunterladen</button>
                         <button id="erzieherTogglePreview" type="button" class="btn btn-outline-info mr-2">👁️ Vorschau Schüler ↔ Erzieher</button>
                         <button id="erzieherToggleRawSource" type="button" class="btn btn-outline-secondary mr-2">📄 Quelldateien anzeigen</button>
-                        <button id="erzieherToggleMissing" type="button" class="btn btn-outline-warning">⚠️ Fehlende Erzieher (Klassen)</button>
+                        <button id="erzieherToggleMissing" type="button" class="btn btn-outline-warning mr-2">⚠️ Fehlende Erzieher (Klassen)</button>
+                        <button id="erzieherToggleKlMail" type="button" class="btn btn-outline-info">📧 KL-Mails: Vorschau</button>
                     </div>
                     <span id="erzieherResult" class="ml-2 text-muted small"></span>
+
+                    <!-- KL-Mail-Versand-Bereich (initial versteckt). Analog
+                         zur Ausbilder-Variante; zeigt Rohdaten (alle Erzieher-
+                         Slots + alle Telefonnummern pro Schueler). -->
+                    <div id="erzieherKlMailArea" class="mt-3" style="display:none;">
+                        <div class="alert alert-info py-2 mb-2" id="erzieherKlMailStats">Lade KL-Mail-Vorschau…</div>
+                        <p class="small text-muted mb-2">
+                            <strong>Zweck:</strong> Klassenlehrkräfte bekommen pro Klasse eine
+                            E-Mail mit Tabelle der aktuell in Schild hinterlegten
+                            <strong>Erzieher-/Ansprechpartner-Rohdaten</strong> ihrer Klasse
+                            (zur Info + Kontrolle, ggf. Veranlassung der Korrektur über das
+                            Sekretariat). Excel mit denselben Daten als Anhang
+                            (Sheet <em>Erzieher</em> + Sheet <em>Telefonnummern</em>).
+                        </p>
+                        <div class="d-flex flex-wrap align-items-center mb-2">
+                            <div class="btn-group btn-group-sm mr-3 mb-1" role="group">
+                                <button type="button" class="btn btn-outline-secondary" id="erzieherKlMailSelectAll">✓ Alle wählen</button>
+                                <button type="button" class="btn btn-outline-secondary" id="erzieherKlMailSelectNone">✗ Keine</button>
+                            </div>
+                            <button type="button" id="erzieherKlMailSend" class="btn btn-warning btn-sm mr-2 mb-1" disabled>
+                                📨 Ausgewählte versenden
+                            </button>
+                            <small class="text-muted mb-1">⚠️ Tatsächlicher Mail-Versand — bitte zuerst Vorschau prüfen.</small>
+                        </div>
+                        <div id="erzieherKlMailList" class="border rounded p-2" style="max-height:600px; overflow-y:auto;"></div>
+                        <span id="erzieherKlMailResult" class="ml-1 text-muted small d-block mt-2"></span>
+                    </div>
 
                     <!-- Quelldateien-Viewer (initial versteckt) -->
                     <div id="erzieherRawSourceArea" class="mt-3" style="display:none;">
@@ -494,6 +522,63 @@
                                 </div>
                             </button>
                         </div>
+                        <div class="col-md-3 mb-2">
+                            <button id="toggleEditorErzieherKlMail" type="button" class="btn btn-secondary w-100 shadow-sm" title="E-Mail-Vorlage 'KL-Mail: Erzieher-Übersicht' (gleicher Editor wie im Schüler-Workflow, hier auf diese eine Vorlage eingeschränkt)">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <span class="mr-2">✉️</span> KL-Mail-Vorlage
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Erzieher-spezifischer E-Mail-Editor (nur eine Vorlage:
+                 erzieher_kl_uebersicht). Gleiche Quill-Infrastruktur wie der
+                 Haupt-Editor; init in email_editor.js conditional. -->
+            <div id="emailEditorErzieherKlMail" class="mt-4" style="display:none;">
+                <div class="card shadow">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <span>✉️ Email-Vorlagen Editor — KL-Mail (Erzieher-Übersicht)</span>
+                        <button type="button" class="close text-white" aria-label="Schließen"
+                                onclick="document.getElementById('emailEditorErzieherKlMail').style.display='none'"
+                                style="opacity:0.9;">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Diese Vorlage wird beim KL-Mail-Versand im Erzieher-Workflow verwendet.
+                            Verfügbare Platzhalter:
+                            <code>$Klasse</code> ·
+                            <code>$Klassenlehrer_Anrede</code> ·
+                            <code>$Klassenlehrer_Name</code> ·
+                            <code>$Klassenlehrer_E-Mail</code> ·
+                            <code>$Stand</code> ·
+                            <code>$Schueler_Anzahl</code> ·
+                            <code>$Erzieher_Tabelle_HTML</code> (HTML-Tabelle mit Schüler → Erzieher-Liste + Telefon-Liste wird automatisch eingesetzt).
+                            <br>
+                            <em>Hinweis:</em> Ein <strong>Betreff-Präfix</strong> (z.&nbsp;B. <code>[TEST]</code>) lässt sich in den Erzieher-Einstellungen separat festlegen — wird vor dem hier gespeicherten Betreff eingesetzt.
+                        </p>
+                        <form id="erzieherKlMailTemplateForm">
+                            <div class="form-group">
+                                <label for="subjectErzieherKlUebersicht">📧 Betreff:</label>
+                                <input type="text" class="form-control" id="subjectErzieherKlUebersicht"
+                                    name="subject_erzieher_kl_uebersicht">
+                            </div>
+                            <div class="form-group">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="mb-0" for="bodyErzieherKlUebersicht">📜 Nachricht:</label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            onclick="resetTemplate('erzieher_kl_uebersicht')">🔄 Standard-Vorlage laden</button>
+                                </div>
+                                <div id="editorBodyErzieherKlUebersicht" class="quill-editor"></div>
+                                <textarea id="bodyErzieherKlUebersicht" name="body_erzieher_kl_uebersicht"
+                                          class="form-control d-none"></textarea>
+                            </div>
+                        </form>
+                        <button id="saveErzieherKlMailTemplate" type="button" class="btn btn-primary mt-2">💾 Vorlage speichern</button>
+                        <span id="erzieherKlMailTemplateResult" class="ml-2 text-muted small"></span>
                     </div>
                 </div>
             </div>
@@ -678,6 +763,58 @@
                                 </label>
                             </div>
 
+                            <hr class="my-4">
+
+                            <!-- KL-Mail-Versand (3.3): Optionen fuer den Mail-
+                                 Versand an Klassenlehrkraefte. Rohdaten — KEIN
+                                 Smart-Match / Dummy-Fill etc., zeigt was in Schild
+                                 tatsaechlich hinterlegt ist. -->
+                            <h5 class="mb-1">📧 KL-Mail-Versand</h5>
+                            <p class="text-muted small mb-3">
+                                Pro Klasse eine Mail an die Klassenlehrkraft mit
+                                Tabelle der aktuell in Schild hinterlegten
+                                Erzieher-/Ansprechpartner-<strong>Rohdaten</strong>
+                                (+ Excel-Anhang mit zwei Sheets: Erzieher + Telefonnummern).
+                                Trigger ist der <em>📧 KL-Mails: Vorschau</em>-Button im
+                                Workflow. Die Mail-Vorlage <code>erzieher_kl_uebersicht</code>
+                                ist im dedizierten Editor (Button „✉️ KL-Mail-Vorlage"
+                                im Modul-Bereich) WYSIWYG editierbar.
+                            </p>
+
+                            <h6 class="mb-1">Filter</h6>
+                            <p class="text-muted small mb-2">Standard: nur die
+                                Klassen-Whitelist greift (analog zur Vorschau im
+                                Workflow). Volljährige Schüler werden mit aufgenommen,
+                                damit die KL erkennt, ob die Markierung in Schild
+                                stimmt.</p>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="erzieher_kl_mail_respect_class_whitelist" name="kl_mail_respect_class_whitelist">
+                                <label class="form-check-label" for="erzieher_kl_mail_respect_class_whitelist">
+                                    <strong>Klassen-Whitelist</strong> respektieren — nur ausgewählte Klassen bekommen eine KL-Mail
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="erzieher_kl_mail_only_minor" name="kl_mail_only_minor">
+                                <label class="form-check-label" for="erzieher_kl_mail_only_minor">
+                                    <strong>Nur minderjährige Schüler</strong> — Volljährige aus der KL-Tabelle ausblenden (Default <em>aus</em>, damit Rohdaten vollständig bleiben)
+                                </label>
+                            </div>
+
+                            <h6 class="mb-1">Empfänger-Optionen</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="erzieher_kl_mail_include_stv_kl" name="kl_mail_include_stv_kl">
+                                <label class="form-check-label" for="erzieher_kl_mail_include_stv_kl">
+                                    <strong>Stv-Klassenlehrkraft</strong> als zusätzlichen Empfänger (CC)
+                                </label>
+                            </div>
+
+                            <div class="form-group mt-3">
+                                <label for="erzieher_kl_mail_subject_suffix" class="mb-1">Betreff-Präfix <small class="text-muted">(optional, z.B. <code>[TEST]</code> für Probeläufe)</small>:</label>
+                                <input type="text" class="form-control form-control-sm" id="erzieher_kl_mail_subject_suffix" name="kl_mail_subject_suffix" placeholder="">
+                                <small class="form-text text-muted">Wird vor den eigentlichen Betreff gesetzt.</small>
+                            </div>
+
                         </form>
                         <button id="saveErzieherSettings" type="button" class="btn btn-primary mt-3">💾 Speichern</button>
                     </div>
@@ -730,7 +867,17 @@
                         </label>
                         <div class="d-flex flex-wrap align-items-center mb-2">
                             <input type="text" id="ausbilderFirmaSearch" class="form-control form-control-sm mr-2 mb-1" placeholder="🔍 Firma suchen…" style="max-width:300px;">
-                            <small class="text-muted mb-1" id="ausbilderFirmaCount">—</small>
+                            <small class="text-muted mr-3 mb-1" id="ausbilderFirmaCount">—</small>
+                            <button type="button" id="ausbilderFirmaInvert"
+                                    class="btn btn-sm btn-outline-warning mr-2 mb-1"
+                                    title="Wandelt die aktuelle Liste in das Gegenteil um (z.B. Blacklist mit 28 Firmen → Whitelist mit den restlichen 2) und schaltet den Modus um. Berechnungsbasis: alle Firmen in der aktuellen CSV.">
+                                🔄 Liste invertieren &amp; Modus wechseln
+                            </button>
+                            <button type="button" id="ausbilderFirmaClear"
+                                    class="btn btn-sm btn-outline-danger mb-1"
+                                    title="Leert die aktuell aktive Firmen-Liste (Whitelist oder Blacklist je nach Modus). Modus bleibt unverändert. Die andere, gerade nicht aktive Liste bleibt ebenfalls unangetastet.">
+                                🗑️ Aktive Liste leeren
+                            </button>
                         </div>
                         <div id="ausbilderFirmaChips" class="border rounded p-2" style="max-height:220px; overflow-y:auto;">
                             <span class="text-muted small">Wird geladen…</span>

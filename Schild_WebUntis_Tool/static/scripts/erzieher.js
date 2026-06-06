@@ -1063,6 +1063,184 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // -------------------------------------------------------------------
+    // KL-Mail-Versand (3.3): Erzieher-/Ansprechpartner-ROHDATEN an
+    // Klassenlehrkraefte (Vorschau-Aufklapper + Auswahl + Versand)
+    // Symmetrisch zum Ausbilder-KL-Mail-Block in ausbilder.js
+    // -------------------------------------------------------------------
+    const erzKlMailBtn      = document.getElementById('erzieherToggleKlMail');
+    const erzKlMailArea     = document.getElementById('erzieherKlMailArea');
+    const erzKlMailStats    = document.getElementById('erzieherKlMailStats');
+    const erzKlMailList     = document.getElementById('erzieherKlMailList');
+    const erzKlMailSend     = document.getElementById('erzieherKlMailSend');
+    const erzKlMailSelAll   = document.getElementById('erzieherKlMailSelectAll');
+    const erzKlMailSelNone  = document.getElementById('erzieherKlMailSelectNone');
+    const erzKlMailResult   = document.getElementById('erzieherKlMailResult');
+    let erzKlMailData = null;
+    let erzKlMailSettingsCache = null;  // fuer Settings-Panel-Open-Hydration
+
+    function selectedErzKlMailClasses() {
+        return Array.from(erzKlMailList?.querySelectorAll('.erz-klmail-cls-cb:checked') || [])
+            .map(cb => cb.dataset.klasse);
+    }
+    function updateErzKlMailSendBtn() {
+        if (!erzKlMailSend) return;
+        erzKlMailSend.disabled = selectedErzKlMailClasses().length === 0;
+    }
+
+    function renderErzKlMailStats() {
+        if (!erzKlMailStats || !erzKlMailData) return;
+        const s   = erzKlMailData.stats || {};
+        const opt = erzKlMailData.options_used || {};
+        const bits = [];
+        bits.push(opt.respect_class    ? 'Klassen-Whitelist ✓' : 'Klassen-Whitelist ✗');
+        bits.push(opt.only_minor       ? 'Nur minderjährig ✓'  : 'Volljährige inkl.');
+        bits.push(opt.include_stv_kl   ? 'Stv-KL als CC ✓'     : 'Stv-KL als CC ✗');
+        const cls = erzKlMailData.classes || [];
+        const noKlCount = cls.filter(c => !c.kl_email).length;
+        const noKlBlock = noKlCount
+            ? ` · <span class="text-warning">${noKlCount} Klasse(n) ohne aufgelöste KL-E-Mail</span>`
+            : '';
+        erzKlMailStats.className = (s.classes_total === 0)
+            ? 'alert alert-warning py-2 mb-2'
+            : 'alert alert-info py-2 mb-2';
+        const anspBlock = erzKlMailData.anspr_path
+            ? ` + Anspr: <code>${escHtmlBasic(erzKlMailData.anspr_path)}</code>`
+            : '';
+        erzKlMailStats.innerHTML =
+            `<strong>${s.classes_total}</strong> Klasse(n) · `
+            + `<strong>${s.students_after_filters}</strong> von ${s.students_total} Schülern nach Filtern${noKlBlock}<br>`
+            + `<span class="small text-muted">Quelle: <code>${escHtmlBasic(erzKlMailData.csv_path || '')}</code>${anspBlock} · Stand <strong>${escHtmlBasic(erzKlMailData.stand || '')}</strong></span><br>`
+            + `<span class="small text-muted">Filter: ${bits.join(' · ')} — änderbar in den Erzieher-Einstellungen.</span>`;
+    }
+
+    function renderErzKlMailList() {
+        if (!erzKlMailList || !erzKlMailData) return;
+        const cls = erzKlMailData.classes || [];
+        if (!cls.length) {
+            erzKlMailList.innerHTML = '<p class="text-muted small m-0">Keine Klassen — Filter könnten zu eng sein, oder die Klassen-Auflösung scheitert (fehlende Stammdaten-Spalten).</p>';
+            updateErzKlMailSendBtn();
+            return;
+        }
+        const html = cls.map(c => {
+            const id = `erz_klmail_cls_${c.klasse.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+            const hasMail = !!c.kl_email;
+            const noEmailWarn = hasMail
+                ? ''
+                : `<div class="text-danger small ml-4 mt-1">⚠️ Keine KL-E-Mail aufgelöst — Versand wird übersprungen. Lehrkräfte-CSV im Klassen-/Lehrer-Verzeichnis prüfen.</div>`;
+            const ccPart = c.cc?.length
+                ? ` <span class="text-muted small">CC: ${c.cc.map(e => `<code>${escHtmlBasic(e)}</code>`).join(', ')}</span>`
+                : '';
+            // Excel-Anhang enthaelt seit 3.3 vier Sheets:
+            //   Erzieher / Telefonnummern / Mailverteiler (alle) / Mailverteiler (nur Minderj.)
+            // Die Counts beider Verteiler werden im Tooltip + als kleines
+            // Badge angezeigt, damit die KL auf einen Blick sieht ob's was
+            // zu verteilen gibt.
+            const cAll  = c.email_count_all     || 0;
+            const cMin  = c.email_count_minderj || 0;
+            const xlsxTitle = `Excel-Anhang vorab herunterladen — enthält:\n• Erzieher (Detail)\n• Telefonnummern\n• Mailverteiler (alle): ${cAll} Adr.\n• Mailverteiler (nur Minderj.): ${cMin} Adr.`;
+            const xlsxLink = `<a href="/api/erzieher/kl_mail/download_xlsx?klasse=${encodeURIComponent(c.klasse)}" class="badge badge-light border ml-1" title="${escHtmlBasic(xlsxTitle)}">📎 ${escHtmlBasic(c.xlsx_filename)}</a>`;
+            const distInfo = ` <span class="badge badge-light border" style="background:#f4f8fb;" title="Mailverteiler-Sheets im Excel-Anhang">📧 alle: ${cAll} · minderj.: ${cMin}</span>`;
+            return `<div class="mb-2 pb-2 border-bottom">
+                <div class="form-check">
+                    <input class="form-check-input erz-klmail-cls-cb" type="checkbox" id="${id}" data-klasse="${escHtmlBasic(c.klasse)}" ${hasMail ? 'checked' : ''} ${hasMail ? '' : 'disabled'}>
+                    <label class="form-check-label font-weight-bold" for="${id}">
+                        Klasse <code>${escHtmlBasic(c.klasse)}</code>
+                        <span class="badge badge-info ml-1">${c.students_count} Schüler</span>
+                    </label>
+                </div>
+                <div class="small text-muted ml-4">
+                    KL: ${escHtmlBasic(c.kl_name || '—')}${hasMail ? ` <code>${escHtmlBasic(c.kl_email)}</code>` : ''}${ccPart}
+                </div>
+                ${noEmailWarn}
+                <details class="ml-4 mt-1">
+                    <summary class="text-info small" style="cursor:pointer;">👁️ Vorschau (Subject + Body) · ${xlsxLink}${distInfo}</summary>
+                    <div class="mt-2 border rounded p-2 bg-light">
+                        <div class="small text-muted">Betreff:</div>
+                        <div class="mb-2"><code>${escHtmlBasic(c.subject)}</code></div>
+                        <div class="small text-muted">Body (HTML, wie sie ihn sehen):</div>
+                        <div class="border bg-white p-2" style="font-size:0.9em;">${c.body_html}</div>
+                    </div>
+                </details>
+            </div>`;
+        }).join('');
+        erzKlMailList.innerHTML = html;
+        erzKlMailList.querySelectorAll('.erz-klmail-cls-cb').forEach(cb => {
+            cb.addEventListener('change', updateErzKlMailSendBtn);
+        });
+        updateErzKlMailSendBtn();
+    }
+
+    async function loadErzKlMailPreview() {
+        if (!erzKlMailArea) return;
+        erzKlMailArea.style.display = '';
+        if (erzKlMailStats) { erzKlMailStats.className = 'alert alert-secondary py-2 mb-2'; erzKlMailStats.textContent = 'Lade KL-Mail-Vorschau…'; }
+        if (erzKlMailList) erzKlMailList.innerHTML = '';
+        try {
+            const r = await fetch('/api/erzieher/kl_mail/preview');
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.error || r.statusText);
+            erzKlMailData = d;
+            erzKlMailSettingsCache = d.kl_mail_settings || null;
+            renderErzKlMailStats();
+            renderErzKlMailList();
+        } catch (e) {
+            if (erzKlMailStats) {
+                erzKlMailStats.className = 'alert alert-danger py-2 mb-2';
+                erzKlMailStats.textContent = 'Fehler: ' + e;
+            }
+        }
+    }
+
+    erzKlMailBtn?.addEventListener('click', () => {
+        if (!erzKlMailArea) return;
+        const visible = erzKlMailArea.style.display !== 'none';
+        if (visible) erzKlMailArea.style.display = 'none';
+        else         loadErzKlMailPreview();
+    });
+
+    erzKlMailSelAll?.addEventListener('click', () => {
+        erzKlMailList?.querySelectorAll('.erz-klmail-cls-cb:not(:disabled)').forEach(cb => cb.checked = true);
+        updateErzKlMailSendBtn();
+    });
+    erzKlMailSelNone?.addEventListener('click', () => {
+        erzKlMailList?.querySelectorAll('.erz-klmail-cls-cb').forEach(cb => cb.checked = false);
+        updateErzKlMailSendBtn();
+    });
+
+    erzKlMailSend?.addEventListener('click', async () => {
+        const classes = selectedErzKlMailClasses();
+        if (!classes.length) return;
+        const cnt = classes.length;
+        if (!confirm(`Wirklich KL-Mails an ${cnt} Klassenlehrkraft/-kräfte versenden?\n\nDieser Versand kann nicht rückgängig gemacht werden.`)) return;
+        erzKlMailSend.disabled = true;
+        const orig = erzKlMailSend.textContent;
+        erzKlMailSend.textContent = '⌛ Versende…';
+        if (erzKlMailResult) erzKlMailResult.textContent = '';
+        try {
+            const r = await fetch('/api/erzieher/kl_mail/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ classes }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) {
+                if (erzKlMailResult) erzKlMailResult.innerHTML = `<span class="text-danger">❌ ${escHtmlBasic(d.error || r.statusText)}</span>`;
+                return;
+            }
+            if (erzKlMailResult) {
+                erzKlMailResult.innerHTML = `✅ Gesendet: <strong>${d.sent}</strong> · Übersprungen: ${d.skipped} · Fehler: ${d.failed} · `
+                    + `Excel-Anhänge: <code>${escHtmlBasic(d.xlsx_directory || '')}</code>`;
+            }
+            if (typeof showToast === 'function') showToast(`KL-Mails (Erzieher): ${d.sent} gesendet, ${d.failed} Fehler.`);
+        } catch (e) {
+            if (erzKlMailResult) erzKlMailResult.innerHTML = `<span class="text-danger">❌ ${escHtmlBasic(String(e))}</span>`;
+        } finally {
+            erzKlMailSend.disabled = false; erzKlMailSend.textContent = orig;
+            updateErzKlMailSendBtn();
+        }
+    });
+
     // Status laden, sobald der Erzieher-Workflow sichtbar wird.
     // workflow_switcher.js dispatcht 'workflow:shown' sowohl beim Tab-Klick
     // als auch beim initialen Restore aus localStorage (F5).
@@ -1071,12 +1249,31 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Toggle: eigenes Erzieher-Settings-Panel
-    document.getElementById("toggle-settings-erzieher")?.addEventListener("click", () => {
+    document.getElementById("toggle-settings-erzieher")?.addEventListener("click", async () => {
         const panel = document.getElementById("erzieherSettingsPanel");
         if (!panel) return;
         const willShow = panel.style.display === "none" || !panel.style.display;
         panel.style.display = willShow ? "block" : "none";
         if (willShow) {
+            // KL-Mail-Felder aus Cache spiegeln (wird beim Preview-Open befuellt)
+            // oder bei erstem Open direkt vom Backend holen, damit auch ohne
+            // vorherigen Vorschau-Klick die korrekten Defaults stehen.
+            let klm = erzKlMailSettingsCache;
+            if (!klm) {
+                try {
+                    const r = await fetch('/api/erzieher/kl_mail/preview');
+                    const d = await r.json().catch(() => ({}));
+                    if (r.ok) klm = d.kl_mail_settings || {};
+                } catch (e) { klm = {}; }
+                erzKlMailSettingsCache = klm;
+            }
+            klm = klm || {};
+            const setCb  = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+            const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+            setCb('erzieher_kl_mail_respect_class_whitelist', klm.kl_mail_respect_class_whitelist);
+            setCb('erzieher_kl_mail_only_minor',              klm.kl_mail_only_minor);
+            setCb('erzieher_kl_mail_include_stv_kl',          klm.kl_mail_include_stv_kl);
+            setVal('erzieher_kl_mail_subject_suffix',         klm.kl_mail_subject_suffix);
             setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
         }
     });
@@ -1113,10 +1310,20 @@ document.addEventListener("DOMContentLoaded", function () {
             // Konsolidierungs-Radios werden auto-gespeichert beim Toggle
             // (saveSchuelerExportMode), gehoeren NICHT in [Directories].
             // Trotzdem im <form> drin (UI-Gruppierung) — explizit ueberspringen.
+            // KL-Mail-Felder gehen ueber dedizierten Endpoint, weil FormData
+            // unchecked Boxes weglaesst (sonst wuerde ein deaktivierter Filter
+            // nicht als False persistiert).
             const erzSkipKeys = new Set(['erz_source_mode']);
+            const erzKlMailKeys = new Set([
+                'kl_mail_respect_class_whitelist',
+                'kl_mail_only_minor',
+                'kl_mail_include_stv_kl',
+                'kl_mail_subject_suffix',
+            ]);
             new FormData(form).forEach((value, key) => {
                 if (erzCbKeys.has(key))   return;  // schon oben behandelt
                 if (erzSkipKeys.has(key)) return;  // separater Endpoint
+                if (erzKlMailKeys.has(key)) return;  // separater Endpoint
                 directories[key] = value;
             });
             const sections = {};
@@ -1128,12 +1335,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: JSON.stringify({ settings: sections }),
             });
             const d = await r.json().catch(() => ({}));
-            if (r.ok && d.status === "success") {
-                if (typeof showToast === "function") showToast("Erzieher-Einstellungen gespeichert.");
-                setTimeout(loadStatus, 100);
-            } else {
-                alert("Fehler beim Speichern: " + (d.error || r.statusText));
+            if (!r.ok || d.status !== "success") {
+                throw new Error(d.error || r.statusText);
             }
+            // KL-Mail-Felder explizit (Checkboxen direkt via .checked).
+            const cbVal  = (id) => !!document.getElementById(id)?.checked;
+            const txtVal = (id) => document.getElementById(id)?.value || '';
+            const klMailPayload = {
+                kl_mail_respect_class_whitelist: cbVal('erzieher_kl_mail_respect_class_whitelist'),
+                kl_mail_only_minor:              cbVal('erzieher_kl_mail_only_minor'),
+                kl_mail_include_stv_kl:          cbVal('erzieher_kl_mail_include_stv_kl'),
+                kl_mail_subject_suffix:          txtVal('erzieher_kl_mail_subject_suffix').trim(),
+            };
+            const r2 = await fetch('/api/erzieher/kl_mail/save_settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(klMailPayload),
+            });
+            const d2 = await r2.json().catch(() => ({}));
+            if (!r2.ok || !d2.success) throw new Error(d2.error || r2.statusText);
+            erzKlMailSettingsCache = d2.kl_mail_settings || null;
+            if (typeof showToast === "function") showToast("Erzieher-Einstellungen gespeichert.");
+            setTimeout(loadStatus, 100);
         } catch (e) {
             alert("Fehler beim Speichern: " + e);
         } finally {

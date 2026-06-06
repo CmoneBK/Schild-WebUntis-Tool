@@ -896,6 +896,168 @@ oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüf
 </details>
 
 <details class="erz-detail">
+  <summary>📧 KL-Mail-Versand — Klassenlehrkräfte über aktuelle Erzieher-/Ansprechpartner-Rohdaten informieren (neu in 3.3)</summary>
+  <div class="erz-body">
+    <p><strong>Zweck:</strong> Klassenlehrkräften die aktuell in Schild
+    hinterlegten <strong>Erzieher-/Ansprechpartner-Rohdaten</strong> ihrer Klasse
+    zur Info und Kontrolle zuschicken. Typische Anwendung: KL sieht eine
+    fehlende E-Mail bei den Eltern, einen nicht aktualisierten zweiten
+    Elterndatensatz oder eine alte Telefonnummer und leitet das ans Sekretariat
+    weiter zur Korrektur in Schild. Symmetrisch zum <em>KL-Mail-Versand</em> im
+    Ausbilder-Workflow — siehe dort für die DSGVO-/Versand-Grundlagen.</p>
+
+    <p><strong>„Rohdaten":</strong> Es greift kein Smart-Match, kein Dummy-Fill,
+    keine E-Mail-Pflicht-Aussortierung. Pro Schüler werden <em>alle</em> Erzieher-
+    Slots aus dem Erzieher-Export gezeigt + <em>alle</em> Telefonnummern (primäre
+    aus dem Erzieher-Export plus zusätzliche aus dem Anspr-Export, mit Duplikat-
+    Erkennung). Das ist genau das, was die KL ggf. korrigieren lassen soll.</p>
+
+    <h6 class="mt-2">Aufruf &amp; Ablauf</h6>
+    <ol>
+      <li>Im Erzieher-Workflow auf <strong>📧 KL-Mails: Vorschau</strong> klicken.</li>
+      <li>Pro Klasse wird angezeigt: KL-Name + KL-E-Mail (+ Stv-KL als CC),
+          Schüleranzahl, Betreff und Body-HTML (genau wie die KL ihn sehen wird)
+          + Link zum Excel-Anhang vorab.</li>
+      <li>Klassen via Häkchen aus-/abwählen, dann <strong>📨 Ausgewählte
+          versenden</strong> klicken. Bestätigungs-Dialog vorher.</li>
+      <li>Versand-Ergebnis (pro Klasse Erfolg/Fehler/übersprungen) wird angezeigt;
+          Excel-Dateien zusätzlich im <em>Erzieher-Ausgabeverzeichnis</em> unter
+          <code>KL_Mails/&lt;Zeitstempel&gt;/</code> abgelegt.</li>
+    </ol>
+
+    <h6 class="mt-3">Was steht in der Mail?</h6>
+    <p><strong>Body-HTML — 3-Spalten-Layout:</strong></p>
+    <ul>
+      <li><strong>Spalte 1 (Schüler):</strong> Name + Interne ID + Geburtsdatum +
+          Volljährig-Status (mit Quellenangabe „per Geburtsdatum, Stand <em>X</em>"
+          und farbcodiertem ja/nein) + ggf. die Schild-Markierung
+          <code>Erzieher: Art (Klartext)</code>.</li>
+      <li><strong>Spalte 2 (Erzieher Rohdaten):</strong> pro Erzieher-Slot eine
+          violett umrandete Box mit <em>allen</em> <code>Erzieher i: …</code>-
+          Spalten als „Spaltenname: Wert"-Liste — leere Felder werden als grauer
+          Bindestrich angezeigt, damit die KL sieht, dass die Spalte existiert
+          aber nicht gepflegt ist. Darunter ggf. ein blauer „Allgemein"-Block
+          mit den globalen <code>Erzieher: …</code>-Spalten.</li>
+      <li><strong>Spalte 3 (Ansprechpartner Rohdaten):</strong> pro Anspr-Zeile
+          eine grün umrandete Box mit <em>allen</em> Spalten der Anspr-CSV als
+          Liste. Wenn kein Anspr-Export geladen ist oder der Schüler dort
+          keine Zeilen hat: dezenter Hinweis.</li>
+    </ul>
+    <p>Inline-Styles für Outlook/Gmail/Thunderbird-Kompatibilität.</p>
+
+    <h6 class="mt-3">Volljährigkeits-Erkennung &amp; Konflikt-Anzeige</h6>
+    <p>Volljährigkeit wird primär aus dem <strong>Geburtsdatum</strong>
+    deterministisch berechnet (≥ 18 Jahre zum Stand-Datum). Geburtsdatum-Quelle:</p>
+    <ol>
+      <li>PRIMÄR aus dem <strong>Haupt-Schüler-Datensatz</strong> (CSV im
+          Schild-Exporte-Verzeichnis bzw. via SVWS-API über
+          <code>main.read_students()</code>) — Matching über
+          <code>Interne ID-Nummer</code>. Damit ist der Lookup auch dann
+          verlässlich, wenn die Erzieher-Vorlage in Schild kein Geburtsdatum
+          mit-exportiert.</li>
+      <li>FALLBACK aus dem Erzieher-Export (wie bisher).</li>
+    </ol>
+    <p>Im UI markiert ein kleiner grauer Hinweis „(Quelle: Erzieher-Export)",
+    wenn der Fallback gegriffen hat — primärer Pfad bleibt unkommentiert
+    (das ist der Normalfall). Statistik im Backend zeigt pro Klasse, wie
+    viele Schüler über Haupt-/Fallback-Quelle versorgt wurden.</p>
+
+    <p>Bei <strong>Konflikten</strong> zwischen Geburtsdatum und der
+    Schild-Markierung <code>Erzieher: Art (Klartext)</code> = „Schüler ist
+    volljährig" erscheint eine gelbe Warn-Box:</p>
+    <p class="alert alert-warning py-2 px-2 small mb-2">
+    ⚠️ <strong>Konflikt:</strong> Schild markiert als <em>volljährig</em>, das
+    Geburtsdatum sagt aber <strong>minderjährig</strong>. Bitte in Schild
+    prüfen/korrigieren.
+    </p>
+    <p>Damit erkennt die KL z.B. einen fälschlich volljährig markierten
+    17-Jährigen. Wenn weder Geburtsdatum noch Schild-Markierung verfügbar
+    sind, gibt's einen separaten „⚠️ Geburtsdatum fehlt"-Hinweis.</p>
+
+    <h6 class="mt-3">Excel-Anhang — vier Sheets</h6>
+    <table class="col-table">
+      <tr><td><strong>Sheet 1: <em>Erzieher</em></strong></td><td>
+        <strong>1 Zeile pro Schüler</strong> (nicht mehr pro Slot — Layout
+        seit 3.3-Iteration umgebaut). Stammdaten in den grauen Spalten A–G,
+        dann pro Erzieher-Slot ein eigener farbig hinterlegter 6-Spalten-Block:
+        <code>Erzieher 1: Anrede/Titel/Vorname/Nachname/Briefanrede/E-Mail</code>
+        in <strong>hellblau</strong>, <code>Erzieher 2: …</code> in
+        <strong>hellgrün</strong>, weitere Slots in hellorange/-rosa/-lila.
+        Geburtsdatum als echtes Datums-Objekt mit Format
+        <code>DD.MM.YYYY</code>; Volljährig-Spalte „Volljährig (heute)" wird
+        per Excel-Formel
+        (<code>=IF(ISNUMBER(E?),IF(DATEDIF(E?,TODAY(),"Y")&gt;=18,"ja","nein"),"?")</code>)
+        <strong>dynamisch</strong> berechnet — beim erneuten Öffnen der Datei
+        in Wochen/Monaten zeigt sie automatisch den aktuellen Stand.
+        Multi-Line-Header mit Cell-Comments und einer Legende über der Tabelle
+        erklären den Unterschied zwischen der dynamischen Volljährig-Spalte
+        und der statischen <code>Erzieher: Art (Klartext)</code>-Spalte
+        (Stand letzter Export). Slot-Anzahl wird klassenweit ermittelt
+        (mind. 2), Schüler ohne diesen Slot bleiben in dem 6er-Block leer.
+      </td></tr>
+      <tr><td><strong>Sheet 2: <em>Telefonnummern</em></strong></td><td>
+        1 Zeile pro Nummer, Schüler-Spalten wiederholt; Quell-Spalte zeigt
+        ob die Nummer aus dem Erzieher-Export (primäre Telefon-Spalte) oder
+        aus dem Anspr-Export kommt.
+      </td></tr>
+      <tr><td><strong>Sheet 3: <em>Mailverteiler (alle)</em></strong></td><td>
+        Alle in Schild hinterlegten Eltern-/Ansprechpartner-E-Mail-Adressen,
+        <em>inklusive</em> Adressen volljähriger Schüler (z.B. die eigene
+        Mail-Adresse eines volljährigen Self-Ansprechpartners). Layout:
+        Hinweis-Box gemerged in den oberen Zeilen, dann eine große hellblaue
+        Zelle mit der <strong>semikolon-getrennten Direkt-Liste</strong> zum
+        Copy/Paste in BCC, darunter Tabelle mit Zuordnung E-Mail → Erzieher →
+        Schüler + Volljährig-Spalte + Statistik-Block.
+      </td></tr>
+      <tr><td><strong>Sheet 4: <em>Mailverteiler (nur Minderj.)</em></strong></td><td>
+        Gleiches Layout, aber Adressen volljähriger Schüler werden ausgeschlossen
+        (Status der Volljährigkeit dynamisch aus dem Geburtsdatum berechnet,
+        mit Schild-Heuristik als Fallback). Hellgrüne Direkt-Liste. Sinnvoll
+        für Eltern-Kommunikation, die die Sorgeberechtigten voraussetzt.
+        Statistik-Block zeigt zusätzlich, wieviele Schüler wegen Volljährigkeit
+        ausgeschlossen wurden.
+      </td></tr>
+    </table>
+
+    <p><strong>Dedup + Filter im Mailverteiler:</strong> Gleiche Adresse für
+    beide Eltern oder über Geschwister hinweg wird nur einmal aufgelistet
+    (case-insensitive). Dummy-/Beispiel-Adressen
+    (<code>@invalid.local</code>, <code>@example.com</code> etc.) werden
+    automatisch herausgefiltert — landen nicht in der BCC-Direkt-Liste.</p>
+
+    <h6 class="mt-3">Empfänger-Auflösung</h6>
+    <p>Identisch zur Ausbilder-KL-Mail / zu den Warnungs-Mails: KL und Stv-KL pro
+    Klasse aus den Klassen-/Lehrer-CSVs (bzw. via SVWS-API). Klassen ohne
+    aufgelöste KL-E-Mail werden im Versand übersprungen — die Vorschau
+    markiert das deutlich.</p>
+
+    <h6 class="mt-3">Filter (in den Erzieher-Einstellungen)</h6>
+    <table class="col-table">
+      <tr><td><strong>Klassen-Whitelist respektieren</strong></td><td>Nur ausgewählte Klassen bekommen eine KL-Mail. Default: an.</td></tr>
+      <tr><td><strong>Nur minderjährige Schüler</strong></td><td>Volljährige aus der KL-Tabelle ausblenden. Default <em>aus</em>, weil Rohdaten zeigen sollen, ob die Volljährig-Markierung in Schild stimmt — die KL erkennt sonst nicht, ob ein 17-jähriger fälschlich als volljährig markiert wurde o.&nbsp;ä.</td></tr>
+      <tr><td><strong>Stv-KL als CC</strong></td><td>Stellv. Klassenlehrkraft bekommt jede Mail in Kopie. Default: an.</td></tr>
+      <tr><td><strong>Betreff-Präfix</strong></td><td>Optionales Prefix vor dem Betreff (z.&nbsp;B. <code>[TEST]</code>).</td></tr>
+    </table>
+
+    <h6 class="mt-3">Vorlage anpassen</h6>
+    <p>Die Mail-Vorlage liegt im <strong>dedizierten KL-Mail-Vorlagen-Editor</strong>
+    — Button <em>✉️ KL-Mail-Vorlage</em> im Erzieher-Modul-Bereich. Gleiche
+    Quill-Editor-Infrastruktur wie der Haupt-E-Mail-Editor des Schüler-Workflows,
+    aber explizit auf die eine Vorlage <code>erzieher_kl_uebersicht</code>
+    eingeschränkt. Verfügbare Platzhalter:</p>
+    <table class="col-table">
+      <tr><td><code>$Klasse</code></td><td>Klassenname</td></tr>
+      <tr><td><code>$Klassenlehrer_Anrede</code></td><td><em>Herr/Frau</em> — grobe Heuristik aus dem Vornamen</td></tr>
+      <tr><td><code>$Klassenlehrer_Name</code></td><td>Voller Name aus den Lehrer-Stammdaten</td></tr>
+      <tr><td><code>$Klassenlehrer_E-Mail</code></td><td>E-Mail der KL</td></tr>
+      <tr><td><code>$Stand</code></td><td>Datum des Versands</td></tr>
+      <tr><td><code>$Schueler_Anzahl</code></td><td>Schüler in der Klasse (nach Filtern)</td></tr>
+      <tr><td><code>$Erzieher_Tabelle_HTML</code></td><td>Die fertige 3-Spalten-Rohdaten-Tabelle (Inline-Styles, Spalten: <em>Schüler</em> + <em>Erzieher Rohdaten</em> + <em>Ansprechpartner Rohdaten</em> — jeweils mit allen Spalten der Quell-CSV als verschachtelte „Spaltenname: Wert"-Listen).</td></tr>
+    </table>
+  </div>
+</details>
+
+<details class="erz-detail">
   <summary>⚙️ Verarbeitungs-Optionen im Detail</summary>
   <div class="erz-body">
     <p>Alle Optionen unter <em>⚙️ Einstellungen — Erzieher / Ansprechpartner</em>.
@@ -1325,6 +1487,58 @@ Datei zu überschreiben.</p>
     dann wird die Ausbilder-Eingabe-CSV genutzt, falls vorhanden, sonst der
     Schüler-Export. So lässt sich der Workflow schrittweise konsolidieren, ohne
     sofort alle bestehenden Schild-Vorlagen anfassen zu müssen.
+    </p>
+  </div>
+</details>
+
+<details class="ausb-detail">
+  <summary>🏢 Firmen-Filter — Whitelist/Blacklist, Invertieren &amp; Leeren (neu in 3.3)</summary>
+  <div class="ausb-body">
+    <p>Der Firmen-Filter erlaubt zwei Modi: <strong>Whitelist</strong> (nur
+    diese Firmen werden exportiert) oder <strong>Blacklist</strong> (diese
+    Firmen werden <em>nicht</em> exportiert). Der Modus wird in den
+    Einstellungen festgelegt (Setting <code>firma_filter_mode</code>); pro
+    Modus existiert eine eigene persistierte Liste, sodass ein Modus-Wechsel
+    keinen Daten-Verlust verursacht.</p>
+
+    <p>Beide Listen sind im Workflow als <strong>Firma-Chips</strong>
+    sichtbar — Klick auf einen Chip schaltet die Firma auf der aktiven
+    Liste an/aus, die Änderung wird sofort gespeichert.</p>
+
+    <h6 class="mt-2">🔄 Liste invertieren &amp; Modus wechseln</h6>
+    <p>Praktisch wenn fast alle Firmen in der Blacklist stehen und man auf
+    Whitelist umstellen möchte: Klick auf den Button schaltet den Modus um
+    und füllt die Zielliste mit dem <strong>mathematischen Komplement</strong>
+    der aktiven Liste (gegen die Menge <em>aller Firmen in der aktuellen
+    CSV</em>). Beispiel:</p>
+    <ul>
+      <li>Vorher: Blacklist mit 28 Firmen, CSV hat 30 Firmen.</li>
+      <li>Klick auf Invertieren.</li>
+      <li>Nachher: Whitelist mit den 2 verbleibenden Firmen, Modus =
+          <code>whitelist</code>.</li>
+    </ul>
+    <p>Confirm-Dialog zeigt vorab die konkreten Counts
+    („alt 28 → neu 2, Basis 30 in CSV"). Die <em>nicht-aktive</em> Liste
+    (im Beispiel die Whitelist <em>vor</em> dem Klick) bleibt unangetastet —
+    erneutes Klicken auf den Button bringt dich also wieder in den
+    Originalzustand.</p>
+
+    <p><strong>Stale-Einträge</strong> in der Quell-Liste (Firmen, die in
+    der gespeicherten Liste stehen, aber nicht mehr in der aktuellen CSV
+    vorkommen) werden ignoriert — keine „Geister-Einträge" in der
+    Ziel-Liste.</p>
+
+    <h6 class="mt-3">🗑️ Aktive Liste leeren</h6>
+    <p>Leert die aktuell aktive Liste (Whitelist <em>oder</em> Blacklist je
+    nach Modus) auf einen Klick. Confirm-Dialog mit Count der zu löschenden
+    Einträge; der Modus bleibt unverändert, die nicht-aktive Liste
+    ebenfalls. Wenn die Liste schon leer ist, kommt ein Info-Dialog statt
+    eines unnötigen Server-Calls.</p>
+
+    <p class="alert alert-info py-2 px-2 small mb-0 mt-2">
+    💡 Tipp: <em>Invertieren + Leeren</em> in Kombination ist nützlich für
+    den Setup-Reset einer Klasse — z.B. nach einem Bildungsgang-Wechsel,
+    wenn die alte Firmen-Auswahl nicht mehr passt.
     </p>
   </div>
 </details>

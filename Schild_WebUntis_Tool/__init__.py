@@ -223,6 +223,15 @@ DEFAULT_TEMPLATES = {
         # Defaults aus ausbilder_processor.DEFAULT_KL_MAIL_SUBJECT/BODY.
         "subject": "Ausbilder-/Betreuer-Daten Ihrer Klasse $Klasse — Stand $Stand",
         "body": "<p>Sehr geehrte/r $Klassenlehrer_Anrede $Klassenlehrer_Name,</p><p>anbei die aktuell in Schild hinterlegten Ausbilder-/Betreuer-Daten Ihrer Klasse <strong>$Klasse</strong> (Stand $Stand). Diese werden in WebUntis übernommen, damit die Ausbilder die Fehlstunden ihrer Auszubildenden einsehen können.</p><p><strong>Bitte prüfen</strong> Sie die Daten und veranlassen Sie ggf. eine Korrektur über das Sekretariat in Schild. Eine Excel-Datei mit denselben Daten finden Sie zusätzlich im Anhang (zur Weiterleitung an das Sekretariat oder zur Bearbeitung).</p>$Schueler_Tabelle_HTML<p>Mit freundlichen Grüßen<br>Ihre WebUntis-Pflege</p>"
+    },
+    "erzieher_kl_uebersicht": {
+        # KL-Mail-Versand fuer den Erzieher-Workflow (3.3): aktuelle
+        # Erzieher-/Ansprechpartner-ROHDATEN je Klasse an die Klassenlehrkraft.
+        # Eigene Platzhalter: $Erzieher_Tabelle_HTML (verschachtelte HTML-
+        # Tabelle: Schueler -> mehrere Erzieher + mehrere Telefonnummern).
+        # Spiegelt erzieher_processor.DEFAULT_ERZ_KL_MAIL_SUBJECT/BODY.
+        "subject": "Erzieher-/Ansprechpartner-Daten Ihrer Klasse $Klasse — Stand $Stand",
+        "body": "<p>Sehr geehrte/r $Klassenlehrer_Anrede $Klassenlehrer_Name,</p><p>anbei die aktuell in Schild hinterlegten Erzieher-/Ansprechpartner-Daten Ihrer Klasse <strong>$Klasse</strong> (Stand $Stand) — <em>Rohdaten</em>, also genau so, wie sie aus Schild kommen (ohne Smart-Match, Dummy-Fill o.&nbsp;ä.).</p><p><strong>Bitte prüfen</strong> Sie die Daten auf Vollständigkeit (insbesondere fehlende E-Mail-Adressen / fehlende zweite Elterndatensätze) und veranlassen Sie ggf. eine Korrektur über das Sekretariat in Schild. Eine Excel-Datei mit denselben Daten finden Sie zusätzlich im Anhang (zur Weiterleitung an das Sekretariat oder zur Bearbeitung).</p>$Erzieher_Tabelle_HTML<p>Mit freundlichen Grüßen<br>Ihre WebUntis-Pflege</p>"
     }
 }
 
@@ -372,6 +381,13 @@ class_filter =
 #   always   — Schueler-Export hat IMMER Vorrang
 # Limit: max. 2 Erzieher pro Schueler, max. 1 Telefon pro Schueler.
 schueler_export_mode = off
+# KL-Mail-Versand fuer den Erzieher-Workflow (3.3): aktuelle Erzieher-/
+# Ansprechpartner-ROHDATEN an die Klassenlehrkraefte mailen (zur Info +
+# Kontrolle, Korrektur ueber das Sekretariat in Schild).
+kl_mail_respect_class_whitelist = True
+kl_mail_only_minor = False
+kl_mail_include_stv_kl = True
+kl_mail_subject_suffix =
 
 [Ausbilder]
 # Vorlage fuer den Dateinamen der Ausbilder-Import-CSV.
@@ -448,6 +464,8 @@ subject_info_notification = {DEFAULT_TEMPLATES['info_notification']['subject']}
 body_info_notification = {DEFAULT_TEMPLATES['info_notification']['body']}
 subject_ausbilder_kl_uebersicht = {DEFAULT_TEMPLATES['ausbilder_kl_uebersicht']['subject']}
 body_ausbilder_kl_uebersicht = {DEFAULT_TEMPLATES['ausbilder_kl_uebersicht']['body']}
+subject_erzieher_kl_uebersicht = {DEFAULT_TEMPLATES['erzieher_kl_uebersicht']['subject']}
+body_erzieher_kl_uebersicht = {DEFAULT_TEMPLATES['erzieher_kl_uebersicht']['body']}
 [WebUntisAPI]
 use_api = False
 server_url = https://neptun.webuntis.com/WebUntis/jsonrpc.do
@@ -579,6 +597,16 @@ client_name = Schild-WebUntis-Tool
             if not config.has_option('Erzieher', 'schueler_export_mode'):
                 config.set('Erzieher', 'schueler_export_mode', 'off')
                 updated = True
+            # KL-Mail-Versand (3.3) — pro Setting einzeln (alte Configs erben Defaults).
+            for _k, _v in (
+                ('kl_mail_respect_class_whitelist', 'True'),
+                ('kl_mail_only_minor',              'False'),
+                ('kl_mail_include_stv_kl',          'True'),
+                ('kl_mail_subject_suffix',          ''),
+            ):
+                if not config.has_option('Erzieher', _k):
+                    config.set('Erzieher', _k, _v)
+                    updated = True
 
             # Ausbilder (Phase 3 — aktiv)
             if not config.has_section('Ausbilder'):
@@ -649,7 +677,7 @@ client_name = Schild-WebUntis-Tool
                 updated = True
             
             # Ensure other templates are also present (Silent Update)
-            for t_type in ['entlassdatum', 'aufnahmedatum', 'klassenwechsel', 'new_student', 'info_notification', 'ausbilder_kl_uebersicht']:
+            for t_type in ['entlassdatum', 'aufnahmedatum', 'klassenwechsel', 'new_student', 'info_notification', 'ausbilder_kl_uebersicht', 'erzieher_kl_uebersicht']:
                 if not config.has_option('Templates', f'subject_{t_type}'):
                     config.set('Templates', f'subject_{t_type}', DEFAULT_TEMPLATES[t_type]['subject'])
                     updated = True
@@ -844,6 +872,7 @@ _PANEL_LABELS = {
     'settingsPanel':                 'Einstellungspanel',
     'emailEditor':                   'E-Mail-Editor',
     'emailEditorAusbilderKlMail':    'E-Mail-Editor (Ausbilder: KL-Mail)',
+    'emailEditorErzieherKlMail':     'E-Mail-Editor (Erzieher: KL-Mail)',
     'shortcutCreator':               'Shortcut-Tool',
     'uploadArea':                    'Datei-Upload',
     'historyPanel':                  'Historie',
@@ -1313,6 +1342,10 @@ def get_templates():
             # eigenen Editor im Ausbilder-Modul-Bereich angezeigt + editiert.
             "subject_ausbilder_kl_uebersicht": config.get("Templates", "subject_ausbilder_kl_uebersicht", fallback=""),
             "body_ausbilder_kl_uebersicht": config.get("Templates", "body_ausbilder_kl_uebersicht", fallback=""),
+            # KL-Mail-Vorlage (3.3) — Erzieher-Workflow-spezifisch, analog zur
+            # Ausbilder-Variante, im eigenen Editor im Erzieher-Modul-Bereich.
+            "subject_erzieher_kl_uebersicht": config.get("Templates", "subject_erzieher_kl_uebersicht", fallback=""),
+            "body_erzieher_kl_uebersicht": config.get("Templates", "body_erzieher_kl_uebersicht", fallback=""),
         }
         return jsonify(templates)
     except Exception as e:
@@ -2050,6 +2083,53 @@ def ausbilder_save_firma_blacklist():
     return jsonify({"success": True, "firma_blacklist": ausbilder_processor.get_firma_blacklist()})
 
 
+@app.route('/api/ausbilder/firma_invert', methods=['POST'])
+def ausbilder_firma_invert():
+    """Invertiert die aktive Firma-Liste in das Gegenteil und schaltet den Modus um.
+
+    Beispiel: war vorher Blacklist mit 28 von 30 Firmen aktiv, ist nachher
+    eine Whitelist mit den 2 verbleibenden Firmen aktiv. Berechnungsbasis ist
+    die Menge aller Firmen in der aktuell geladenen Schueler-CSV.
+
+    Die nicht-aktive Liste vor dem Switch (z.B. eine Whitelist, die im
+    Blacklist-Modus passiv war) bleibt unangetastet — der Caller bekommt
+    durch das Mode-Toggle direkt das invertierte Set, kann aber durch
+    nochmaliges Mode-Toggle den Original-Stand wiederherstellen."""
+    import ausbilder_processor
+    try:
+        # Aktuelle CSV einlesen, um alle Firmen zu erhalten — gleicher Pfad
+        # wie das Frontend bei /api/ausbilder/students verwendet.
+        data = ausbilder_processor.list_students()
+        all_firms = set(data.get('firms', []))
+        if not all_firms:
+            return jsonify({"error": "Keine Firmen in der aktuellen CSV gefunden — "
+                                     "Invertierung ohne Bezugsmenge nicht möglich."}), 400
+        mode = ausbilder_processor.get_firma_filter_mode()
+        if mode == 'whitelist':
+            active = set(ausbilder_processor.get_firma_whitelist())
+            new_list = sorted(all_firms - active)
+            ausbilder_processor.save_firma_blacklist(new_list)
+            new_mode = 'blacklist'
+        else:
+            active = set(ausbilder_processor.get_firma_blacklist())
+            new_list = sorted(all_firms - active)
+            ausbilder_processor.save_firma_whitelist(new_list)
+            new_mode = 'whitelist'
+        ausbilder_processor.save_firma_filter_mode(new_mode)
+        return jsonify({
+            'success':            True,
+            'old_mode':           mode,
+            'new_mode':           new_mode,
+            # Aktive Firmen, die wirklich in der CSV vorkommen (stale-Eintraege
+            # im persistenten List koennten sonst die Counts verzerren).
+            'old_count':          len(active & all_firms),
+            'new_count':          len(new_list),
+            'total_firms_in_csv': len(all_firms),
+        })
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Invertieren: {e}"}), 500
+
+
 @app.route('/api/ausbilder/blacklist/toggle', methods=['POST'])
 def ausbilder_blacklist_toggle():
     """Fuegt eine Schueler-ID zur Blacklist hinzu oder entfernt sie."""
@@ -2325,6 +2405,222 @@ def ausbilder_kl_mail_save_settings():
                         'kl_mail_include_stv_kl':          ausbilder_processor.get_kl_mail_include_stv_kl(),
                         'kl_mail_subject_suffix':          ausbilder_processor.get_kl_mail_subject_suffix(),
                     }})
+
+
+# =========================================================================
+# KL-Mail-Versand fuer den Erzieher-Workflow (3.3) — symmetrisch zur
+# Ausbilder-Variante oben. Backend in erzieher_processor; hier nur Glue +
+# Template-Loading aus email_settings.ini.
+# =========================================================================
+
+def _erz_kl_mail_load_templates():
+    """Liest Subject- und Body-Template aus email_settings.ini. Defaults
+    aus erzieher_processor als Fallback."""
+    import erzieher_processor
+    cfg = configparser.ConfigParser()
+    safe_read_config(cfg, 'email_settings.ini')
+    subject = cfg.get('Templates', 'subject_erzieher_kl_uebersicht',
+                      fallback=erzieher_processor.DEFAULT_ERZ_KL_MAIL_SUBJECT)
+    body    = cfg.get('Templates', 'body_erzieher_kl_uebersicht',
+                      fallback=erzieher_processor.DEFAULT_ERZ_KL_MAIL_BODY)
+    return subject, body
+
+
+@app.route('/api/erzieher/kl_mail/preview', methods=['GET'])
+def erzieher_kl_mail_preview():
+    """Vorschau aller KL-Mails fuer den Erzieher-Workflow (Subject + Body-HTML
+    + Empfaenger + Schueler-/Erzieher-/Telefon-Daten). KEIN Versand."""
+    import erzieher_processor
+    try:
+        classes_by_name = _kl_mail_classes_by_name()  # reuse aus Ausbilder
+        data = erzieher_processor.build_kl_mail_data(classes_by_name=classes_by_name)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Aufbau der KL-Mail-Daten: {e}"}), 500
+    subject_tpl, body_tpl = _erz_kl_mail_load_templates()
+    stand_date = datetime.now().strftime('%d.%m.%Y')
+    suffix = (data.get('options_used') or {}).get('subject_suffix', '')
+    out_classes = []
+    for c in data['classes']:
+        subject, body = erzieher_processor.render_kl_mail(
+            c, subject_template=subject_tpl, body_template=body_tpl,
+            stand_date=stand_date, subject_suffix=suffix)
+        recipients = [c['kl_email']] if c['kl_email'] else []
+        cc = [c['stv_kl_email']] if c.get('stv_kl_email') else []
+        # Mail-Adress-Counts fuer die UI-Anzeige (im Vorschau-Listing).
+        # 'alle' = ohne Vollj.-Filter, 'minderj' = mit. Die Verteiler sind seit
+        # 3.3 in die Excel integriert (Sheets 'Mailverteiler (alle)' +
+        # 'Mailverteiler (nur Minderj.)') — kein separater .txt-Anhang mehr.
+        email_count_all     = len(erzieher_processor._collect_parent_emails(c, exclude_volljaehrige=False))
+        email_count_minderj = len(erzieher_processor._collect_parent_emails(c, exclude_volljaehrige=True))
+        out_classes.append({
+            'klasse':         c['klasse'],
+            'kl_name':        c['kl_name'],
+            'kl_email':       c['kl_email'],
+            'stv_kl_name':    c['stv_kl_name'],
+            'stv_kl_email':   c['stv_kl_email'],
+            'recipients':     recipients,
+            'cc':             cc,
+            'subject':        subject,
+            'body_html':      body,
+            'students_count': len(c['students']),
+            'xlsx_filename':  f"KL_Mail_Erzieher_{erzieher_processor.safe_class_filename(c['klasse'])}.xlsx",
+            'email_count_all':     email_count_all,
+            'email_count_minderj': email_count_minderj,
+        })
+    return jsonify({
+        'csv_path':     data['csv_path'],
+        'anspr_path':   data['anspr_path'],
+        'stand':        stand_date,
+        'classes':      out_classes,
+        'stats':        data['stats'],
+        'options_used': data['options_used'],
+        'kl_mail_settings': {
+            'kl_mail_respect_class_whitelist': erzieher_processor.get_kl_mail_respect_class_whitelist(),
+            'kl_mail_only_minor':              erzieher_processor.get_kl_mail_only_minor(),
+            'kl_mail_include_stv_kl':          erzieher_processor.get_kl_mail_include_stv_kl(),
+            'kl_mail_subject_suffix':          erzieher_processor.get_kl_mail_subject_suffix(),
+        },
+    })
+
+
+@app.route('/api/erzieher/kl_mail/download_xlsx', methods=['GET'])
+def erzieher_kl_mail_download_xlsx():
+    """Excel-Anhang einer einzelnen Klasse zum Vorschau-Check (vor dem Versand).
+    Query: ?klasse=DI24a"""
+    import erzieher_processor
+    from flask import send_file
+    import io
+    klasse = (request.args.get('klasse') or '').strip()
+    if not klasse:
+        return jsonify({"error": "Parameter 'klasse' fehlt."}), 400
+    try:
+        classes_by_name = _kl_mail_classes_by_name()
+        data = erzieher_processor.build_kl_mail_data(classes_by_name=classes_by_name)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Aufbau der KL-Mail-Daten: {e}"}), 500
+    target = next((c for c in data['classes'] if c['klasse'] == klasse), None)
+    if not target:
+        return jsonify({"error": f"Klasse {klasse} ist in den aktuellen Daten nicht enthalten."}), 404
+    xlsx_bytes = erzieher_processor.build_kl_mail_xlsx(target, stand_date=datetime.now().strftime('%d.%m.%Y'))
+    fname = f"KL_Mail_Erzieher_{erzieher_processor.safe_class_filename(klasse)}.xlsx"
+    return send_file(
+        io.BytesIO(xlsx_bytes),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=fname,
+    )
+
+
+last_erz_kl_mail_send = None
+
+
+@app.route('/api/erzieher/kl_mail/send', methods=['POST'])
+def erzieher_kl_mail_send():
+    """Versendet die ausgewaehlten Erzieher-KL-Mails inkl. Excel-Anhang.
+    Excel-Anhaenge zusaetzlich im erzieher_output_directory/KL_Mails/
+    <Zeitstempel>/ als Versand-Nachweis."""
+    import erzieher_processor
+    global last_erz_kl_mail_send
+    data_req = request.json or {}
+    selected = data_req.get('classes')
+    selected_set = set(selected) if isinstance(selected, list) else None
+    try:
+        classes_by_name = _kl_mail_classes_by_name()
+        data = erzieher_processor.build_kl_mail_data(classes_by_name=classes_by_name)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Aufbau der KL-Mail-Daten: {e}"}), 500
+    subject_tpl, body_tpl = _erz_kl_mail_load_templates()
+    stand_date = datetime.now().strftime('%d.%m.%Y')
+    suffix = (data.get('options_used') or {}).get('subject_suffix', '')
+    out_dir = erzieher_processor.get_output_dir()
+    kl_mail_dir = os.path.join(out_dir, 'KL_Mails', datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+    os.makedirs(kl_mail_dir, exist_ok=True)
+
+    sent = failed = skipped = 0
+    details = []
+    for c in data['classes']:
+        if selected_set is not None and c['klasse'] not in selected_set:
+            continue
+        if not c['kl_email']:
+            skipped += 1
+            details.append({'klasse': c['klasse'], 'status': 'skipped',
+                            'reason': 'Keine KL-E-Mail aufgeloesst.'})
+            continue
+        try:
+            subject, body = erzieher_processor.render_kl_mail(
+                c, subject_template=subject_tpl, body_template=body_tpl,
+                stand_date=stand_date, subject_suffix=suffix)
+            # Anhang: Excel (enthaelt seit 3.3 zusaetzlich die zwei Mailverteiler-
+            # Sheets — kein separater .txt-Anhang mehr).
+            xlsx_bytes = erzieher_processor.build_kl_mail_xlsx(c, stand_date=stand_date)
+            xlsx_name  = f"KL_Mail_Erzieher_{erzieher_processor.safe_class_filename(c['klasse'])}.xlsx"
+            xlsx_path  = os.path.join(kl_mail_dir, xlsx_name)
+            with open(xlsx_path, 'wb') as f:
+                f.write(xlsx_bytes)
+            to_addrs = [c['kl_email']]
+            if c.get('stv_kl_email'):
+                to_addrs.append(c['stv_kl_email'])
+            send_email(subject, body, to_addrs, attachment_path=xlsx_path)
+            sent += 1
+            details.append({'klasse': c['klasse'], 'status': 'sent',
+                            'recipients': to_addrs, 'xlsx_path': xlsx_path,
+                            'students_count': len(c['students'])})
+        except Exception as e:
+            failed += 1
+            details.append({'klasse': c['klasse'], 'status': 'failed',
+                            'error': str(e)})
+    last_erz_kl_mail_send = {'sent': sent, 'failed': failed, 'skipped': skipped,
+                             'xlsx_directory': kl_mail_dir, 'details': details}
+    return jsonify({'success': True, **last_erz_kl_mail_send})
+
+
+@app.route('/api/erzieher/kl_mail/save_settings', methods=['POST'])
+def erzieher_kl_mail_save_settings():
+    """Speichert die KL-Mail-Settings bulk (Filter-Booleans + Suffix)."""
+    import erzieher_processor
+    data = request.json or {}
+    try:
+        erzieher_processor.save_kl_mail_settings(data)
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Speichern: {e}"}), 500
+    return jsonify({"success": True,
+                    "kl_mail_settings": {
+                        'kl_mail_respect_class_whitelist': erzieher_processor.get_kl_mail_respect_class_whitelist(),
+                        'kl_mail_only_minor':              erzieher_processor.get_kl_mail_only_minor(),
+                        'kl_mail_include_stv_kl':          erzieher_processor.get_kl_mail_include_stv_kl(),
+                        'kl_mail_subject_suffix':          erzieher_processor.get_kl_mail_subject_suffix(),
+                    }})
+
+
+@app.route('/api/erzieher/update_kl_mail_template', methods=['POST'])
+def erzieher_update_kl_mail_template():
+    """Speichert NUR die Erzieher-KL-Mail-Vorlage in
+    [Templates].subject_erzieher_kl_uebersicht / body_erzieher_kl_uebersicht.
+    Symmetrisch zu /api/ausbilder/update_kl_mail_template (Begruendung dort)."""
+    print_info("Aktualisiere Erzieher-KL-Mail-Vorlage in 'email_settings.ini'...")
+    try:
+        email_config = configparser.ConfigParser()
+        safe_read_config(email_config, 'email_settings.ini')
+        if not email_config.has_section('Templates'):
+            email_config.add_section('Templates')
+        subject = request.form.get('subject_erzieher_kl_uebersicht', '')
+        body    = request.form.get('body_erzieher_kl_uebersicht', '')
+        email_config['Templates']['subject_erzieher_kl_uebersicht'] = subject
+        email_config['Templates']['body_erzieher_kl_uebersicht']    = body
+        with open('email_settings.ini', 'w', encoding='utf-8-sig') as f:
+            email_config.write(f)
+        print_success("Erzieher-KL-Mail-Vorlage gespeichert.")
+        return jsonify({'message': '✅ Erzieher-KL-Mail-Vorlage erfolgreich gespeichert!'})
+    except Exception as e:
+        msg = f"Fehler beim Speichern der Erzieher-KL-Mail-Vorlage: {e}"
+        print_error(msg)
+        return jsonify({'message': f'❌ {msg}'}), 500
 
 
 # Route zum Generieren von Info-Mails aus den Feldänderungen des letzten Laufs

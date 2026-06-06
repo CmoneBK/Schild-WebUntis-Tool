@@ -693,6 +693,103 @@ document.addEventListener("DOMContentLoaded", function () {
     searchInput?.addEventListener('input', renderStudents);
     firmaSearchEl?.addEventListener('input', renderFirmaChips);
 
+    // Aktive Firmen-Liste leeren (Mode bleibt). Nutzt die bestehende
+    // save_firma_whitelist/blacklist-Route mit leerem Array — kein neuer
+    // Backend-Endpoint noetig. Confirm-Dialog mit Count + Mode, damit der
+    // User klar sieht, was geloescht wird.
+    document.getElementById('ausbilderFirmaClear')?.addEventListener('click', async () => {
+        const mode = state.firmaMode;
+        const active = mode === 'whitelist' ? state.firmaWhitelist : state.firmaBlacklist;
+        if (active.size === 0) {
+            alert(`Die ${mode}-Liste ist bereits leer.`);
+            return;
+        }
+        const msg =
+            `Die aktuelle ${mode}-Liste mit ${active.size} Firma(en) wirklich komplett leeren?\n\n` +
+            `Modus bleibt: ${mode}.\n` +
+            `Die andere (gerade nicht aktive) Liste bleibt ebenfalls unangetastet.\n\n` +
+            `Diese Aktion kann nicht rückgängig gemacht werden.`;
+        if (!confirm(msg)) return;
+        const btn = document.getElementById('ausbilderFirmaClear');
+        btn.disabled = true;
+        const orig = btn.textContent;
+        btn.textContent = '⌛ Leere…';
+        const endpoint = mode === 'whitelist'
+            ? '/api/ausbilder/save_firma_whitelist'
+            : '/api/ausbilder/save_firma_blacklist';
+        try {
+            const r = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ firms: [] }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) throw new Error(d.error || r.statusText);
+            if (typeof showToast === 'function') {
+                showToast(`${mode}-Liste geleert (${active.size} entfernt).`);
+            }
+            // Lokalen State auch aktualisieren und UI re-rendern, ohne den
+            // ganzen Workflow neu zu laden.
+            if (mode === 'whitelist') state.firmaWhitelist = new Set();
+            else                      state.firmaBlacklist = new Set();
+            renderFirmaChips();
+            renderStudents();
+        } catch (e) {
+            alert('Fehler beim Leeren: ' + e);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = orig;
+        }
+    });
+
+    // Liste invertieren + Modus wechseln. Berechnet die Vorschau-Counts aus
+    // state (state.firms = alle Firmen in CSV, state.firmaWhitelist/Blacklist
+    // = aktive Liste) — Backend rechnet identisch nach. Bei Bestaetigung wird
+    // die POST-Route gerufen, die danach loadStudents() triggern wird.
+    document.getElementById('ausbilderFirmaInvert')?.addEventListener('click', async () => {
+        const mode = state.firmaMode;
+        const allFirms = new Set(state.firms || []);
+        if (allFirms.size === 0) {
+            alert('Keine Firmen in der aktuellen CSV gefunden — Invertierung nicht möglich.');
+            return;
+        }
+        const active = mode === 'whitelist' ? state.firmaWhitelist : state.firmaBlacklist;
+        // Nur Firmen zaehlen, die tatsaechlich in der CSV vorkommen
+        // (sonst verzerren stale Settings-Eintraege die Vorschau).
+        const activeInCsv = Array.from(active).filter(f => allFirms.has(f));
+        const inverseSize = allFirms.size - activeInCsv.length;
+        const newMode = mode === 'whitelist' ? 'blacklist' : 'whitelist';
+        const msg =
+            `Aktueller Modus: ${mode} mit ${activeInCsv.length} Firmen (in CSV).\n` +
+            `Nach der Invertierung: ${newMode} mit ${inverseSize} Firmen.\n` +
+            `(Basis: ${allFirms.size} Firmen in der aktuellen CSV.)\n\n` +
+            `Hinweis: Die ${mode}-Liste bleibt unverändert gespeichert — durch erneutes ` +
+            `Klicken auf diesen Button kommst du wieder zurück.\n\n` +
+            `Fortfahren?`;
+        if (!confirm(msg)) return;
+        const btn = document.getElementById('ausbilderFirmaInvert');
+        btn.disabled = true;
+        const orig = btn.textContent;
+        btn.textContent = '⌛ Invertiere…';
+        try {
+            const r = await fetch('/api/ausbilder/firma_invert', { method: 'POST' });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) {
+                throw new Error(d.error || r.statusText);
+            }
+            if (typeof showToast === 'function') {
+                showToast(`Modus ${d.old_mode} (${d.old_count}) → ${d.new_mode} (${d.new_count})`);
+            }
+            // Komplettes Neuladen — neue Listen, neuer Modus, UI rendert sich.
+            loadStudents();
+        } catch (e) {
+            alert('Fehler beim Invertieren: ' + e);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = orig;
+        }
+    });
+
     // Klick auf Zeile (ausser Checkbox-Zelle) klappt Detail-Zeile auf/zu.
     // Delegate-Handler bleibt nach renderStudents() bestehen.
     bodyEl?.addEventListener('click', (e) => {
