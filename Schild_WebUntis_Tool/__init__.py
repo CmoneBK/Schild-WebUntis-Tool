@@ -2166,7 +2166,7 @@ def ausbilder_process():
             pass
 
     try:
-        out_path, out_name, rows_in, rows_out = ausbilder_processor.filter_and_write(name_template=name_template)
+        result = ausbilder_processor.filter_and_write(name_template=name_template)
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except ValueError as e:
@@ -2174,14 +2174,25 @@ def ausbilder_process():
     except Exception as e:
         return jsonify({"error": f"Fehler bei der Verarbeitung: {e}"}), 500
 
-    last_ausbilder_csv = {'path': out_path, 'name': out_name, 'rows_in': rows_in, 'rows_out': rows_out}
+    # filter_and_write liefert seit 3.3 5 Werte (vorher 4) — Defensive-Unpack,
+    # falls eine aeltere Code-Pfad-Variante doch nur 4 zurueckgibt.
+    if len(result) == 5:
+        out_path, out_name, rows_in, rows_out, extra_rows = result
+    else:
+        out_path, out_name, rows_in, rows_out = result
+        extra_rows = 0
+
+    last_ausbilder_csv = {'path': out_path, 'name': out_name,
+                          'rows_in': rows_in, 'rows_out': rows_out,
+                          'extra_rows': extra_rows}
     return jsonify({
-        "success":   True,
-        "name":      out_name,
-        "path":      out_path,
-        "directory": ausbilder_processor.get_output_dir(),
-        "rows_in":   rows_in,
-        "rows_out":  rows_out,
+        "success":    True,
+        "name":       out_name,
+        "path":       out_path,
+        "directory":  ausbilder_processor.get_output_dir(),
+        "rows_in":    rows_in,
+        "rows_out":   rows_out,
+        "extra_rows": extra_rows,
     })
 
 
@@ -2405,6 +2416,97 @@ def ausbilder_kl_mail_save_settings():
                         'kl_mail_include_stv_kl':          ausbilder_processor.get_kl_mail_include_stv_kl(),
                         'kl_mail_subject_suffix':          ausbilder_processor.get_kl_mail_subject_suffix(),
                     }})
+
+
+# =========================================================================
+# Ausbilder-Zusatz-DB (3.3) — Co-Ausbilder, die in Schild stehen aber pro
+# Export nur einer rauskommen darf. Routes liefern Liste/Detail + CRUD fuer
+# manuelle Eintraege. Backend: ausbilder_extra_db.
+# =========================================================================
+
+@app.route('/api/ausbilder/extra/list', methods=['GET'])
+def ausbilder_extra_list():
+    """Alle Schueler aus der Zusatz-DB inkl. Anzahl Co-Ausbilder."""
+    import ausbilder_extra_db
+    return jsonify({
+        'students': ausbilder_extra_db.list_all_students_with_extras(),
+        'db_path':  ausbilder_extra_db.get_db_path(),
+    })
+
+
+@app.route('/api/ausbilder/extra/student/<sid>', methods=['GET'])
+def ausbilder_extra_student(sid):
+    """Detail-Ansicht: Schueler-Meta + alle Ausbilder (Schild + Manual)."""
+    import ausbilder_extra_db
+    entry = ausbilder_extra_db.get_student_entry(sid)
+    if not entry:
+        return jsonify({"error": "Schueler nicht in Zusatz-DB."}), 404
+    return jsonify({'id': sid, **entry})
+
+
+@app.route('/api/ausbilder/extra/student/<sid>/ausbilder', methods=['POST'])
+def ausbilder_extra_add(sid):
+    """Manuellen Co-Ausbilder hinzufuegen."""
+    import ausbilder_extra_db
+    data = request.json or {}
+    schueler_meta = data.pop('_schueler', None) if isinstance(data, dict) else None
+    try:
+        new_entry = ausbilder_extra_db.add_manual_ausbilder(sid, data, schueler_meta=schueler_meta)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Anlegen: {e}"}), 500
+    return jsonify({'success': True, 'ausbilder': new_entry})
+
+
+@app.route('/api/ausbilder/extra/student/<sid>/ausbilder/<aid>', methods=['PUT'])
+def ausbilder_extra_update(sid, aid):
+    """Co-Ausbilder bearbeiten. Source/first_seen bleiben unveraendert."""
+    import ausbilder_extra_db
+    data = request.json or {}
+    try:
+        updated = ausbilder_extra_db.update_ausbilder(sid, aid, data)
+    except KeyError as e:
+        return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Aktualisieren: {e}"}), 500
+    return jsonify({'success': True, 'ausbilder': updated})
+
+
+@app.route('/api/ausbilder/extra/known_ausbilder', methods=['GET'])
+def ausbilder_extra_known():
+    """Liefert eine deduplizierte Liste aller jemals gesehenen Ausbilder aus
+    der Zusatz-DB inkl. Klassen-/Schueler-Kontext. Wird im Add-Modal fuer
+    Quickpick (klasse=...) + globale Autocomplete genutzt.
+
+    Query-Params:
+      klasse:      nur Ausbilder, die in dieser Klasse vorkommen.
+      exclude_sid: Ausbilder, die diesem Schueler bereits zugeordnet sind,
+                   ausschliessen (vermeidet 'sich selbst vorschlagen').
+    """
+    import ausbilder_extra_db
+    klasse_filter = (request.args.get('klasse') or '').strip() or None
+    exclude_sid   = (request.args.get('exclude_sid') or '').strip() or None
+    return jsonify({
+        'ausbilder': ausbilder_extra_db.list_all_known_ausbilder(
+            klasse_filter=klasse_filter, exclude_sid=exclude_sid),
+    })
+
+
+@app.route('/api/ausbilder/extra/student/<sid>/ausbilder/<aid>', methods=['DELETE'])
+def ausbilder_extra_delete(sid, aid):
+    """Co-Ausbilder loeschen. Wird beim naechsten Schild-Sync nur dann wieder
+    angelegt, wenn er im aktuellen Schild-Export drin steht."""
+    import ausbilder_extra_db
+    try:
+        ausbilder_extra_db.delete_ausbilder(sid, aid)
+    except KeyError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Fehler beim Loeschen: {e}"}), 500
+    return jsonify({'success': True})
 
 
 # =========================================================================

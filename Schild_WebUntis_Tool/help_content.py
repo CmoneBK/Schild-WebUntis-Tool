@@ -1544,6 +1544,87 @@ Datei zu überschreiben.</p>
 </details>
 
 <details class="ausb-detail">
+  <summary>👥 Zusatz-Ausbilder pro Schüler — Co-Ausbilder über mehrere Schild-Exporte sammeln (neu in 3.3)</summary>
+  <div class="ausb-body">
+    <p><strong>Problem:</strong> In Schild dürfen pro Auszubildendem mehrere
+    Betreuer/Ausbilder gepflegt sein — der Schild-CSV-Export liefert pro
+    Schüler-Zeile aber immer nur <em>einen</em> davon (meist den primären).
+    In WebUntis fehlen damit die Co-Ausbilder, obwohl sie in Schild korrekt
+    eingetragen sind.</p>
+
+    <p><strong>Lösung:</strong> Eine kleine, dateibasierte JSON-Datenbank
+    <code>ausbilder_extra.json</code> (liegt neben <code>settings.ini</code>
+    im Arbeitsverzeichnis) sammelt <strong>alle jemals beobachteten</strong>
+    Schild-Ausbilder pro Schüler-ID und kann zusätzlich manuell um weitere
+    Co-Ausbilder ergänzt werden. Beim Verarbeiten der WebUntis-Import-CSV
+    wird pro Co-Ausbilder eine weitere Zeile mit identischem Schüler-Teil
+    und überschriebenem Betreuer-Block geschrieben.</p>
+
+    <h6 class="mt-2">🔄 Automatischer Sync beim Schild-Import</h6>
+    <p>Jedes Mal wenn der Ausbilder-Workflow eine Schild-CSV liest (Aufruf
+    der Schüler-Tabelle oder Klick auf <strong>▶️ Verarbeiten</strong>),
+    werden die darin enthaltenen Schild-Ausbilder mit der DB abgeglichen:</p>
+    <ul>
+      <li><strong>Schüler-Match per Interner ID-Nummer</strong> (stabil über
+          Exporte, bleibt bei Namensänderungen unverändert).</li>
+      <li><strong>Ausbilder-Match</strong> primär per E-Mail (case-insensitiv),
+          sekundär per Nachname+Vorname. Trifft kein Match zu → neuer Eintrag
+          mit <code>source=schild</code>.</li>
+      <li>Bestehender Schild-Eintrag → Felder werden aufgefrischt
+          (Schild bleibt primäre Wahrheitsquelle).</li>
+      <li><strong>Manuell gepflegte Einträge bleiben unangetastet</strong> —
+          der Sync schreibt nie auf <code>source=manual</code>-Datensätze.</li>
+      <li>Sind im aktuellen Schild-Export sämtliche Betreuer-Felder leer,
+          passiert nichts: weder Anlage eines Geister-Eintrags noch
+          Veränderung bestehender DB-Datensätze.</li>
+    </ul>
+
+    <h6 class="mt-3">✋ Manuell ergänzen / bearbeiten / löschen</h6>
+    <p>Im Ausbilder-Workflow auf <strong>👥 Zusatz-Ausbilder verwalten</strong>
+    klicken — es öffnet sich eine Schüler-Tabelle mit Klasse, Name, Anzahl
+    Schild-/Manual-Einträgen und ID. Suche oben filtert live über alle Spalten.</p>
+    <p>Klick auf <strong>✎ Bearbeiten</strong> öffnet ein Modal mit allen
+    Ausbildern des Schülers (Schild- und manuelle, optisch differenziert).
+    Dort gibt es pro Eintrag:</p>
+    <ul>
+      <li><strong>✎ Bearbeiten</strong> — übernimmt die Werte ins Formular
+          unten, Speichern überschreibt den Eintrag (Source bleibt erhalten,
+          d.h. ein bearbeiteter Schild-Eintrag bleibt <code>source=schild</code>).</li>
+      <li><strong>🗑 Löschen</strong> — entfernt den Eintrag. Schild-Sync legt
+          ihn nur dann neu an, wenn er im nächsten Schild-Export wieder auftaucht.</li>
+    </ul>
+    <p>Neue manuelle Einträge werden über das Formular unten im Modal
+    angelegt (acht Felder: Anrede, Titel, Vorname, Nachname, E-Mail,
+    Telefon, Fax, Abteilung — mindestens eines muss ausgefüllt sein).</p>
+
+    <h6 class="mt-3">📤 Auswirkung auf den WebUntis-Import</h6>
+    <p>Beim <strong>▶️ Verarbeiten</strong> wird die Output-CSV wie gewohnt
+    geschrieben, <em>aber pro Schüler-Zeile</em>:</p>
+    <ol>
+      <li>Erste Zeile: der Schüler-Datensatz mit dem aktuellen Schild-
+          Betreuer (wie bisher).</li>
+      <li>Pro Co-Ausbilder in der DB, der mit dem aktuellen Schild-Betreuer
+          nicht matcht: eine weitere Zeile — identischer Schüler-Teil
+          (Klasse, Name, ID, Firma), überschriebener Betreuer-Block.</li>
+    </ol>
+    <p>Die KL-Mail-Vorschau und die Klassen-Tabelle in der UI bleiben
+    bewusst <em>Schild-rein</em> — sie zeigen nur, was Schild im aktuellen
+    Export liefert. Die Zusatz-Ausbilder beeinflussen ausschließlich die
+    WebUntis-Import-CSV (Hauptzweck).</p>
+
+    <p class="alert alert-info py-2 px-2 small mb-0 mt-2">
+    💡 <strong>Schüler ohne Schild-Match:</strong> Verlässt ein Auszubildender
+    die Schule, taucht er im neuen Schild-Export nicht mehr auf — sein
+    DB-Eintrag bleibt aber bestehen (mit <code>last_seen_in_schild</code>-
+    Datum vom letzten Treffer). Er wird im Export nicht mehr berücksichtigt
+    (Schild bestimmt, welche Schüler überhaupt rauskommen). Bei Bedarf
+    können Sie alte Einträge per Hand löschen — die Datei ist auch direkt
+    mit einem Texteditor lesbar/editierbar.
+    </p>
+  </div>
+</details>
+
+<details class="ausb-detail">
   <summary>📧 KL-Mail-Versand — Klassenlehrkräfte über aktuelle Ausbilder-Daten informieren</summary>
   <div class="ausb-body">
     <p><strong>Zweck:</strong> Klassenlehrkräften die aktuell in Schild

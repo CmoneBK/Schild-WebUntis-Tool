@@ -933,7 +933,8 @@
                     <div class="d-inline-block">
                         <button id="ausbilderProcess" type="button" class="btn btn-primary mr-2">▶️ Verarbeiten &amp; CSV erzeugen</button>
                         <button id="ausbilderDownload" type="button" class="btn btn-outline-primary mr-2" disabled>⬇️ CSV herunterladen</button>
-                        <button id="ausbilderToggleKlMail" type="button" class="btn btn-outline-info">📧 KL-Mails: Vorschau</button>
+                        <button id="ausbilderToggleKlMail" type="button" class="btn btn-outline-info mr-2">📧 KL-Mails: Vorschau</button>
+                        <button id="ausbilderToggleExtra" type="button" class="btn btn-outline-secondary">👥 Zusatz-Ausbilder verwalten</button>
                     </div>
                     <span id="ausbilderResult" class="ml-2 text-muted small"></span>
 
@@ -962,6 +963,98 @@
                         </div>
                         <div id="ausbilderKlMailList" class="border rounded p-2" style="max-height:600px; overflow-y:auto;"></div>
                         <span id="ausbilderKlMailResult" class="ml-1 text-muted small d-block mt-2"></span>
+                    </div>
+
+                    <!-- Zusatz-Ausbilder-Verwaltung (3.3): Co-Ausbilder pro
+                         Schueler, die in Schild stehen aber pro Export immer
+                         nur einer rauskommen darf. DB ist dateibasiert
+                         (ausbilder_extra.json), wird beim Schild-Import
+                         automatisch befuellt + ist hier per Hand erweiterbar. -->
+                    <div id="ausbilderExtraArea" class="mt-3" style="display:none;">
+                        <div class="alert alert-info py-2 mb-2" id="ausbilderExtraStats">Lade Zusatz-Ausbilder-DB…</div>
+                        <p class="small text-muted mb-2">
+                            <strong>Zweck:</strong> Pro Auszubildendem dürfen in Schild zwar
+                            mehrere Ausbilder gepflegt sein, der Schild-Export liefert pro
+                            Schüler-Zeile aber nur einen. Diese DB sammelt jeden jemals
+                            gesehenen Ausbilder + lässt Sie zusätzliche manuell ergänzen.
+                            Beim Verarbeiten wird pro Co-Ausbilder eine zusätzliche
+                            WebUntis-Import-Zeile mit identischem Schüler erzeugt.
+                        </p>
+                        <div class="d-flex flex-wrap align-items-center mb-2">
+                            <input type="text" id="ausbilderExtraSearch" class="form-control form-control-sm mr-2 mb-1" placeholder="🔍 Filter (Name, Klasse, ID)…" style="max-width:300px;">
+                            <small class="text-muted mb-1" id="ausbilderExtraCount">—</small>
+                            <button type="button" id="ausbilderExtraReload" class="btn btn-outline-secondary btn-sm ml-auto mb-1" title="DB neu einlesen">🔄</button>
+                        </div>
+                        <div class="table-responsive border rounded" style="max-height:420px; overflow-y:auto;">
+                            <table class="table table-sm table-hover mb-0" id="ausbilderExtraTable">
+                                <thead class="thead-light" style="position:sticky; top:0; z-index:1;">
+                                    <tr>
+                                        <th>Klasse</th>
+                                        <th>Nachname</th>
+                                        <th>Vorname</th>
+                                        <th class="text-center" title="Schild-Eintraege">📤 Schild</th>
+                                        <th class="text-center" title="Manuell gepflegte Eintraege">✋ Manual</th>
+                                        <th>ID</th>
+                                        <th style="width:130px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ausbilderExtraBody">
+                                    <tr><td colspan="7" class="text-center text-muted py-3">DB noch leer — beim ersten Schild-Import wird sie befüllt.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal: Zusatz-Ausbilder fuer EINEN Schueler editieren -->
+            <div class="modal fade" id="ausbilderExtraModal" tabindex="-1" role="dialog" aria-labelledby="ausbilderExtraModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-xl" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="ausbilderExtraModalLabel">Zusatz-Ausbilder</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Schließen">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="ausbilderExtraModalMeta" class="alert alert-secondary py-2 mb-3" style="font-size:0.9rem;">…</div>
+                            <h6 class="mb-2">Aktuelle Ausbilder</h6>
+                            <div id="ausbilderExtraModalList" class="border rounded p-2 mb-3" style="max-height:280px; overflow-y:auto;">
+                                <p class="text-muted small m-0">Lade…</p>
+                            </div>
+                            <!-- Quickpick: Ausbilder aus derselben Klasse uebernehmen -->
+                            <h6 class="mb-2">📋 Aus dieser Klasse übernehmen <small class="text-muted">(Klick = Formular vorbefüllen)</small></h6>
+                            <div id="ausbilderExtraQuickpick" class="border rounded p-2 mb-3" style="max-height:160px; overflow-y:auto;">
+                                <p class="text-muted small m-0">Lade…</p>
+                            </div>
+
+                            <h6 class="mb-2">Neuer Ausbilder (manuell) <small class="text-muted">— Tippen in Nachname/Vorname/E-Mail zeigt Vorschläge aus allen Klassen, Klick füllt alle Felder.</small></h6>
+                            <form id="ausbilderExtraForm" autocomplete="off">
+                                <div class="form-row">
+                                    <div class="form-group col-md-2"><label class="small mb-1">Anrede</label><input class="form-control form-control-sm" name="anrede" placeholder="Frau / Herr"></div>
+                                    <div class="form-group col-md-2"><label class="small mb-1">Titel</label><input class="form-control form-control-sm" name="titel" placeholder="Dr."></div>
+                                    <div class="form-group col-md-4 position-relative"><label class="small mb-1">Vorname</label><input class="form-control form-control-sm ausb-extra-ac" name="vorname" data-ac-key="vorname" autocomplete="off"></div>
+                                    <div class="form-group col-md-4 position-relative"><label class="small mb-1">Nachname</label><input class="form-control form-control-sm ausb-extra-ac" name="nachname" data-ac-key="nachname" autocomplete="off"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-6 position-relative"><label class="small mb-1">E-Mail</label><input type="email" class="form-control form-control-sm ausb-extra-ac" name="email" data-ac-key="email" autocomplete="off"></div>
+                                    <div class="form-group col-md-3"><label class="small mb-1">Telefon</label><input class="form-control form-control-sm" name="telefon"></div>
+                                    <div class="form-group col-md-3"><label class="small mb-1">Fax</label><input class="form-control form-control-sm" name="fax"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group col-md-12"><label class="small mb-1">Abteilung</label><input class="form-control form-control-sm" name="abteilung"></div>
+                                </div>
+                                <small class="form-text text-muted">Mindestens ein Feld muss ausgefüllt sein. Schild-Sync überschreibt manuelle Einträge NICHT.</small>
+                            </form>
+                            <!-- Container fuer das Autocomplete-Dropdown (wird per JS positioniert) -->
+                            <div id="ausbilderExtraAcDropdown" class="dropdown-menu shadow" style="display:none; max-height:260px; overflow-y:auto; min-width:300px; z-index:1080;"></div>
+                            <span id="ausbilderExtraFormResult" class="small text-muted"></span>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Schließen</button>
+                            <button type="button" id="ausbilderExtraAddBtn" class="btn btn-primary">➕ Manuellen Ausbilder hinzufügen</button>
+                        </div>
                     </div>
                 </div>
             </div>

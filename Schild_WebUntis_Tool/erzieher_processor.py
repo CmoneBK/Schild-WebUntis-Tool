@@ -2280,6 +2280,54 @@ def _html_escape_erz(s):
              .replace('"', '&quot;'))
 
 
+def _build_mailto_url(email, briefanrede='', nachname=''):
+    """Baut einen mailto:-Link mit URL-codiertem Body, in dem die Briefanrede
+    + Nachname bereits stehen. Klick im Mail-Client startet die Mail mit der
+    Anrede vorbefuellt — Cursor landet auf der ersten Leerzeile nach dem
+    Komma. Funktioniert in Outlook / Gmail-Web / Thunderbird / Apple Mail.
+
+    Fallbacks bei fehlenden Daten:
+        - Briefanrede + Nachname da:           'Briefanrede Nachname,\\n\\n'
+        - Nur Briefanrede:                      'Briefanrede,\\n\\n'
+        - Nur Nachname:                         'Sehr geehrte/r Herr/Frau Nachname,\\n\\n'
+        - Beide fehlen:                         'Sehr geehrte Damen und Herren,\\n\\n'
+    """
+    import urllib.parse
+    email = (email or '').strip()
+    if not email:
+        return ''
+    briefanrede = (briefanrede or '').strip()
+    nachname = (nachname or '').strip()
+    if briefanrede and nachname:
+        greeting = f"{briefanrede} {nachname},\n\n"
+    elif briefanrede:
+        greeting = f"{briefanrede},\n\n"
+    elif nachname:
+        greeting = f"Sehr geehrte/r Herr/Frau {nachname},\n\n"
+    else:
+        greeting = "Sehr geehrte Damen und Herren,\n\n"
+    return f"mailto:{email}?body={urllib.parse.quote(greeting)}"
+
+
+def _build_bulk_mailto_url(emails, generic_greeting='Sehr geehrte Damen und Herren'):
+    """Sammel-mailto fuer eine Liste von Adressen — alle landen im BCC, Body
+    enthaelt eine generische Anrede. Fuer den Klick auf die Direkt-Listen-Zelle
+    im Mailverteiler-Sheet.
+
+    Hinweis: einige Mail-Clients begrenzen die URL-Laenge (Outlook ~2000
+    Zeichen). Bei sehr grossen Verteilern bricht das ggf. ab — die Direkt-
+    Liste in der Zelle bleibt aber als Copy-Paste-Quelle in jedem Fall
+    nutzbar (das ist der primaere Anwendungsfall)."""
+    import urllib.parse
+    emails = [e for e in (emails or []) if e and '@' in e]
+    if not emails:
+        return ''
+    bcc_str = ','.join(emails)
+    body = f"{generic_greeting},\n\n"
+    return (f"mailto:?bcc={urllib.parse.quote(bcc_str)}"
+            f"&body={urllib.parse.quote(body)}")
+
+
 def render_erzieher_table_html(students, stand_date=None):
     """Baut die HTML-Tabelle fuer den Mail-Body — 3 Spalten:
        (1) Schueler  (2) Erzieher Rohdaten  (3) Ansprechpartner Rohdaten
@@ -2406,9 +2454,18 @@ def _format_erz_rohdaten_html(erz_row):
         any_filled = any(v for _, v in cols)
         if not any_filled:
             continue  # leere Slots nicht anzeigen — wuerden die Zelle aufblaehen
+        # Briefanrede + Nachname dieses Slots fuer die mailto-Link-Generierung
+        # in _format_kv_list_html extrahieren — KL bekommt beim Klick eine
+        # Mail mit korrekter Anrede vorbefuellt.
+        slot_briefanrede = ''
+        slot_nachname = ''
+        for k, v in cols:
+            if k.lower() == 'briefanrede' and v: slot_briefanrede = v.strip()
+            if k.lower() == 'nachname'    and v: slot_nachname    = v.strip()
         out.append(f'<div style="margin-bottom:6px; padding:4px 6px; background:#f4f4f4; border-left:3px solid #6f42c1; border-radius:2px;">')
         out.append(f'<strong style="color:#6f42c1;">Erzieher {slot_idx}</strong>')
-        out.append(_format_kv_list_html(cols))
+        out.append(_format_kv_list_html(cols, briefanrede_ctx=slot_briefanrede,
+                                         nachname_ctx=slot_nachname))
         out.append('</div>')
     if global_cols and any(v for _, v in global_cols):
         out.append(f'<div style="margin-bottom:6px; padding:4px 6px; background:#eef4f8; border-left:3px solid #17a2b8; border-radius:2px;">')
@@ -2447,19 +2504,30 @@ def _format_anspr_rohdaten_html(anspr_rows):
     return '\n'.join(out)
 
 
-def _format_kv_list_html(cols):
+def _format_kv_list_html(cols, briefanrede_ctx='', nachname_ctx=''):
     """Liste von (Spaltenname, Wert)-Tupeln als kompakte HTML-Liste —
     leere Werte werden als '—' grau dargestellt, damit man sieht dass die
-    Spalte da ist aber nicht gefuellt wurde."""
+    Spalte da ist aber nicht gefuellt wurde.
+
+    briefanrede_ctx + nachname_ctx: optionaler Kontext fuer mailto-Links.
+    Wenn gesetzt, werden E-Mail-Felder als 'mailto:?body=Briefanrede Nachname,'
+    gerendert — KL klickt und die Mail oeffnet sich mit vorausgefuellter
+    Anrede (siehe _build_mailto_url)."""
     if not cols:
         return ''
     out = ['<ul style="margin:3px 0 0 0; padding-left:16px; list-style:none;">']
     for k, v in cols:
         if v:
-            # E-Mail-Spalten anklickbar machen
+            # E-Mail-Spalten anklickbar — bei Erzieher-Slot-Kontext mit
+            # vorgefuelltem Body (Briefanrede + Nachname); sonst nur die
+            # E-Mail-Adresse selbst als mailto.
             v_html = _html_escape_erz(v)
             if 'E-Mail' in k or 'e-mail' in k.lower():
-                v_html = f'<a href="mailto:{_html_escape_erz(v)}">{v_html}</a>'
+                mailto_url = _build_mailto_url(v, briefanrede_ctx, nachname_ctx)
+                if mailto_url:
+                    v_html = (f'<a href="{_html_escape_erz(mailto_url)}" '
+                              f'title="Mail öffnen mit vorausgefüllter Briefanrede">'
+                              f'{v_html}</a>')
             out.append(f'<li style="margin-bottom:1px;"><span style="color:#666; font-size:0.9em;">{_html_escape_erz(k)}:</span> {v_html}</li>')
         else:
             out.append(f'<li style="margin-bottom:1px;"><span style="color:#666; font-size:0.9em;">{_html_escape_erz(k)}:</span> <span style="color:#bbb;">—</span></li>')
@@ -2652,13 +2720,25 @@ def build_kl_mail_xlsx(class_data, stand_date=None):
         ws1.cell(row=row_idx, column=7, value=s.get('erzieher_art', ''))
         # Erzieher-Slots (Spalten 8 aufwaerts) — pro Slot ein 6er-Block. Wenn
         # ein Schueler den Slot nicht gefuellt hat, bleiben die Zellen leer.
+        # E-Mail-Spalte pro Slot wird zum Hyperlink (mailto: mit body= +
+        # Briefanrede + Nachname dieses Slots) — KL klickt in Excel, Mail-
+        # Client oeffnet sich mit vorausgefuellter Anrede.
         erz_by_nr = {e.get('nr'): e for e in s.get('erzieher', [])
                      if isinstance(e.get('nr'), int)}
         col_idx = len(STAMM_HEADERS) + 1
         for slot_i in range(1, max_slots + 1):
             e = erz_by_nr.get(slot_i, {})
             for sfx in ERZ_SLOT_SUFFIXES:
-                ws1.cell(row=row_idx, column=col_idx, value=e.get(sfx, ''))
+                val = e.get(sfx, '')
+                cell = ws1.cell(row=row_idx, column=col_idx, value=val)
+                if sfx == 'E-Mail' and val and '@' in str(val):
+                    mailto = _build_mailto_url(
+                        str(val),
+                        briefanrede=e.get('Briefanrede', ''),
+                        nachname=e.get('Nachname', ''))
+                    if mailto:
+                        cell.hyperlink = mailto
+                        cell.style = 'Hyperlink'
                 col_idx += 1
         row_idx += 1
 
@@ -2826,6 +2906,14 @@ def _build_mailverteiler_sheet(wb, class_data, stand_date, title,
     ws['A8'].fill = accent_fill
     ws['A8'].border = thin_border
     ws.merge_cells('A8:E8')
+    # Sammel-Hyperlink (mailto:?bcc=...) zusaetzlich auf A8 — KL kann mit
+    # einem Klick eine neue Mail mit allen Adressen im BCC oeffnen. Bei sehr
+    # langen Verteilern (>~2000 Zeichen URL) ignoriert Outlook den Link;
+    # der Copy-Paste-Text bleibt davon unberuehrt.
+    if emails:
+        bulk_link = _build_bulk_mailto_url([e['email'] for e in emails])
+        if bulk_link:
+            ws['A8'].hyperlink = bulk_link
     # Row-Hoehe abhaengig von Email-Anzahl (grobe Schaetzung: 1 Zeile pro 4 Mails)
     approx_lines = max(2, (len(emails) // 4) + 1)
     ws.row_dimensions[8].height = min(20 * approx_lines, 250)
@@ -2844,7 +2932,17 @@ def _build_mailverteiler_sheet(wb, class_data, stand_date, title,
     # Zeile 11+: Daten
     row_idx = table_header_row + 1
     for e in emails:
-        ws.cell(row=row_idx, column=1, value=e['email'])
+        # E-Mail-Zelle als klickbarer mailto: mit body=Briefanrede+Nachname.
+        # Faellt auf "Sehr geehrte/r Herr/Frau Nachname" oder "Sehr geehrte
+        # Damen und Herren" zurueck, wenn die Briefanrede in Schild leer ist.
+        mail_cell = ws.cell(row=row_idx, column=1, value=e['email'])
+        mailto = _build_mailto_url(
+            e['email'],
+            briefanrede=e.get('erz_briefanrede', ''),
+            nachname=e.get('erz_nachname', ''))
+        if mailto:
+            mail_cell.hyperlink = mailto
+            mail_cell.style = 'Hyperlink'
         erz_name_parts = [p for p in (e['erz_anrede'], e['erz_vorname'],
                                       e['erz_nachname']) if p]
         erz_name = ' '.join(erz_name_parts).strip() or '(Name unbekannt)'
@@ -2964,6 +3062,9 @@ def _collect_parent_emails(class_data, exclude_volljaehrige=False):
                 'erz_vorname':      (e.get('Vorname') or '').strip(),
                 'erz_nachname':     (e.get('Nachname') or '').strip(),
                 'erz_anrede':       (e.get('Anrede') or '').strip(),
+                # Briefanrede zusaetzlich — fuer mailto-Body-Vorausfuellung
+                # in den Mailverteiler-Sheets.
+                'erz_briefanrede':  (e.get('Briefanrede') or '').strip(),
                 'slot_nr':          e.get('nr', ''),
                 'schueler_volljaehrig':       is_vollj,
                 'volljaehrig_per_geb_known':  bool(s.get('volljaehrig_per_geb_known')),

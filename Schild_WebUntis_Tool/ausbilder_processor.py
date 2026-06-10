@@ -57,6 +57,8 @@ import json
 import configparser
 from datetime import datetime
 
+import ausbilder_extra_db
+
 
 DEFAULT_OUTPUT_NAME_TEMPLATE = 'WebUntis_Ausbilder_Import_{datetime}'
 
@@ -513,6 +515,24 @@ def list_students():
             students.sort(key=lambda s: (s['klasse'], s['nachname'], s['vorname']))
             classes = sorted({s['klasse'] for s in students if s['klasse']})
             firms   = sorted({s['firma']  for s in students if s['firma']})
+            # Zusatz-Ausbilder-DB automatisch aus dem aktuellen Schild-Export
+            # befuellen. Sync ist idempotent + schuetzt manuelle Eintraege.
+            # Fehler hier bleiben still — die DB ist ein Sekundaer-Feature,
+            # darf den Hauptflow nicht blockieren.
+            try:
+                ausbilder_extra_db.sync_from_schild(students)
+            except Exception:
+                pass
+            # Schueler mit Zusatz-Ausbilder-Anzahl annotieren (>0 = es gibt
+            # weitere Co-Ausbilder, die im Schild-Export NICHT auftauchen).
+            try:
+                for s in students:
+                    extras = ausbilder_extra_db.extra_ausbilder_for_export(
+                        s['id'], s.get('ausbilder'))
+                    s['extra_ausbilder_count'] = len(extras)
+            except Exception:
+                for s in students:
+                    s['extra_ausbilder_count'] = 0
         except Exception:
             pass
 
@@ -552,7 +572,12 @@ def filter_and_write(input_path=None, classes=None, blacklist=None, output_dir=N
     Liest die CSV, filtert nach Klassen-Whitelist, Schueler-Blacklist und (je nach
     firma_filter_mode) Firma-Whitelist ODER Firma-Blacklist, schreibt eine neue
     CSV ins Ausgabeverzeichnis.
-    Liefert (output_pfad, output_name, anzahl_eingang, anzahl_ausgang).
+    Liefert (output_pfad, output_name, anzahl_eingang, anzahl_ausgang,
+             anzahl_extra_rows).
+    anzahl_ausgang = primaere Schueler-Zeilen aus Schild,
+    anzahl_extra_rows = zusaetzliche Zeilen aus der Zusatz-Ausbilder-DB
+    (jeweils derselbe Schueler mit einem Co-Ausbilder, der in der Schild-
+    Zeile nicht stand).
     """
     if input_path is None:
         # Resolver respektiert schueler_export_mode — siehe list_students()
@@ -613,14 +638,51 @@ def filter_and_write(input_path=None, classes=None, blacklist=None, output_dir=N
         name = f"{base}_{datetime.now().strftime('%H%M%S')}{ext}"
         out_path = os.path.join(output_dir, name)
 
+    # Mapping DB-Feldnamen -> Schild-CSV-Spaltennamen fuer die Co-Ausbilder-
+    # Zeilen. 'fax' nutzt die generische Fax-Nr. (identisch zu list_students).
+    _BETREUER_COL = {
+        'anrede':    'Allg. Adresse: Betreuer Anrede',
+        'titel':     'Allg. Adresse: Betreuer Titel',
+        'vorname':   'Allg. Adresse: Betreuer Vorname',
+        'nachname':  'Allg. Adresse: Betreuer Name',
+        'email':     'Allg. Adresse: Betreuer E-Mail',
+        'telefon':   'Allg. Adresse: Betreuer Telefon',
+        'abteilung': 'Allg. Adresse: Betreuer Abteilung',
+        'fax':       'Allg. Adresse: Fax-Nr.',
+    }
+
+    extra_rows_total = 0
     with open(out_path, 'w', encoding='utf-8-sig', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=';')
         writer.writeheader()
         for row in filtered:
-            # Nur die Original-Spalten ausgeben (verhindert dass evtl. ergänzte Keys mit reinrutschen)
+            # 1) Original-Zeile aus Schild (= primaerer Betreuer)
             writer.writerow({k: row.get(k, '') for k in fieldnames})
+            # 2) Zusatz-Zeilen aus der Ausbilder-Extra-DB — pro Co-Ausbilder
+            #    eine weitere Zeile mit identischem Schueler-Teil und ueber-
+            #    schriebenem Betreuer-Block. Fehler hier sind Sekundaer-Feature-
+            #    Fehler und duerfen den Hauptexport nicht stoppen.
+            try:
+                sid = (row.get('Interne ID-Nummer') or '').strip()
+                if not sid:
+                    continue
+                current = {
+                    db_k: (row.get(csv_k) or '').strip()
+                    for db_k, csv_k in _BETREUER_COL.items()
+                }
+                extras = ausbilder_extra_db.extra_ausbilder_for_export(
+                    sid, current)
+                for extra in extras:
+                    new_row = {k: row.get(k, '') for k in fieldnames}
+                    for db_k, csv_k in _BETREUER_COL.items():
+                        if csv_k in new_row:
+                            new_row[csv_k] = extra.get(db_k, '') or ''
+                    writer.writerow(new_row)
+                    extra_rows_total += 1
+            except Exception:
+                continue
 
-    return out_path, name, len(rows), len(filtered)
+    return out_path, name, len(rows), len(filtered), extra_rows_total
 
 
 # ===========================================================================

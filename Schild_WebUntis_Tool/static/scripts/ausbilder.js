@@ -1142,4 +1142,415 @@ document.addEventListener("DOMContentLoaded", function () {
             btn.textContent = orig;
         }
     });
+
+    // -------------------------------------------------------------------
+    // Zusatz-Ausbilder-DB (3.3): Co-Ausbilder pro Schueler, die in Schild
+    // stehen aber pro Export nur einer rauskommt. UI = Liste + Modal mit
+    // CRUD fuer manuelle Eintraege.
+    // -------------------------------------------------------------------
+    const extraBtn      = document.getElementById('ausbilderToggleExtra');
+    const extraArea     = document.getElementById('ausbilderExtraArea');
+    const extraStats    = document.getElementById('ausbilderExtraStats');
+    const extraBody     = document.getElementById('ausbilderExtraBody');
+    const extraSearch   = document.getElementById('ausbilderExtraSearch');
+    const extraCount    = document.getElementById('ausbilderExtraCount');
+    const extraReload   = document.getElementById('ausbilderExtraReload');
+    const extraModal    = document.getElementById('ausbilderExtraModal');
+    const extraModalLbl = document.getElementById('ausbilderExtraModalLabel');
+    const extraModalMeta = document.getElementById('ausbilderExtraModalMeta');
+    const extraModalList = document.getElementById('ausbilderExtraModalList');
+    const extraForm     = document.getElementById('ausbilderExtraForm');
+    const extraFormResult = document.getElementById('ausbilderExtraFormResult');
+    const extraAddBtn   = document.getElementById('ausbilderExtraAddBtn');
+
+    let extraData = { students: [] };
+    let extraCurrentSid = null;
+    let extraCurrentKlasse = '';
+    // Alle bekannten Ausbilder (deduped) — Quelle fuer Autocomplete + Quickpick.
+    // Wird beim Modal-Open einmal aus /known_ausbilder geladen.
+    let extraAllKnownAusbilder = [];
+    const extraQuickpick = document.getElementById('ausbilderExtraQuickpick');
+    const extraAcDropdown = document.getElementById('ausbilderExtraAcDropdown');
+    const AUSB_FIELDS = ['anrede','titel','vorname','nachname','email','telefon','fax','abteilung'];
+
+    async function loadExtraList() {
+        if (!extraBody) return;
+        extraBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Lade…</td></tr>';
+        try {
+            const r = await fetch('/api/ausbilder/extra/list');
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || r.statusText);
+            extraData = d;
+            renderExtraList();
+        } catch (e) {
+            extraBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-3">Fehler: ${escapeHtml(e.message)}</td></tr>`;
+        }
+    }
+
+    function renderExtraList() {
+        if (!extraBody) return;
+        const term = (extraSearch?.value || '').toLowerCase();
+        const students = (extraData.students || []).filter(s => {
+            if (!term) return true;
+            return [s.klasse, s.nachname, s.vorname, s.id].join(' ').toLowerCase().includes(term);
+        });
+        if (extraCount) {
+            const total = (extraData.students || []).length;
+            const totalCo = (extraData.students || []).reduce((a, s) => a + (s.ausbilder_count || 0), 0);
+            const manual  = (extraData.students || []).reduce((a, s) => a + (s.ausbilder_manual_count || 0), 0);
+            const path = extraData.db_path ? ` · <code>${escapeHtml(extraData.db_path)}</code>` : '';
+            extraCount.innerHTML = `${students.length} / ${total} Schüler · ${totalCo} Ausbilder gesamt (davon ${manual} manuell)${path}`;
+        }
+        if (extraStats) {
+            const total = (extraData.students || []).length;
+            if (!total) {
+                extraStats.className = 'alert alert-warning py-2 mb-2';
+                extraStats.innerHTML = 'Die DB ist leer. Sie wird beim nächsten Schild-Import automatisch gefüllt — '
+                    + 'Sie können Schüler auch manuell anlegen, indem Sie zuerst über den Standard-Schüler-Import einlesen.';
+            } else {
+                extraStats.className = 'alert alert-info py-2 mb-2';
+                const manual  = (extraData.students || []).reduce((a, s) => a + (s.ausbilder_manual_count || 0), 0);
+                const schild  = (extraData.students || []).reduce((a, s) => a + (s.ausbilder_schild_count || 0), 0);
+                extraStats.innerHTML = `<strong>${total}</strong> Schüler in DB · `
+                    + `<strong>${schild}</strong> aus Schild · <strong>${manual}</strong> manuell. `
+                    + `Beim Verarbeiten erzeugt jeder Co-Ausbilder eine zusätzliche WebUntis-Zeile.`;
+            }
+        }
+        if (!students.length) {
+            extraBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Keine Treffer.</td></tr>';
+            return;
+        }
+        extraBody.innerHTML = students.map(s => `
+            <tr>
+                <td>${escapeHtml(s.klasse)}</td>
+                <td>${escapeHtml(s.nachname)}</td>
+                <td>${escapeHtml(s.vorname)}</td>
+                <td class="text-center">${s.ausbilder_schild_count}</td>
+                <td class="text-center">${s.ausbilder_manual_count > 0
+                    ? `<span class="badge badge-success">${s.ausbilder_manual_count}</span>`
+                    : '0'}</td>
+                <td><code class="small">${escapeHtml(s.id)}</code></td>
+                <td><button type="button" class="btn btn-outline-primary btn-sm ausbilder-extra-edit" data-sid="${escapeHtml(s.id)}">✎ Bearbeiten</button></td>
+            </tr>
+        `).join('');
+        extraBody.querySelectorAll('.ausbilder-extra-edit').forEach(btn => {
+            btn.addEventListener('click', () => openExtraModal(btn.dataset.sid));
+        });
+    }
+
+    async function openExtraModal(sid) {
+        extraCurrentSid = sid;
+        extraCurrentKlasse = '';
+        if (!extraModal) return;
+        extraModalLbl.textContent = `Zusatz-Ausbilder · ${sid}`;
+        extraModalMeta.textContent = 'Lade…';
+        extraModalList.innerHTML = '<p class="text-muted small m-0">Lade…</p>';
+        if (extraQuickpick) extraQuickpick.innerHTML = '<p class="text-muted small m-0">Lade…</p>';
+        extraForm.reset();
+        extraFormResult.textContent = '';
+        try {
+            const r = await fetch(`/api/ausbilder/extra/student/${encodeURIComponent(sid)}`);
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.error || r.statusText);
+            const sch = d.schueler || {};
+            extraCurrentKlasse = sch.klasse || '';
+            extraModalLbl.textContent = `Zusatz-Ausbilder · ${sch.vorname || ''} ${sch.nachname || ''} (${sch.klasse || '–'})`;
+            extraModalMeta.innerHTML = `<strong>Schild-ID:</strong> <code>${escapeHtml(sid)}</code> · `
+                + `<strong>Klasse:</strong> ${escapeHtml(sch.klasse || '–')} · `
+                + `<strong>Erstmals gesehen:</strong> ${escapeHtml(d.first_seen || '–')} · `
+                + `<strong>Zuletzt in Schild:</strong> ${escapeHtml(d.last_seen_in_schild || '–')}`;
+            renderExtraModalList(d.ausbilder || []);
+        } catch (e) {
+            extraModalMeta.innerHTML = `<span class="text-danger">Fehler: ${escapeHtml(e.message)}</span>`;
+            extraModalList.innerHTML = '';
+        }
+        // Bekannte Ausbilder fuer Quickpick + Autocomplete parallel laden.
+        loadKnownAusbilderForModal();
+        $(extraModal).modal('show');
+    }
+
+    async function loadKnownAusbilderForModal() {
+        try {
+            // Globale Liste (alle Klassen) fuer Autocomplete
+            const rAll = await fetch(`/api/ausbilder/extra/known_ausbilder?exclude_sid=${encodeURIComponent(extraCurrentSid || '')}`);
+            const dAll = await rAll.json().catch(() => ({}));
+            extraAllKnownAusbilder = (dAll.ausbilder || []);
+            // Klassen-gefilterte Teilmenge fuer Quickpick (lokal filtern, spart Roundtrip)
+            const klasse = (extraCurrentKlasse || '').trim();
+            const quickpick = klasse
+                ? extraAllKnownAusbilder.filter(a => (a.klassen || []).includes(klasse))
+                : [];
+            renderQuickpick(quickpick, klasse);
+        } catch (e) {
+            extraAllKnownAusbilder = [];
+            if (extraQuickpick) extraQuickpick.innerHTML = `<p class="text-danger small m-0">Fehler: ${escapeHtml(e.message)}</p>`;
+        }
+    }
+
+    function renderQuickpick(list, klasse) {
+        if (!extraQuickpick) return;
+        if (!klasse) {
+            extraQuickpick.innerHTML = '<p class="text-muted small m-0">Kein Klassenkontext (Schüler aktuell nicht in Schild) — Autocomplete unten greift trotzdem auf <em>alle</em> bekannten Ausbilder zu.</p>';
+            return;
+        }
+        if (!list.length) {
+            extraQuickpick.innerHTML = `<p class="text-muted small m-0">Keine weiteren Ausbilder in Klasse <code>${escapeHtml(klasse)}</code> verfügbar (alle bereits zugeordnet oder Klasse leer).</p>`;
+            return;
+        }
+        extraQuickpick.innerHTML = list.map((a, i) => {
+            const name = [a.anrede, a.titel, a.vorname, a.nachname].filter(Boolean).join(' ') || '(ohne Name)';
+            const meta = [
+                a.email,
+                a.telefon ? `📞 ${a.telefon}` : '',
+                `${a.occurrences}× bei ${a.schueler.length} Schüler${a.schueler.length === 1 ? '' : 'n'}`,
+            ].filter(Boolean).join(' · ');
+            return `
+                <div class="d-flex align-items-center mb-1 pb-1 border-bottom ausb-qp-row" data-idx="${i}" style="cursor:pointer;" title="Klick = ins Formular übernehmen">
+                    <div class="flex-grow-1">
+                        <div class="small"><strong>${escapeHtml(name)}</strong></div>
+                        <div class="text-muted" style="font-size:0.78rem;">${escapeHtml(meta)}</div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary ml-2 ausb-qp-pick" data-idx="${i}">➕ Übernehmen</button>
+                </div>`;
+        }).join('');
+        extraQuickpick.querySelectorAll('.ausb-qp-pick, .ausb-qp-row').forEach(el => {
+            el.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                const idx = parseInt(el.dataset.idx, 10);
+                if (!isNaN(idx) && list[idx]) populateFormFromAusbilder(list[idx]);
+            });
+        });
+    }
+
+    function populateFormFromAusbilder(a) {
+        AUSB_FIELDS.forEach(k => {
+            if (extraForm.elements[k]) extraForm.elements[k].value = a[k] || '';
+        });
+        // Beim Uebernehmen aus Quickpick/Autocomplete ist es immer ein neuer
+        // (manueller) Eintrag — Edit-Modus zuruecksetzen.
+        if (extraAddBtn) {
+            extraAddBtn.textContent = '➕ Manuellen Ausbilder hinzufügen';
+            delete extraAddBtn.dataset.editingAid;
+        }
+        extraFormResult.innerHTML = `<span class="text-info">✓ Felder übernommen — auf „Hinzufügen" klicken um zu speichern.</span>`;
+        hideAcDropdown();
+    }
+
+    // ---------- Autocomplete ----------
+    let acActiveInput = null;
+    let acFiltered = [];
+    let acHighlightIdx = -1;
+
+    function hideAcDropdown() {
+        if (extraAcDropdown) extraAcDropdown.style.display = 'none';
+        acActiveInput = null;
+        acFiltered = [];
+        acHighlightIdx = -1;
+    }
+
+    function positionAcDropdown(inputEl) {
+        if (!extraAcDropdown || !inputEl) return;
+        const rect = inputEl.getBoundingClientRect();
+        const modalBody = inputEl.closest('.modal-body');
+        if (!modalBody) return;
+        const mbRect = modalBody.getBoundingClientRect();
+        extraAcDropdown.style.position = 'absolute';
+        extraAcDropdown.style.top = (rect.bottom - mbRect.top + modalBody.scrollTop + 2) + 'px';
+        extraAcDropdown.style.left = (rect.left - mbRect.left) + 'px';
+        extraAcDropdown.style.minWidth = rect.width + 'px';
+    }
+
+    function renderAcDropdown() {
+        if (!extraAcDropdown) return;
+        if (!acFiltered.length) {
+            hideAcDropdown();
+            return;
+        }
+        extraAcDropdown.innerHTML = acFiltered.slice(0, 12).map((a, i) => {
+            const name = [a.vorname, a.nachname].filter(Boolean).join(' ') || '(ohne Name)';
+            const klassenStr = (a.klassen || []).join(', ');
+            const active = (i === acHighlightIdx) ? 'active' : '';
+            return `
+                <a href="#" class="dropdown-item py-1 ${active}" data-ac-idx="${i}" style="white-space:normal;">
+                    <div class="small"><strong>${escapeHtml(name)}</strong>${a.email ? ` · <span class="text-muted">${escapeHtml(a.email)}</span>` : ''}</div>
+                    <div class="text-muted" style="font-size:0.75rem;">${escapeHtml(klassenStr || '–')} · ${a.occurrences}×</div>
+                </a>`;
+        }).join('');
+        extraAcDropdown.querySelectorAll('.dropdown-item').forEach(it => {
+            it.addEventListener('mousedown', (ev) => {
+                // mousedown statt click: feuert vor dem blur → Dropdown sieht das Event,
+                // bevor das Input den Fokus verliert und das Dropdown sich versteckt.
+                ev.preventDefault();
+                const idx = parseInt(it.dataset.acIdx, 10);
+                if (!isNaN(idx) && acFiltered[idx]) populateFormFromAusbilder(acFiltered[idx]);
+            });
+        });
+        extraAcDropdown.style.display = 'block';
+        positionAcDropdown(acActiveInput);
+    }
+
+    function onAcInput(ev) {
+        const inp = ev.currentTarget;
+        const key = inp.dataset.acKey;
+        const q = (inp.value || '').trim().toLowerCase();
+        if (q.length < 2 || !extraAllKnownAusbilder.length) {
+            hideAcDropdown();
+            return;
+        }
+        acActiveInput = inp;
+        // Match: das eingetippte Feld (Vorname/Nachname/Email) muss q enthalten;
+        // sekundaer matchen wir auch das jeweils andere Namensfeld, damit
+        // 'Mei' in Vorname auch 'Meier' im Nachname findet (Tippfaule-Hilfe).
+        acFiltered = extraAllKnownAusbilder.filter(a => {
+            const primary = (a[key] || '').toLowerCase();
+            if (primary.includes(q)) return true;
+            // Fallback: Voll-Namens-Match
+            return (a.vorname || '').toLowerCase().includes(q)
+                || (a.nachname || '').toLowerCase().includes(q)
+                || (a.email || '').toLowerCase().includes(q);
+        });
+        acHighlightIdx = acFiltered.length ? 0 : -1;
+        renderAcDropdown();
+    }
+
+    function onAcKey(ev) {
+        if (!extraAcDropdown || extraAcDropdown.style.display === 'none') return;
+        if (ev.key === 'ArrowDown') {
+            ev.preventDefault();
+            acHighlightIdx = Math.min(acHighlightIdx + 1, Math.min(acFiltered.length, 12) - 1);
+            renderAcDropdown();
+        } else if (ev.key === 'ArrowUp') {
+            ev.preventDefault();
+            acHighlightIdx = Math.max(acHighlightIdx - 1, 0);
+            renderAcDropdown();
+        } else if (ev.key === 'Enter') {
+            if (acHighlightIdx >= 0 && acFiltered[acHighlightIdx]) {
+                ev.preventDefault();
+                populateFormFromAusbilder(acFiltered[acHighlightIdx]);
+            }
+        } else if (ev.key === 'Escape') {
+            hideAcDropdown();
+        }
+    }
+
+    // Autocomplete an die markierten Felder binden
+    document.querySelectorAll('.ausb-extra-ac').forEach(inp => {
+        inp.addEventListener('input', onAcInput);
+        inp.addEventListener('keydown', onAcKey);
+        inp.addEventListener('blur', () => setTimeout(hideAcDropdown, 150));
+    });
+
+    function renderExtraModalList(list) {
+        if (!list.length) {
+            extraModalList.innerHTML = '<p class="text-muted small m-0">Noch keine Einträge.</p>';
+            return;
+        }
+        extraModalList.innerHTML = list.map((a, i) => {
+            const badge = a.source === 'manual'
+                ? '<span class="badge badge-success ml-2">✋ Manual</span>'
+                : '<span class="badge badge-light border ml-2">📤 Schild</span>';
+            const seen = a.last_seen_in_schild
+                ? ` <small class="text-muted">· letzter Schild-Sync: ${escapeHtml(a.last_seen_in_schild)}</small>`
+                : '';
+            const nameParts = [a.anrede, a.titel, a.vorname, a.nachname].filter(Boolean).join(' ');
+            return `
+                <div class="d-flex align-items-start mb-2 pb-2 border-bottom ausbilder-extra-entry" data-aid="${escapeHtml(a.id)}">
+                    <div class="flex-grow-1">
+                        <div><strong>${escapeHtml(nameParts || '(ohne Name)')}</strong>${badge}${seen}</div>
+                        <div class="small text-muted">
+                            ${a.email    ? `✉️ <a href="mailto:${escapeHtml(a.email)}">${escapeHtml(a.email)}</a> · ` : ''}
+                            ${a.telefon  ? `📞 ${escapeHtml(a.telefon)} · ` : ''}
+                            ${a.fax      ? `📠 ${escapeHtml(a.fax)} · ` : ''}
+                            ${a.abteilung? `Abt: ${escapeHtml(a.abteilung)}` : ''}
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <button type="button" class="btn btn-sm btn-outline-secondary ausbilder-extra-edit-btn" data-aid="${escapeHtml(a.id)}" title="Bearbeiten">✎</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger ausbilder-extra-del-btn" data-aid="${escapeHtml(a.id)}" title="Löschen">🗑</button>
+                    </div>
+                </div>`;
+        }).join('');
+        extraModalList.querySelectorAll('.ausbilder-extra-del-btn').forEach(btn => {
+            btn.addEventListener('click', () => deleteExtraAusbilder(btn.dataset.aid));
+        });
+        extraModalList.querySelectorAll('.ausbilder-extra-edit-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const aid = btn.dataset.aid;
+                const a = list.find(x => x.id === aid);
+                if (!a) return;
+                ['anrede','titel','vorname','nachname','email','telefon','fax','abteilung'].forEach(k => {
+                    if (extraForm.elements[k]) extraForm.elements[k].value = a[k] || '';
+                });
+                extraAddBtn.textContent = '💾 Änderungen speichern';
+                extraAddBtn.dataset.editingAid = aid;
+                extraFormResult.innerHTML = `<span class="text-info">Bearbeite Eintrag <code>${escapeHtml(aid).slice(0,8)}…</code> — Speichern überschreibt.</span>`;
+            });
+        });
+    }
+
+    async function deleteExtraAusbilder(aid) {
+        if (!extraCurrentSid) return;
+        if (!confirm('Diesen Co-Ausbilder löschen? Schild-Sync legt ihn nur neu an, wenn er im aktuellen Schild-Export wieder auftaucht.')) return;
+        try {
+            const r = await fetch(`/api/ausbilder/extra/student/${encodeURIComponent(extraCurrentSid)}/ausbilder/${encodeURIComponent(aid)}`, {
+                method: 'DELETE',
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok || !d.success) throw new Error(d.error || r.statusText);
+            await openExtraModal(extraCurrentSid);
+            await loadExtraList();
+        } catch (e) {
+            alert('Fehler beim Löschen: ' + e.message);
+        }
+    }
+
+    if (extraBtn) {
+        extraBtn.addEventListener('click', async () => {
+            if (extraArea.style.display === 'none') {
+                extraArea.style.display = '';
+                extraBtn.textContent = '👥 Zusatz-Ausbilder ausblenden';
+                await loadExtraList();
+            } else {
+                extraArea.style.display = 'none';
+                extraBtn.textContent = '👥 Zusatz-Ausbilder verwalten';
+            }
+        });
+    }
+    if (extraReload) extraReload.addEventListener('click', loadExtraList);
+    if (extraSearch) extraSearch.addEventListener('input', renderExtraList);
+
+    if (extraAddBtn) {
+        extraAddBtn.addEventListener('click', async () => {
+            if (!extraCurrentSid) return;
+            const payload = {};
+            ['anrede','titel','vorname','nachname','email','telefon','fax','abteilung'].forEach(k => {
+                if (extraForm.elements[k]) payload[k] = extraForm.elements[k].value.trim();
+            });
+            const editingAid = extraAddBtn.dataset.editingAid || '';
+            const url = editingAid
+                ? `/api/ausbilder/extra/student/${encodeURIComponent(extraCurrentSid)}/ausbilder/${encodeURIComponent(editingAid)}`
+                : `/api/ausbilder/extra/student/${encodeURIComponent(extraCurrentSid)}/ausbilder`;
+            const method = editingAid ? 'PUT' : 'POST';
+            try {
+                extraAddBtn.disabled = true;
+                const r = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok || !d.success) throw new Error(d.error || r.statusText);
+                extraForm.reset();
+                extraFormResult.innerHTML = `<span class="text-success">✓ Gespeichert.</span>`;
+                extraAddBtn.textContent = '➕ Manuellen Ausbilder hinzufügen';
+                delete extraAddBtn.dataset.editingAid;
+                await openExtraModal(extraCurrentSid);
+                await loadExtraList();
+            } catch (e) {
+                extraFormResult.innerHTML = `<span class="text-danger">Fehler: ${escapeHtml(e.message)}</span>`;
+            } finally {
+                extraAddBtn.disabled = false;
+            }
+        });
+    }
 });
