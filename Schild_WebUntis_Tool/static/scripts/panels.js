@@ -538,6 +538,36 @@ document.addEventListener("DOMContentLoaded", function () {
         cb.addEventListener('change', saveInfoMailFieldsToStorage);
     });
 
+    // Helfer: rendert die Info-Mail-Preview-Tabelle aus der API-Response von
+    // /generate_info_mails oder /api/nachteilsausgleich/generate_full_mails
+    // (beide liefern dasselbe Email-Schema).
+    function _renderInfoMailTable(emails) {
+        const tbody = document.getElementById('infoMailTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = emails.map((e, i) => {
+            const isNachteilsMail = e.felder.split(',').map(f => f.trim()).includes('Nachteilsausgleich');
+            const infoBtn = (isNachteilsMail && e.nachteilsausgleich_details)
+                ? `<button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 ml-1 info-mail-details-btn"
+                       title="Nachteilsausgleich-Details anzeigen"
+                       data-details="${encodeURIComponent(e.nachteilsausgleich_details)}"
+                       data-student="${e.student}">ℹ️</button>`
+                : '';
+            const felderCell = isNachteilsMail && e.nachteilsausgleich_details
+                ? e.felder.replace('Nachteilsausgleich', `Nachteilsausgleich${infoBtn}`)
+                : e.felder;
+            return `<tr>
+                <td><input type="checkbox" class="info-mail-select" data-index="${i}" checked></td>
+                <td>${e.student}</td>
+                <td>${e.klasse}</td>
+                <td>${felderCell}</td>
+                <td colspan="2">${e.to.filter(r => r && r.toLowerCase() !== 'n/a').join(', ') || '<span class="text-muted">–</span>'}</td>
+            </tr>`;
+        }).join('');
+        const selectAll = document.getElementById('selectAllInfoMails');
+        if (selectAll) { selectAll.checked = true; selectAll.indeterminate = false; }
+        document.getElementById('infoMailTableContainer').style.display = 'block';
+    }
+
     // Info-Mails generieren
     document.getElementById('btnGenerateInfoMails')?.addEventListener('click', async () => {
         const selected = await saveInfoMailFieldsToStorage();
@@ -560,36 +590,63 @@ document.addEventListener("DOMContentLoaded", function () {
                 (data.count > 0 ? 'alert-success' : 'alert-warning');
 
             if (data.emails && data.emails.length > 0) {
-                const tbody = document.getElementById('infoMailTableBody');
-                tbody.innerHTML = data.emails.map((e, i) => {
-                    const isNachteilsMail = e.felder.split(',').map(f => f.trim()).includes('Nachteilsausgleich');
-                    const infoBtn = (isNachteilsMail && e.nachteilsausgleich_details)
-                        ? `<button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 ml-1 info-mail-details-btn"
-                               title="Nachteilsausgleich-Details anzeigen"
-                               data-details="${encodeURIComponent(e.nachteilsausgleich_details)}"
-                               data-student="${e.student}">ℹ️</button>`
-                        : '';
-                    const felderCell = isNachteilsMail && e.nachteilsausgleich_details
-                        ? e.felder.replace('Nachteilsausgleich', `Nachteilsausgleich${infoBtn}`)
-                        : e.felder;
-                    return `<tr>
-                        <td><input type="checkbox" class="info-mail-select" data-index="${i}" checked></td>
-                        <td>${e.student}</td>
-                        <td>${e.klasse}</td>
-                        <td>${felderCell}</td>
-                        <td colspan="2">${e.to.filter(r => r && r.toLowerCase() !== 'n/a').join(', ') || '<span class="text-muted">–</span>'}</td>
-                    </tr>`;
-                }).join('');
-                // Alle-auswählen zurücksetzen
-                const selectAll = document.getElementById('selectAllInfoMails');
-                if (selectAll) selectAll.checked = true;
-                document.getElementById('infoMailTableContainer').style.display = 'block';
+                _renderInfoMailTable(data.emails);
             }
         } catch (err) {
             alert('Fehler beim Generieren der Info-Mails: ' + err);
         } finally {
             btn.disabled = false;
             btn.textContent = '✍ Generieren';
+        }
+    });
+
+    // 📢 Erstversand: alle Nachteilsausgleich-Mails forcieren (Spezialfall fuer
+    // die Ersteinrichtung). Doppelt bestaetigter Workflow: erstens Bestaetigung
+    // vor der Generierung (klare Absichtsabfrage), zweitens wie gewohnt vor dem
+    // tatsaechlichen Senden im bestehenden 📨 Senden-Button.
+    document.getElementById('btnGenerateNachteilsErstversand')?.addEventListener('click', async () => {
+        const btn = document.getElementById('btnGenerateNachteilsErstversand');
+        const ok = confirm(
+            '📢 Erstversand der Nachteilsausgleich-Info-Mails generieren?\n\n' +
+            'Dabei wird für JEDEN aktuell mit Nachteilsausgleich erfassten Schüler eine ' +
+            'Info-Mail an die Klassenlehrkraft erzeugt — auch wenn diese in der Vergangenheit ' +
+            'schon einmal benachrichtigt wurde.\n\n' +
+            'Die Mails landen erst in der Vorschau-Tabelle; Senden erst nach erneuter Bestätigung ' +
+            'mit „📨 Senden". Vorher können einzelne Mails per Checkbox abgewählt werden.\n\n' +
+            'Fortfahren?'
+        );
+        if (!ok) return;
+        const origText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⌛ Generiere…';
+        try {
+            const res = await fetch('/api/nachteilsausgleich/generate_full_mails', { method: 'POST' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                const statusEl = document.getElementById('infoMailStatus');
+                if (statusEl) {
+                    statusEl.textContent = '⚠️ ' + (data.error || res.statusText || 'Unbekannter Fehler beim Erstversand-Generieren.');
+                    statusEl.className = 'alert py-1 mb-2 alert-danger';
+                }
+                alert('Fehler beim Generieren des Erstversands:\n' + (data.error || res.statusText || 'Unbekannter Fehler'));
+                return;
+            }
+            const statusEl = document.getElementById('infoMailStatus');
+            if (statusEl) {
+                statusEl.textContent = data.message || `📢 Erstversand: ${data.count} Mail(s) generiert.`;
+                statusEl.className = 'alert py-1 mb-2 alert-warning';
+            }
+            if (data.emails && data.emails.length > 0) {
+                _renderInfoMailTable(data.emails);
+                // Spam-Erinnerung sichtbar an der Tabelle
+                const skipped = data.skipped_unknown ? ` (${data.skipped_unknown} IDs ohne Schüler-Match übersprungen)` : '';
+                alert(`📢 Erstversand vorbereitet: ${data.count} Mail(s) in der Tabelle.${skipped}\n\nBitte vor 📨 Senden in der Tabelle prüfen und ggf. einzelne abwählen.`);
+            }
+        } catch (err) {
+            alert('Fehler beim Generieren des Erstversands: ' + err);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = origText;
         }
     });
 

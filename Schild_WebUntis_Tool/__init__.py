@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 import history_manager
 
 from utils import safe_read_config
+import secret_store
 
 import winshell  # Interaktion mit der Windows-Shell (z.B. Erstellen von Verknüpfungen)
 import pythoncom  # Python COM-Schnittstelle für Windows
@@ -44,7 +45,7 @@ from rich.table import Table
 _console = Console(highlight=False, legacy_windows=False)
 from datetime import datetime  # Arbeiten mit Datum und Uhrzeit
 from flask import Flask, render_template, request, jsonify, session, send_from_directory  # Flask-Webframework
-from main import run, read_students, read_classes, compare_timeframe_imports, validate_imports, create_info_notifications, INFO_MAIL_AVAILABLE_FIELDS  # Funktionen aus eigenen Modulen importieren
+from main import run, read_students, read_classes, compare_timeframe_imports, validate_imports, create_info_notifications, update_nachteilsausgleich_excel, read_nachteilsausgleich_ids_from_latest_file, INFO_MAIL_AVAILABLE_FIELDS  # Funktionen aus eigenen Modulen importieren
 from smtp import send_email  # Funktion zum Versenden von E-Mails aus eigenem Modul
 from waitress import serve  # WSGI-Server zum Bereitstellen der Flask-Anwendung
 from tkinter import filedialog  # Datei- und Verzeichnisauswahl-Dialoge
@@ -268,6 +269,14 @@ class_size_directory = {default_class_size_dir}
 attest_file_directory = {default_attest_file_directory}
 nachteilsausgleich_file_directory = {default_nachteilsausgleich_file_directory}
 nachteilsausgleich_excel_directory = {default_nachteilsausgleich_excel_directory}
+# Dateiname der Sonderpaedagogen-Arbeitsdatei innerhalb des obigen Verzeichnisses.
+# Default 'Nachteilsausgleich_Arbeitsdatei.xlsx'. Leer = Default.
+# Legacy-Fallback — neu (3.3) wird stattdessen 'nachteilsausgleich_excel_path'
+# bevorzugt (voller Pfad, ueber die Datei-Auswahl in der UI gepflegt).
+nachteilsausgleich_excel_filename =
+# Voller Pfad zur Sonderpaedagogen-Arbeitsdatei (3.3). Bevorzugt gegenueber
+# directory + filename. Wird ueber die Datei-Auswahl in der UI gesetzt.
+nachteilsausgleich_excel_path =
 foto_directory = {default_foto_directory}
 foto_zip_directory = {default_foto_zip_directory}
 erzieher_export_directory = {default_erzieher_export_directory}
@@ -337,6 +346,14 @@ nachteilsausgleich_source = csv
 # Empfänger nur bei Klassenwechsel-Warnungen
 # gültig: old | new | both
 class_change_recipients = both
+
+[Security]
+# Optionales Passwort fuer die Sonderpaedagogen-Arbeitsdatei
+# (Nachteilsausgleich_Arbeitsdatei.xlsx). Wird bei Bedarf in der UI eingegeben
+# und unter Windows per DPAPI verschluesselt abgelegt (Praefix 'dpapi:').
+# Auf Systemen ohne DPAPI Fallback auf Klartext (Praefix 'plain:').
+# Leer = Datei unverschluesselt verarbeiten.
+nachteilsausgleich_excel_password =
 
 [Erzieher]
 # Vorlage fuer den ZIP-Dateinamen beim Erzieher-Export.
@@ -521,6 +538,12 @@ client_name = Schild-WebUntis-Tool
             if not config.has_option('Directories', 'nachteilsausgleich_excel_directory'):
                 config.set('Directories', 'nachteilsausgleich_excel_directory', default_nachteilsausgleich_excel_directory)
                 updated = True
+            if not config.has_option('Directories', 'nachteilsausgleich_excel_filename'):
+                config.set('Directories', 'nachteilsausgleich_excel_filename', '')
+                updated = True
+            if not config.has_option('Directories', 'nachteilsausgleich_excel_path'):
+                config.set('Directories', 'nachteilsausgleich_excel_path', '')
+                updated = True
             if not config.has_option('Directories', 'foto_directory'):
                 config.set('Directories', 'foto_directory', default_foto_directory)
                 updated = True
@@ -651,6 +674,14 @@ client_name = Schild-WebUntis-Tool
                 if not config.has_option('Ausbilder', _k):
                     config.set('Ausbilder', _k, _v)
                     updated = True
+
+            # Security (3.3) — Passwort fuer verschluesselte Sonderpaedagogen-Arbeitsdatei.
+            if not config.has_section('Security'):
+                config.add_section('Security')
+                updated = True
+            if not config.has_option('Security', 'nachteilsausgleich_excel_password'):
+                config.set('Security', 'nachteilsausgleich_excel_password', '')
+                updated = True
 
             if updated:
                 with open("settings.ini", "w", encoding="utf-8-sig") as configfile:
@@ -2776,6 +2807,99 @@ def generate_info_mails():
         "emails":  generated_info_mails_cache,
     })
 
+# 'Erstversand'-Endpoint: Generiert Nachteilsausgleich-Info-Mails fuer ALLE
+# Schueler mit aktuell aktivem Nachteilsausgleich, ohne Change-Detection. Sinn-
+# voll bei Ersteinrichtung mit bereits gepflegter SoPaed-Arbeitsdatei (einmaliger
+# Push). VORSICHT: potenzieller Spam-Effekt — jede betroffene Klassenlehrkraft
+# bekommt eine Mail, auch wenn schon mal benachrichtigt wurde. Die Preview-
+# Tabelle erlaubt das Abwaehlen einzelner Empfaenger vor dem Versand.
+@app.route('/api/nachteilsausgleich/generate_full_mails', methods=['POST'])
+def generate_nachteilsausgleich_full_mails():
+    global generated_info_mails_cache
+
+    # 1) Aktuelle Schuelerdaten
+    try:
+        _, students_by_id = read_students()
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Schuelerdaten konnten nicht gelesen werden: {e}"}), 500
+    if not students_by_id:
+        return jsonify({"success": False, "error": "Keine Schuelerdaten verfuegbar — bitte zuerst einen Schild-Export bereitstellen oder SVWS-API konfigurieren."}), 400
+
+    # 2) Aktuell aktive Nachteilsausgleich-IDs (CSV oder SVWS-API, je nach Konfig)
+    try:
+        nachteil_ids = read_nachteilsausgleich_ids_from_latest_file()
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Nachteilsausgleich-IDs konnten nicht gelesen werden: {e}"}), 500
+    if not nachteil_ids:
+        return jsonify({"success": False, "error": "Keine Schueler mit Nachteilsausgleich gefunden — entweder ist die Nachteilsausgleich-Quelle (CSV oder SVWS-API) nicht konfiguriert oder leer."}), 400
+
+    # 3) Synthetische Change-Records, die create_info_notifications versteht.
+    #    'old' = '(Erstversand)' macht im Mail-Body sichtbar, dass es keine echte
+    #    Aenderungserkennung war.
+    synthetic_changes = []
+    skipped_unknown = 0
+    for sid in nachteil_ids:
+        student = students_by_id.get(sid)
+        if not student:
+            skipped_unknown += 1
+            continue
+        vorname  = student.get('Vorname', '')  or ''
+        nachname = student.get('Nachname', '') or ''
+        synthetic_changes.append({
+            'student_id':      sid,
+            'name':            f"{vorname} {nachname}".strip(),
+            'current_class':   student.get('Klasse', ''),
+            'current_student': student,
+            'changes': {
+                'Nachteilsausgleich': {'old': '(Erstversand)', 'new': 'Ja'},
+            },
+        })
+    if not synthetic_changes:
+        return jsonify({"success": False, "error": f"Keine der {len(nachteil_ids)} Nachteilsausgleich-IDs konnte einem aktuellen Schueler zugeordnet werden (alle uebersprungen)."}), 400
+
+    print_info(f"🌐 Dashboard-Aktion: Nachteilsausgleich-Erstversand wird generiert ({len(synthetic_changes)} Schueler).")
+
+    # 4) create_info_notifications -> generated_info_mails_cache (gleiche Struktur
+    #    wie /generate_info_mails, damit /send_info_mails + Preview-Tabelle
+    #    unveraendert wiederverwendet werden koennen).
+    notifications = create_info_notifications(synthetic_changes, ['Nachteilsausgleich'])
+    if not notifications:
+        return jsonify({"success": False, "error": "create_info_notifications hat 0 Mails gebaut (z.B. fehlende Klassenlehrkraft-Stammdaten?)."}), 500
+
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'email_settings.ini')
+    subject_tpl = config.get("Templates", "subject_info_notification", fallback=DEFAULT_TEMPLATES['info_notification']['subject'])
+    body_tpl    = config.get("Templates", "body_info_notification",    fallback=DEFAULT_TEMPLATES['info_notification']['body'])
+
+    generated_info_mails_cache = []
+    for i, n in enumerate(notifications):
+        try:
+            subject = Template(subject_tpl).substitute(**n)
+            body    = Template(body_tpl).substitute(**n)
+        except KeyError as e:
+            return jsonify({"success": False, "error": f"Fehlender Platzhalter {e} in der Info-Mail-Vorlage."}), 400
+        recipients = [n.get('Klassenlehrkraft_1_Email', 'N/A'), n.get('Klassenlehrkraft_2_Email', 'N/A')]
+        generated_info_mails_cache.append({
+            'subject':                    subject,
+            'body':                       body,
+            'to':                         recipients,
+            'notification_index':         i,
+            'student':                    f"{n['Vorname']} {n['Nachname']}",
+            'klasse':                     n['Klasse'],
+            'felder':                     n['aenderungen_felder'],
+            'nachteilsausgleich_details': n.get('nachteilsausgleich_details', ''),
+        })
+
+    print_success(f"Nachteilsausgleich-Erstversand: {len(generated_info_mails_cache)} Mail(s) generiert ({skipped_unknown} IDs ohne Schueler-Match uebersprungen).")
+    return jsonify({
+        "success":         True,
+        "count":           len(generated_info_mails_cache),
+        "skipped_unknown": skipped_unknown,
+        "emails":          generated_info_mails_cache,
+        "message":         f"📢 Erstversand: {len(generated_info_mails_cache)} Mail(s) generiert. Bitte in der Tabelle pruefen und ggf. einzelne Mails abwaehlen, dann auf 📨 Senden klicken.",
+    })
+
+
 # Route zum Versenden der generierten Info-Mails
 @app.route('/send_info_mails', methods=['POST'])
 def send_info_mails():
@@ -2952,6 +3076,29 @@ def reindex_history():
     return jsonify({"message": msg})
 
 # Route und Funktion zum Abrufen und Reinladen der Einstellungen des Einstellungs-Panels im WebEnd aus den verschiedenen .ini Dateien
+# Manuelles Re-Generieren der Sonderpaedagogen-Arbeitsdatei (z.B. nach einem
+# Concurrency-Skip oder einer manuell ergaenzten Spalte). Liest aktuelle Schueler-
+# daten (CSV oder SVWS-API) und ruft update_nachteilsausgleich_excel auf, das
+# bestehende Sonderpaedagogen-Eintraege rich-text-erhaltend uebernimmt und die
+# 'Nachteilsausgleich in WebUntis aktiv'-Spalte aus dem aktuellen Schild-Stand
+# neu stempelt.
+@app.route('/api/nachteilsausgleich/refresh-excel', methods=['POST'])
+def nachteilsausgleich_refresh_excel():
+    try:
+        _, students_by_id = read_students()
+    except Exception as e:
+        print_error(f"Refresh: Schuelerdaten konnten nicht gelesen werden: {e}")
+        return jsonify({"success": False, "error": f"Schuelerdaten konnten nicht gelesen werden: {e}"}), 500
+    if not students_by_id:
+        return jsonify({"success": False, "error": "Keine Schuelerdaten verfuegbar — bitte zuerst einen Schild-Export bereitstellen oder SVWS-API konfigurieren."}), 400
+    try:
+        update_nachteilsausgleich_excel(students_by_id)
+    except Exception as e:
+        print_error(f"Refresh: Aktualisierung der Arbeitsdatei fehlgeschlagen: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    return jsonify({"success": True, "student_count": len(students_by_id)})
+
+
 @app.route('/load-settings', methods=['GET'])
 def load_settings():
     settings = {}
@@ -2970,6 +3117,28 @@ def load_settings():
         if section not in settings:
             settings[section] = {}
         settings[section].update({key: email_config.get(section, key, fallback="") for key in email_config[section]})
+
+    # Sonderpaedagogen-Arbeitsdatei (3.3): wenn der neue volle Pfad noch nicht
+    # gesetzt ist (Bestandsinstallation oder Erst-Start), aus den Legacy-
+    # Settings (Verzeichnis + Dateiname) komponieren, damit die UI den
+    # effektiv genutzten Pfad anzeigt.
+    dirs = settings.get('Directories') or {}
+    if not (dirs.get('nachteilsausgleich_excel_path') or '').strip():
+        legacy_dir = (dirs.get('nachteilsausgleich_excel_directory') or 'NachteilsausgleichExcel').strip()
+        legacy_fn  = (dirs.get('nachteilsausgleich_excel_filename')  or '').strip() or 'Nachteilsausgleich_Arbeitsdatei.xlsx'
+        legacy_fn  = os.path.basename(legacy_fn)
+        dirs['nachteilsausgleich_excel_path'] = os.path.normpath(os.path.join(legacy_dir, legacy_fn))
+        settings['Directories'] = dirs
+
+    # Geheimnisse niemals im Klartext an den Client schicken — nur den
+    # 'gesetzt'-Marker, damit die UI ein leeres Passwortfeld + Platzhalter
+    # anzeigen kann.
+    sec = settings.get('Security') or {}
+    raw_pw = sec.get('nachteilsausgleich_excel_password', '') or ''
+    sec['nachteilsausgleich_excel_password'] = ''
+    sec['nachteilsausgleich_excel_password_set'] = '1' if secret_store.is_secret_set(raw_pw) else '0'
+    sec['nachteilsausgleich_excel_password_dpapi'] = '1' if secret_store.is_dpapi_available() else '0'
+    settings['Security'] = sec
     return jsonify(settings)
 
 # Route und Funktion zum Speichern der geänderten Einstellungen aus dem Einstellungs-Panel im WebEnd in die verschiedenen .ini Dateien. 
@@ -2989,6 +3158,26 @@ def save_settings():
     settings = request.json.get('settings', {})
     settings_ini_data = {}
     email_settings_ini_data = {}
+
+    # Geheimnisse separat behandeln: leerer String = unveraendert lassen,
+    # Sentinel '__CLEAR__' = loeschen, alles andere = DPAPI-verschluesseln.
+    sec_in = settings.get('Security') or {}
+    if 'nachteilsausgleich_excel_password' in sec_in:
+        new_pw = sec_in.get('nachteilsausgleich_excel_password', '') or ''
+        cfg_now = configparser.ConfigParser()
+        safe_read_config(cfg_now, 'settings.ini')
+        current = cfg_now.get('Security', 'nachteilsausgleich_excel_password', fallback='')
+        if new_pw == '':
+            # Leerlassen heisst: bestehenden Wert NICHT ueberschreiben.
+            sec_in['nachteilsausgleich_excel_password'] = current
+        elif new_pw == '__CLEAR__':
+            sec_in['nachteilsausgleich_excel_password'] = ''
+        else:
+            sec_in['nachteilsausgleich_excel_password'] = secret_store.encrypt_secret(new_pw)
+    # UI-only Felder rauswerfen, damit sie nicht in der ini landen.
+    sec_in.pop('nachteilsausgleich_excel_password_set', None)
+    sec_in.pop('nachteilsausgleich_excel_password_dpapi', None)
+    settings['Security'] = sec_in
 
     # Definiere, welche Abschnitte zu email_settings.ini gehören
     email_sections = ['Email', 'OAuth', 'Templates']
@@ -3109,6 +3298,56 @@ def select_directory():
         return jsonify({"selected_directory": result['directory']})
     else:
         return jsonify({"selected_directory": None})
+
+
+# Route und Funktion fuer den Durchsuchen-Button zur Dateiauswahl (vs.
+# /select-directory). Nutzt 'asksaveasfilename' statt 'askopenfilename', damit
+# der User auch eine noch-nicht-existierende Datei auswaehlen / neu anlegen kann
+# (z.B. fuer die Sonderpaedagogen-Arbeitsdatei beim Erst-Setup).
+@app.route('/select-file', methods=['POST'])
+def select_file():
+    payload = request.get_json(silent=True) or {}
+    title         = payload.get('title') or 'Datei auswaehlen'
+    default_ext   = payload.get('defaultExt') or '.xlsx'
+    filetypes_raw = payload.get('fileTypes') or [['Excel-Arbeitsmappen', '*.xlsx'], ['Alle Dateien', '*.*']]
+    # JSON -> tkinter-Tupel; nur saubere String-Paare durchlassen.
+    filetypes = []
+    for entry in filetypes_raw:
+        if isinstance(entry, (list, tuple)) and len(entry) == 2:
+            label, pattern = entry
+            if isinstance(label, str) and isinstance(pattern, str):
+                filetypes.append((label, pattern))
+    if not filetypes:
+        filetypes = [('Alle Dateien', '*.*')]
+
+    print_info(f"Oeffne Dateiauswahl: {title}")
+    result = {'path': None}
+
+    def open_dialog():
+        try:
+            root = tk.Tk()
+            root.withdraw()
+            root.wm_attributes('-topmost', 1)
+            path = filedialog.asksaveasfilename(
+                title=title,
+                defaultextension=default_ext,
+                filetypes=filetypes,
+                confirmoverwrite=False,  # bestehende Datei OK, nicht ueberschreiben
+            )
+            root.destroy()
+            if path:
+                print_info(f"Datei ausgewaehlt: {path}")
+                result['path'] = path
+            else:
+                print_warning("Keine Datei ausgewaehlt.")
+        except Exception as e:
+            print_error(f"Fehler beim Oeffnen der Dateiauswahl: {e}")
+
+    thread = threading.Thread(target=open_dialog)
+    thread.start()
+    thread.join()
+
+    return jsonify({"selected_file": result['path']})
 
 
 # Route und Funktion zum Abrufen der verfügbaren Kommandozeilenargumente mit ihren Beschreibungen, um die Argumente für den Befehl- und Verknüpfungsersteller bereitzustellen

@@ -139,7 +139,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     "class_size_directory": "form-directories",
                     "attest_file_directory": "form-directories",
                     "nachteilsausgleich_file_directory": "form-directories",
-                    "nachteilsausgleich_excel_directory": "form-directories",
+                    "nachteilsausgleich_excel_path": "form-directories",
+                    "nachteilsausgleich_excel_password": "form-directories",
                     "foto_directory": "form-directories",
                     "foto_zip_directory": "form-directories",
                     // Erzieher-Workflow (eigenes Settings-Panel innerhalb von workflow-erzieher)
@@ -235,6 +236,33 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     });
                 });
+
+                // Sonderfall Security: das Backend liefert das Passwort niemals
+                // im Klartext. Stattdessen werden 'set'-Flag + DPAPI-Status
+                // mitgeschickt — daraus bauen wir den Platzhalter und die Hinweise.
+                const sec = settings['Security'] || {};
+                const pwInput = document.getElementById('nachteilsausgleich_excel_password');
+                const pwHint  = document.getElementById('nachteilsausgleichPwHint');
+                const pwClear = document.getElementById('nachteilsausgleichPwClear');
+                if (pwInput) {
+                    pwInput.value = '';
+                    const isSet = sec['nachteilsausgleich_excel_password_set'] === '1';
+                    pwInput.placeholder = isSet
+                        ? '(Passwort gesetzt – neu eintragen, um zu ersetzen)'
+                        : '(kein Passwort gesetzt)';
+                    pwInput.dataset.wasSet = isSet ? '1' : '0';
+                    if (pwClear) pwClear.disabled = !isSet;
+                    if (pwHint) {
+                        const dpapi = sec['nachteilsausgleich_excel_password_dpapi'] === '1';
+                        const storage = dpapi
+                            ? 'Speicherung verschlüsselt per Windows-DPAPI (an diesen Benutzer gebunden).'
+                            : '⚠️ Windows-DPAPI nicht verfügbar — das Passwort würde im Klartext in der settings.ini abgelegt.';
+                        pwHint.innerHTML =
+                            'Wenn die Arbeitsdatei in Excel mit einem Passwort gesichert ist, hier eintragen — das Tool kann die Datei dann lesen und beim Aktualisieren wieder verschlüsselt speichern.<br>' +
+                            storage +
+                            (isSet ? ' <strong>Status:</strong> Passwort ist hinterlegt.' : '');
+                    }
+                }
             } else {
                 console.error("Fehler beim Laden der Einstellungen:", response.statusText);
             }
@@ -244,6 +272,56 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     document.getElementById("saveSettings").addEventListener("click", saveSettings);
+
+    // Sichtbarkeits-Toggle fuer das Excel-Passwortfeld
+    const pwShowBtn = document.getElementById('nachteilsausgleichPwShow');
+    if (pwShowBtn) {
+        pwShowBtn.addEventListener('click', () => {
+            const inp = document.getElementById('nachteilsausgleich_excel_password');
+            if (!inp) return;
+            inp.type = (inp.type === 'password') ? 'text' : 'password';
+        });
+    }
+    // Manueller Refresh-Button: ruft den Server-Endpoint, der die Arbeitsdatei
+    // ad-hoc neu schreibt (Ja/Nein-Spalte + Schuelerliste) — nuetzlich nach
+    // einem Concurrency-Skip oder wenn das SoPaed-Tool die Datei aktualisiert
+    // hat. Concurrency-Schutz greift im Server-Code.
+    const refreshBtn = document.getElementById('nachteilsausgleichRefreshExcel');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            const original = refreshBtn.innerHTML;
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '⏳ Aktualisiere…';
+            try {
+                const resp = await fetch('/api/nachteilsausgleich/refresh-excel', { method: 'POST' });
+                const data = await resp.json().catch(() => ({}));
+                if (resp.ok && data.success) {
+                    alert(`Arbeitsdatei aktualisiert (${data.student_count} Schüler verarbeitet).\nSiehe Konsole für Details — bei Concurrency-Skip steht dort ein Warnhinweis statt einer Bestätigung.`);
+                } else {
+                    alert('Fehler beim Aktualisieren der Arbeitsdatei:\n' + (data.error || resp.statusText || 'Unbekannter Fehler'));
+                }
+            } catch (e) {
+                alert('Fehler beim Aktualisieren der Arbeitsdatei:\n' + e);
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = original;
+            }
+        });
+    }
+
+    // 'Passwort entfernen' setzt einen Sentinel-Wert, den der Server als Loeschung interpretiert.
+    const pwClearBtn = document.getElementById('nachteilsausgleichPwClear');
+    if (pwClearBtn) {
+        pwClearBtn.addEventListener('click', () => {
+            const inp = document.getElementById('nachteilsausgleich_excel_password');
+            if (!inp) return;
+            if (!confirm('Hinterlegtes Passwort wirklich entfernen?\nDie Arbeitsdatei wird beim nächsten Lauf wieder als unverschlüsselte xlsx gespeichert.')) return;
+            inp.value = '__CLEAR__';
+            inp.type = 'password';
+            inp.dataset.pendingClear = '1';
+            alert('Das Passwort wird beim nächsten Klick auf "Einstellungen speichern" entfernt.');
+        });
+    }
 
     // Einstellungen speichern
     async function saveSettings() {
@@ -261,7 +339,8 @@ document.addEventListener("DOMContentLoaded", function () {
             "class_size_directory": "Directories",
             "attest_file_directory": "Directories",
             "nachteilsausgleich_file_directory": "Directories",
-            "nachteilsausgleich_excel_directory": "Directories",
+            "nachteilsausgleich_excel_path": "Directories",
+            "nachteilsausgleich_excel_password": "Security",
             "foto_directory": "Directories",
             "foto_zip_directory": "Directories",
             "erzieher_export_directory": "Directories",
@@ -380,7 +459,8 @@ const labels = {
     class_size_directory: "Verzeichnis für eine separat generierte Klassengrößendatei zur Verwendung durch Stundenplaner und Vertretungsteam",
     attest_file_directory: "Verzeichnis für eine ImportDatei, die nur die Schüler mit Attestpflicht enthält zur Verwendung Attestpflicht-Spalte",
     nachteilsausgleich_file_directory: "Verzeichnis für eine ImportDatei, die nur die Schüler mit Nachteilsausgleich enthält zur Verwendung Nachteilsausgleich-Spalte",
-    nachteilsausgleich_excel_directory: "Verzeichnis, in dem die Excel-Arbeitsdatei für Sonderpädagogen (Nachteilsausgleichdetails) gespeichert wird.",
+    nachteilsausgleich_excel_path: "Vollständiger Pfad zur Sonderpädagogen-Arbeitsdatei (existierend oder neu). Über 'Durchsuchen' wählbar; auch ein noch nicht existierender Dateiname ist OK — er wird beim nächsten Lauf angelegt.",
+    nachteilsausgleich_excel_password: "Optional. Passwort der Sonderpädagogen-Arbeitsdatei, falls diese in Excel mit einem Passwort gesichert ist. Verschlüsselt per Windows-DPAPI gespeichert.",
     smtp_server: "SMTP-Server-Adresse für den E-Mail-Versand.",
     smtp_port: "Port des SMTP-Servers (z. B. 587 für STARTTLS).",
     smtp_user: "Benutzername für den SMTP-Server.",

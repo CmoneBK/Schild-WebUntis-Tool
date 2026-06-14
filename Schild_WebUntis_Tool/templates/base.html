@@ -424,6 +424,40 @@
                 }
             });
         });
+
+        // Analog zu data-directory-input: Datei-Auswahl. Erlaubt auch noch nicht
+        // existierende Dateien (asksaveasfilename serverseitig).
+        document.querySelectorAll("button[data-file-input]").forEach((button) => {
+            button.addEventListener("click", function () {
+                const inputId = this.getAttribute("data-file-input");
+                if (!inputId) return;
+                const payload = {
+                    title:      this.getAttribute("data-file-title")        || "Datei auswählen",
+                    defaultExt: this.getAttribute("data-file-default-ext")  || ".xlsx",
+                };
+                const ftRaw = this.getAttribute("data-file-types");
+                if (ftRaw) {
+                    try { payload.fileTypes = JSON.parse(ftRaw); } catch (e) { /* default-Filter */ }
+                }
+                fetch('/select-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.selected_file) {
+                            document.getElementById(inputId).value = data.selected_file;
+                        } else {
+                            alert("Keine Auswahl getroffen.");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Fehler beim Auswählen der Datei:", error);
+                        alert("Fehler beim Auswählen der Datei.");
+                    });
+            });
+        });
     </script>
     {% endif %}
 </body>

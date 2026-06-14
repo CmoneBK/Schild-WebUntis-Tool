@@ -289,6 +289,56 @@ in die Info-Mails übernommen wird.</p>
 Nachteilsausgleich-Arbeitsdatei-Verzeichnis</code>. Empfohlen: ein Netzlaufwerk, auf
 das die Sonderpädagogen Schreibzugriff haben.</p>
 
+<h6>🔄 Concurrency-Schutz beim gleichzeitigen Zugriff</h6>
+<p>Wenn die Arbeitsdatei mit einem anderen Tool (z.B. <strong>SoPaed-Tool</strong>) oder direkt in Excel geteilt
+wird, könnten gleichzeitige Schreibvorgänge zu Datenverlust führen. Schild-WebUntis-Tool fängt das ab:</p>
+<ul>
+  <li><strong>Excel offen?</strong> Wenn jemand die Datei gerade in Excel geöffnet hat (erkennbar am Lock-Marker
+      <code>~$&lt;Dateiname&gt;</code>), wird der Schreibvorgang übersprungen — kein kryptischer „Datei gesperrt"-Fehler.</li>
+  <li><strong>Externe Änderung erkannt?</strong> Wenn die Datei sich zwischen unserem Lese-Snapshot und dem
+      Schreibversuch in Größe oder Modifikationszeit geändert hat (SoPaed-Tool oder paralleler Lauf), wird
+      der Schreibvorgang übersprungen.</li>
+  <li><strong>Konsolen-Meldung</strong> erklärt jeweils präzise, was passiert ist — kein stiller Datenverlust.</li>
+  <li><strong>Beim nächsten Lauf</strong> wird die Datei wieder ganz normal aktualisiert. Übersprungene Updates
+      gehen <em>nicht</em> verloren, weil die Info-Mail-Auslöse-Logik gegen die letzte tatsächlich
+      geschriebene WebUntis-Import-CSV vergleicht.</li>
+</ul>
+<p>Für den manuellen Anstoß gibt es den <strong>🔄 „Jetzt aktualisieren"</strong>-Button direkt neben dem
+Pfad-Feld in den Einstellungen — aktualisiert die Arbeitsdatei ad-hoc, ohne den vollen Verarbeitungslauf.</p>
+
+<h6>📄 Optional: Anderer Pfad / Datei mit anderen Tools teilen</h6>
+<p>Die Arbeitsdatei wird seit 3.3 nicht mehr über <em>Verzeichnis + Dateiname</em>, sondern über einen einzelnen
+Pfad-Eintrag <code>⚙️ Einstellungen → Verzeichnisse → Arbeitsverzeichnisse → 📋 Nachteilsausgleich-Arbeitsdatei (Pfad)</code>
+gepflegt. Eingabe per Tastatur oder über den <em>Durchsuchen</em>-Button, der eine Windows-Dateiauswahl öffnet —
+auch ein noch nicht existierender Dateiname ist OK; er wird beim nächsten Tool-Lauf neu angelegt.</p>
+<p>Wenn die Arbeitsdatei mit einem anderen Tool (z.B. <strong>SoPaed-Tool</strong>) <em>geteilt</em> wird,
+müssen beide Tools auf denselben Pfad zeigen — das geht durch einfache Auswahl der Datei via Durchsuchen.</p>
+
+<h6>🎨 Zellformatierung bleibt erhalten</h6>
+<p>Wenn Sonderpädagogen einzelne Detailzellen <strong>farbig hinterlegen</strong> oder Teile des Texts
+<strong>fett</strong>/<em>kursiv</em>/farbig formatieren (z.B. via SoPaed-Tool, das Rich-Text-Inline-Formatierung
+unterstützt), bleiben Inline-Fonts/-Farben, Zell-Hintergrundfarbe und -Ausrichtung beim nächsten Tool-Lauf erhalten.</p>
+
+<h6>🔐 Optional: Passwortgeschützte Arbeitsdatei</h6>
+<p>Die Arbeitsdatei kann in Excel mit einem <strong>Passwort gesichert</strong> sein
+(<em>Datei → Informationen → Arbeitsmappe schützen → Mit Kennwort verschlüsseln</em>).
+Das Tool kann solche Dateien lesen und beim Aktualisieren wieder mit demselben
+Passwort verschlüsselt zurückschreiben.</p>
+<ul>
+  <li>Passwort einmalig eintragen unter <code>⚙️ Einstellungen → Verzeichnisse → Arbeitsverzeichnisse →
+      Passwort der Arbeitsdatei</code>.</li>
+  <li>Die Speicherung erfolgt lokal in der <code>settings.ini</code> — auf Windows
+      <strong>verschlüsselt per DPAPI</strong> und damit an den aktuellen Windows-Benutzer
+      gebunden (nur dieser Benutzer auf diesem Rechner kann es wieder entschlüsseln).
+      Bei einem Wechsel von Rechner oder Benutzer muss das Passwort neu eingetragen werden.</li>
+  <li>Im Webinterface wird das Passwort niemals im Klartext angezeigt — nur der Status
+      <em>„hinterlegt"</em>. Über den 🗑️-Button kann es entfernt werden (Datei wird beim
+      nächsten Lauf wieder unverschlüsselt gespeichert).</li>
+  <li>Sollte das Passwort einmal nicht passen, wird die Aktualisierung der Arbeitsdatei
+      <strong>übersprungen</strong> (statt vorhandene Details zu überschreiben);
+      Info-Mails gehen dann ohne Sonderpädagogen-Details raus.</li>
+</ul>
+
 <p><strong>Vorteil:</strong> Schreibarbeit wird einmal an zuständige Personen delegiert
 und ist anschließend dauerhaft im Tool verfügbar. Kein „Wo hatten wir nochmal
 hingeschrieben…"-Problem mehr.</p>
@@ -1877,6 +1927,22 @@ Verfügbare Platzhalter (Auszug):</p>
   <li><code>$aenderungen_html</code> — HTML-Tabelle aller geänderten Felder</li>
   <li><code>$nachteilsausgleich_details</code> — Details aus der Sonderpädagogen-Arbeitsdatei</li>
 </ul>
+
+<h6>📢 Sonderfall: Erstversand aller Nachteilsausgleich-Mails</h6>
+<p>Unten im Info-Mail-Panel gibt es einen separaten Bereich mit dem Button
+<strong>📢 Erstversand-Mails generieren</strong>. Im Gegensatz zum normalen
+Change-basierten Flow erzeugt er Info-Mails für <strong>jeden</strong> Schüler
+mit aktuell aktivem Nachteilsausgleich — auch dann, wenn die Klassenlehrkraft
+in der Vergangenheit schon einmal benachrichtigt wurde.</p>
+<p>Anwendungsfall: <em>Ersteinrichtung</em>. Wenn die SoPaed-Arbeitsdatei bereits
+mit Details befüllt ist und alle KL einen einmaligen Vollständigkeits-Push
+bekommen sollen. Die Mails landen wie üblich in der Vorschau-Tabelle und werden
+erst auf Klick von <em>📨 Senden</em> verschickt. Vorher kann jede einzelne Mail
+per Checkbox abgewählt werden.</p>
+<p>⚠️ <strong>Achtung Spam-Effekt:</strong> Pro betroffenem Schüler eine Mail
+an seine KL — bei vielen Schülern mit Nachteilsausgleich kann das eine Reihe
+gleicher Mails an dieselbe KL bedeuten. Vor Klick gibt es eine
+Bestätigungs­abfrage; in der Vorschau-Tabelle ist die Liste sichtbar.</p>
 """,
     },
 

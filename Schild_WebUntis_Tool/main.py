@@ -1,4 +1,5 @@
 import os
+import copy
 import csv
 import history_manager
 import configparser
@@ -17,6 +18,14 @@ _console = Console(highlight=False, legacy_windows=False)
 def _fmt_bool(v):
     return "[green]Ja[/]" if v else "[dim]Nein[/]"
 from utils import safe_read_config
+from xlsx_crypto import (
+    EncryptedFileError,
+    excel_lock_marker_path,
+    is_excel_open,
+    load_workbook_maybe_encrypted,
+    save_workbook_maybe_encrypted,
+)
+import secret_store
 
 # Colorama initialisieren
 init(autoreset=True)
@@ -1791,6 +1800,33 @@ def _normalize_excel_id(raw):
 
 
 _NACHTEIL_DETAIL_COLS = ['Zeitlich', 'Technisch', 'Räumlich', 'Personell', 'Sonstige Vereinbarungen']
+_NACHTEIL_DEFAULT_FILENAME = 'Nachteilsausgleich_Arbeitsdatei.xlsx'
+
+
+def _resolve_nachteilsausgleich_excel_path():
+    """Liefert (excel_dir, excel_path) gemaess settings.ini.
+
+    Bevorzugt das Setting [Directories].nachteilsausgleich_excel_path (kompletter
+    Datei-Pfad, ab 3.3 via Dateiauswahl in der UI gepflegt). Faellt zurueck auf
+    die alten Settings nachteilsausgleich_excel_directory + ...filename, damit
+    Bestandsinstallationen weiter funktionieren.
+    """
+    config = configparser.ConfigParser()
+    safe_read_config(config, 'settings.ini')
+
+    explicit_path = (config.get('Directories', 'nachteilsausgleich_excel_path', fallback='') or '').strip()
+    if explicit_path:
+        excel_path = explicit_path
+        excel_dir  = os.path.dirname(excel_path) or '.'
+        return excel_dir, excel_path
+
+    # Legacy-Fallback: Verzeichnis + (optionaler) Dateiname
+    excel_dir = config.get('Directories', 'nachteilsausgleich_excel_directory', fallback='./NachteilsausgleichExcel')
+    filename  = (config.get('Directories', 'nachteilsausgleich_excel_filename', fallback='') or '').strip()
+    if not filename:
+        filename = _NACHTEIL_DEFAULT_FILENAME
+    filename = os.path.basename(filename)  # Pfad-Traversal-Schutz
+    return excel_dir, os.path.join(excel_dir, filename)
 
 
 def update_nachteilsausgleich_excel(students_by_id):
@@ -1802,18 +1838,40 @@ def update_nachteilsausgleich_excel(students_by_id):
     """
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
-    excel_dir = config.get('Directories', 'nachteilsausgleich_excel_directory', fallback='./NachteilsausgleichExcel')
+    excel_dir, excel_path = _resolve_nachteilsausgleich_excel_path()
     if not excel_dir:
         return
 
-    os.makedirs(excel_dir, exist_ok=True)
-    excel_path = os.path.join(excel_dir, 'Nachteilsausgleich_Arbeitsdatei.xlsx')
+    # Optionales Passwort fuer verschluesselte Arbeitsdatei (DPAPI-gespeichert).
+    stored_pw = config.get('Security', 'nachteilsausgleich_excel_password', fallback='')
+    excel_password = secret_store.decrypt_secret(stored_pw)
 
-    # Bestehende Sonderpädagogen-Details lesen (nach ID, damit sie erhalten bleiben)
+    os.makedirs(excel_dir, exist_ok=True)
+
+    # Bestehende Sonderpädagogen-Details lesen (nach ID, damit sie erhalten bleiben).
+    # Wert + Formatierung werden zellweise konserviert: CellRichText-Werte (Inline-
+    # Fonts/Farben) bleiben erhalten, ebenso Zell-Font, -Fuellung und -Ausrichtung.
+    # Deshalb 'rich_text=True' und KEIN 'read_only=True' (read_only-Mode liefert
+    # weder Styles noch CellRichText).
+    #
+    # Vor dem Lesen pruefen wir, ob die Datei aktuell in Excel offen ist
+    # (Lock-Marker ~$<name>). Wenn ja, gar nicht anfassen — die Sonderpaedagogin
+    # arbeitet gerade dran und unser Schreibvorgang wuerde sowieso scheitern.
+    if os.path.exists(excel_path) and is_excel_open(excel_path):
+        marker = excel_lock_marker_path(excel_path)
+        print_warning(f"Nachteilsausgleich-Arbeitsdatei ist gerade in Excel geoeffnet ({marker}). Aktualisierung uebersprungen — bitte spaeter erneut ausfuehren oder den 'Jetzt aktualisieren'-Button im Einstellungs-Panel nutzen.")
+        return
+
+    # Snapshot der Datei-Stat beim Lesen merken — vor dem Schreiben wird er erneut
+    # gegen die aktuelle Stat verglichen, um konkurrierende Schreibvorgaenge (SoPaed-
+    # Tool oder paralleler Schild-WebUntis-Tool-Lauf) zu erkennen und uns vor dem
+    # Lost-Update-Problem zu schuetzen.
+    stat_at_read = None
     details_by_id = {}
     if os.path.exists(excel_path):
         try:
-            wb_old = load_workbook(excel_path, read_only=True)
+            stat_at_read = os.stat(excel_path)
+            wb_old = load_workbook_maybe_encrypted(excel_path, password=excel_password, rich_text=True)
             ws_old = wb_old.active
             headers_old = [cell.value for cell in next(ws_old.iter_rows(min_row=1, max_row=1))]
             id_idx = headers_old.index('Interne ID-Nummer') if 'Interne ID-Nummer' in headers_old else None
@@ -1822,14 +1880,29 @@ def update_nachteilsausgleich_excel(students_by_id):
             if not col_indices and 'Nachteilsausgleichdetails' in headers_old:
                 col_indices = {'Sonstige Vereinbarungen': headers_old.index('Nachteilsausgleichdetails')}
             if id_idx is not None:
-                for row in ws_old.iter_rows(min_row=2, values_only=True):
-                    sid = _normalize_excel_id(row[id_idx])
-                    if sid:
-                        details_by_id[sid] = {
-                            col: (str(row[idx]).strip() if row[idx] else '')
-                            for col, idx in col_indices.items()
+                for row in ws_old.iter_rows(min_row=2):
+                    sid = _normalize_excel_id(row[id_idx].value)
+                    if not sid:
+                        continue
+                    per_col = {}
+                    for col_name, idx in col_indices.items():
+                        cell = row[idx]
+                        val  = cell.value
+                        if val is None or (isinstance(val, str) and not val.strip()):
+                            per_col[col_name] = None
+                            continue
+                        per_col[col_name] = {
+                            'value':     val,
+                            'font':      copy.copy(cell.font)      if cell.has_style else None,
+                            'fill':      copy.copy(cell.fill)      if cell.has_style else None,
+                            'alignment': copy.copy(cell.alignment) if cell.has_style else None,
                         }
+                    details_by_id[sid] = per_col
             wb_old.close()
+        except EncryptedFileError as e:
+            print_error(f"Nachteilsausgleich-Arbeitsdatei ist verschluesselt — Passwort fehlt oder falsch: {e}")
+            print_warning("Aktualisierung der Arbeitsdatei wird uebersprungen, damit bestehende Details nicht verloren gehen.")
+            return
         except Exception as e:
             print_warning(f"Konnte bestehende Nachteilsausgleich-Arbeitsdatei nicht lesen: {e}")
 
@@ -1852,15 +1925,31 @@ def update_nachteilsausgleich_excel(students_by_id):
         cell.alignment = Alignment(wrap_text=True)
 
     sorted_students = sorted(students_by_id.values(), key=lambda s: (s.get('Nachname', ''), s.get('Vorname', '')))
-    for student in sorted_students:
+    # Erste Detail-Spalte ist Excel-Spalte 6 (A=1..E=5 sind die System-Spalten).
+    _DETAIL_FIRST_COL = 6
+    for r_offset, student in enumerate(sorted_students, start=2):
         sid      = student.get('Interne ID-Nummer', '')
         nachname = student.get('Nachname', '')
         vorname  = student.get('Vorname', '')
         klasse   = student.get('Klasse', '')
         na_aktiv = 'Ja' if sid in nachteil_ids else 'Nein'
+        ws.cell(row=r_offset, column=1, value=sid)
+        ws.cell(row=r_offset, column=2, value=nachname)
+        ws.cell(row=r_offset, column=3, value=vorname)
+        ws.cell(row=r_offset, column=4, value=klasse)
+        ws.cell(row=r_offset, column=5, value=na_aktiv)
         student_details = details_by_id.get(sid, {})
-        detail_values = [student_details.get(col, '') for col in _NACHTEIL_DETAIL_COLS]
-        ws.append([sid, nachname, vorname, klasse, na_aktiv] + detail_values)
+        for col_offset, col_name in enumerate(_NACHTEIL_DETAIL_COLS):
+            c = _DETAIL_FIRST_COL + col_offset
+            preserved = student_details.get(col_name)
+            if not preserved:
+                ws.cell(row=r_offset, column=c, value='')
+                continue
+            # Wert + Formatierung uebernehmen (CellRichText, Font, Fill, Alignment).
+            cell = ws.cell(row=r_offset, column=c, value=preserved['value'])
+            if preserved.get('font'):      cell.font      = preserved['font']
+            if preserved.get('fill'):      cell.fill      = preserved['fill']
+            if preserved.get('alignment'): cell.alignment = preserved['alignment']
 
     ws.column_dimensions['A'].width = 20
     ws.column_dimensions['B'].width = 25
@@ -1873,8 +1962,39 @@ def update_nachteilsausgleich_excel(students_by_id):
     ws.column_dimensions['I'].width = 30
     ws.column_dimensions['J'].width = 40
 
-    wb.save(excel_path)
-    print_creation(f"Nachteilsausgleich-Arbeitsdatei aktualisiert: {excel_path}")
+    # Concurrency-Pre-Write-Check (best effort — schliesst das TOCTOU-Fenster
+    # nicht komplett, faengt aber in der Praxis alle Faelle):
+    # 1) Excel hat die Datei waehrend unserer Verarbeitung geoeffnet?
+    # 2) Datei wurde extern geaendert (SoPaed-Tool, paralleler Tool-Lauf)?
+    if os.path.exists(excel_path):
+        if is_excel_open(excel_path):
+            print_warning(f"Nachteilsausgleich-Arbeitsdatei wurde waehrend der Verarbeitung in Excel geoeffnet. Aktualisierung uebersprungen, damit keine Aenderungen ueberschrieben werden — bitte spaeter erneut ausfuehren.")
+            return
+        if stat_at_read is not None:
+            try:
+                stat_now = os.stat(excel_path)
+            except OSError as e:
+                print_warning(f"Konnte aktuellen Datei-Status nicht pruefen ({e}) — Aktualisierung sicherheitshalber uebersprungen.")
+                return
+            if (stat_now.st_size != stat_at_read.st_size
+                    or stat_now.st_mtime_ns != stat_at_read.st_mtime_ns):
+                print_warning(f"Nachteilsausgleich-Arbeitsdatei wurde zwischenzeitlich extern geaendert (z.B. SoPaed-Tool oder paralleler Tool-Lauf). Aktualisierung uebersprungen, damit keine Aenderungen verloren gehen — bitte erneut ausfuehren.")
+                return
+
+    try:
+        save_workbook_maybe_encrypted(wb, excel_path, password=excel_password)
+    except EncryptedFileError as e:
+        print_error(f"Verschluesseltes Speichern der Nachteilsausgleich-Arbeitsdatei fehlgeschlagen: {e}")
+        return
+    except OSError as e:
+        # Excel oder ein Antivirus-Scanner kann zwischen unseren Checks und dem
+        # eigentlichen Schreibvorgang einen Lock setzen — sauber abfangen.
+        print_error(f"Schreibvorgang auf die Nachteilsausgleich-Arbeitsdatei fehlgeschlagen (Datei gesperrt?): {e}")
+        return
+    if excel_password:
+        print_creation(f"Nachteilsausgleich-Arbeitsdatei (verschluesselt) aktualisiert: {excel_path}")
+    else:
+        print_creation(f"Nachteilsausgleich-Arbeitsdatei aktualisiert: {excel_path}")
 
 
 def read_nachteilsausgleich_details_by_id():
@@ -1884,14 +2004,16 @@ def read_nachteilsausgleich_details_by_id():
     """
     config = configparser.ConfigParser()
     safe_read_config(config, 'settings.ini')
-    excel_dir  = config.get('Directories', 'nachteilsausgleich_excel_directory', fallback='./NachteilsausgleichExcel')
-    excel_path = os.path.join(excel_dir, 'Nachteilsausgleich_Arbeitsdatei.xlsx')
+    _excel_dir, excel_path = _resolve_nachteilsausgleich_excel_path()
+
+    stored_pw = config.get('Security', 'nachteilsausgleich_excel_password', fallback='')
+    excel_password = secret_store.decrypt_secret(stored_pw)
 
     details_by_id = {}
     if not os.path.exists(excel_path):
         return details_by_id
     try:
-        wb = load_workbook(excel_path, read_only=True)
+        wb = load_workbook_maybe_encrypted(excel_path, password=excel_password, read_only=True)
         ws = wb.active
         headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
         id_idx = headers.index('Interne ID-Nummer') if 'Interne ID-Nummer' in headers else None
@@ -1909,6 +2031,9 @@ def read_nachteilsausgleich_details_by_id():
                 if row_details:
                     details_by_id[sid] = row_details
         wb.close()
+    except EncryptedFileError as e:
+        print_error(f"Nachteilsausgleich-Arbeitsdatei ist verschluesselt — Passwort fehlt oder falsch: {e}")
+        print_warning("Info-Mails werden ohne Sonderpaedagogen-Details versendet.")
     except Exception as e:
         print_warning(f"Fehler beim Lesen der Nachteilsausgleich-Details: {e}")
     return details_by_id

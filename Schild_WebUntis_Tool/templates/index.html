@@ -1685,6 +1685,27 @@
                             <tbody id="infoMailTableBody"></tbody>
                         </table>
                     </div>
+
+                    <!-- Erstversand: alle Nachteilsausgleich-Mails forcieren (Sonderfall) -->
+                    <hr class="my-3">
+                    <div class="alert alert-warning d-flex flex-wrap align-items-start mb-0" role="alert" style="font-size:0.9rem;">
+                        <div class="flex-grow-1 pr-3" style="min-width:0;">
+                            <strong>📢 Erstversand: alle Nachteilsausgleich-Mails</strong>
+                            <span class="badge badge-warning ml-1">Sonderfall</span>
+                            <p class="mb-1 mt-1">
+                                Generiert eine Info-Mail an die Klassenlehrkraft <em>jedes</em> Schülers mit aktuell aktivem
+                                Nachteilsausgleich — <strong>auch wenn die Lehrkraft bereits einmal benachrichtigt wurde</strong>.
+                                Gedacht für die <strong>Erst-Einrichtung</strong>, wenn die SoPaed-Arbeitsdatei schon mit
+                                Details befüllt ist und die KL einen einmaligen Vollständigkeits-Push bekommen sollen.
+                            </p>
+                            <p class="mb-0">
+                                ⚠️ <strong>Potenzieller Spam-Effekt:</strong> Pro betroffenem Schüler eine Mail an seine KL.
+                                Die generierten Mails landen in der obigen Tabelle — einzelne dort vor dem Versand abwählbar.
+                                Es kommt eine Bestätigungsabfrage mit der Anzahl der zu generierenden Mails.
+                            </p>
+                        </div>
+                        <button id="btnGenerateNachteilsErstversand" type="button" class="btn btn-warning align-self-center mt-2 mt-md-0">📢 Erstversand-Mails generieren</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -2004,20 +2025,47 @@
                         <h5 class="mb-1">Arbeitsverzeichnisse</h5>
                         <p class="text-muted small mb-3">Bidirektionale Verzeichnisse – das Tool schreibt Dateien hinein, externe Nutzer ergänzen sie, das Tool liest sie zurück.</p>
 
-                        <!-- Nachteilsausgleich-Arbeitsdatei-Verzeichnis -->
+                        <!-- Nachteilsausgleich-Arbeitsdatei (voller Pfad, ueber Datei-Auswahl pflegbar) -->
                         <div class="form-group">
-                            <label for="nachteilsausgleich_excel_directory">📋 Nachteilsausgleich-Arbeitsdatei-Verzeichnis:
+                            <label for="nachteilsausgleich_excel_path">📋 Nachteilsausgleich-Arbeitsdatei (Pfad):
                                 <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="sopaed_workflow" title="Hilfe">ℹ️</button>
                             </label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="nachteilsausgleich_excel_directory"
-                                    name="nachteilsausgleich_excel_directory" readonly>
+                                <input type="text" class="form-control" id="nachteilsausgleich_excel_path"
+                                    name="nachteilsausgleich_excel_path"
+                                    placeholder="C:\\... \\Nachteilsausgleich_Arbeitsdatei.xlsx">
                                 <div class="input-group-append">
                                     <button type="button" class="btn btn-secondary"
-                                        data-directory-input="nachteilsausgleich_excel_directory">Durchsuchen</button>
+                                        data-file-input="nachteilsausgleich_excel_path"
+                                        data-file-title="Sonderpädagogen-Arbeitsdatei auswählen"
+                                        data-file-default-ext=".xlsx"
+                                        data-file-types='[["Excel-Arbeitsmappen","*.xlsx"],["Alle Dateien","*.*"]]'>Durchsuchen</button>
+                                    <button type="button" class="btn btn-outline-primary"
+                                        id="nachteilsausgleichRefreshExcel"
+                                        title="Aktualisiert nur die Arbeitsdatei (Ja/Nein-Spalte + Schülerliste), ohne den vollen Verarbeitungslauf. Nützlich nach einem Concurrency-Skip oder wenn das SoPaed-Tool die Datei aktualisiert hat.">🔄 Jetzt aktualisieren</button>
                                 </div>
                             </div>
-                            <small class="form-text text-muted">Excel-Arbeitsdatei für Sonderpädagogen: Das Tool befüllt die Datei automatisch, Sonderpädagogen ergänzen die Nachteilsausgleichdetails, das Tool liest sie beim Info-Mail-Versand zurück.</small>
+                            <small class="form-text text-muted">Vollständiger Pfad zur Excel-Arbeitsdatei (existierend oder neu). Über <em>Durchsuchen</em> Datei wählen oder einen Namen tippen, um sie beim nächsten Lauf neu anzulegen. Wenn die Datei mit einem anderen Tool (z.B. <strong>SoPaed-Tool</strong>) geteilt wird: beide Tools auf denselben Pfad zeigen lassen. Beim Aktualisieren prüft das Tool, ob die Datei in Excel geöffnet ist oder zwischenzeitlich extern geändert wurde — in beiden Fällen überspringt es den Schreibvorgang, damit keine Änderungen verloren gehen.</small>
+                        </div>
+
+                        <!-- Optionales Excel-Passwort fuer die Arbeitsdatei -->
+                        <div class="form-group">
+                            <label for="nachteilsausgleich_excel_password">🔐 Passwort der Arbeitsdatei <small class="text-muted">(optional)</small>:</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control"
+                                       id="nachteilsausgleich_excel_password"
+                                       name="nachteilsausgleich_excel_password"
+                                       autocomplete="new-password"
+                                       placeholder="(kein Passwort gesetzt)">
+                                <div class="input-group-append">
+                                    <button type="button" class="btn btn-outline-secondary" id="nachteilsausgleichPwShow" title="Anzeigen / Verbergen">👁</button>
+                                    <button type="button" class="btn btn-outline-danger" id="nachteilsausgleichPwClear" title="Gespeichertes Passwort entfernen">🗑️</button>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted" id="nachteilsausgleichPwHint">
+                                Wenn die Arbeitsdatei in Excel mit einem Passwort gesichert ist, hier eintragen — das Tool kann die Datei dann lesen und beim Aktualisieren wieder verschlüsselt speichern.
+                                Das Passwort wird lokal per Windows-DPAPI (Benutzer-gebunden) in der <code>settings.ini</code> abgelegt.
+                            </small>
                         </div>
 
                         <!-- Foto-Verzeichnis -->
