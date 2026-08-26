@@ -70,7 +70,7 @@ def print_section(title, count=None):
 #   '6' = Extern (externe Schüler — optional als aktiv behandelt, konfigurierbar
 #         über ProcessingOptions.treat_status_6_as_active)
 def get_active_schild_status():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     treat_6_as_active = config.getboolean('ProcessingOptions', 'treat_status_6_as_active', fallback=True)
     return {'2', '6'} if treat_6_as_active else {'2'}
@@ -79,7 +79,7 @@ def get_active_schild_status():
 def get_schild_api_config():
     """Liest [SchildAPI]-Konfiguration.
     Liefert (use, client_or_none, fallback_to_csv, abschnitt_id_or_none)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     use = config.getboolean('SchildAPI', 'use_api', fallback=False)
     fallback = config.getboolean('SchildAPI', 'fallback_to_csv', fallback=True)
@@ -148,7 +148,7 @@ def validate_imports():
     je nach fallback_to_csv als 'success' (irrelevant) oder 'warning' (kein
     Fallback) ausgewiesen, nicht als 'error'.
     """
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     use_schild_api = config.getboolean('SchildAPI', 'use_api', fallback=False)
     fallback_to_csv = config.getboolean('SchildAPI', 'fallback_to_csv', fallback=True)
@@ -321,7 +321,7 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     karteileichen_warnings = []
 
     # Konfigurationsdatei einlesen
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     classes_dir  = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
@@ -410,7 +410,7 @@ def create_info_notifications(changes, selected_fields):
     if not changes or not selected_fields:
         return []
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     classes_dir  = config.get('Directories', 'classes_directory', fallback='Klassendaten')
     teachers_dir = config.get('Directories', 'teachers_directory', fallback='Lehrerdaten')
@@ -492,7 +492,7 @@ def create_info_notifications(changes, selected_fields):
 
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', key, fallback=default)
 
@@ -565,7 +565,7 @@ def compare_latest_imports(no_log=False, no_xlsx=False):
 
     # Verzeichnisse definieren
     import_dir = get_directory('import_directory', './WebUntis Importe')
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, "settings.ini")
 
     # Verzeichnisse für Log- und Excel-Dateien aus der settings.ini lesen
@@ -696,9 +696,9 @@ def compare_timeframe_imports(timeframe_hours=24, no_log=False, no_xlsx=False):
     print_section("Zeitrahmen-Vergleich")
 
     # Verzeichnisse und Einstellungen
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, "settings.ini")
-    email_config = configparser.ConfigParser()
+    email_config = configparser.ConfigParser(interpolation=None)
     email_config.read("email_settings.ini", encoding='utf-8-sig')
 
     timeframe_hours = config.getint("ProcessingOptions", "timeframe_hours", fallback=24)
@@ -943,7 +943,7 @@ def read_classes(classes_dir, teachers_dir, return_teachers=False):
                 raise
 
     # 0b) WebUntis API Vorbereitung (Hybrid-Modus)
-    config_api = configparser.ConfigParser()
+    config_api = configparser.ConfigParser(interpolation=None)
     safe_read_config(config_api, 'email_settings.ini')
     use_api = config_api.getboolean('WebUntisAPI', 'use_api', fallback=False)
     
@@ -1565,7 +1565,7 @@ def print_warnings(warnings):
 
 
 def save_files(output_data_students, warnings, create_second_file, admin_warnings_cache, disable_import_file_creation=False, disable_import_file_if_admin_warning=False, enable_attestpflicht_column=False, enable_nachteilsausgleich_column=False):
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     import_dir = get_directory('import_directory', './WebUntis Importe')
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -1667,7 +1667,7 @@ def read_attest_ids_from_latest_file():
     """
     # SVWS-API-Pfad (Schild 3.x) — nur wenn API aktiv UND attest_source = 'api'
     use_api, svws_client, fallback_to_csv, _ = get_schild_api_config()
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     safe_read_config(cfg, 'settings.ini')
     source = cfg.get('SchildAPI', 'attest_source', fallback='csv').strip().lower()
     if use_api and svws_client and source == 'api':
@@ -1685,7 +1685,7 @@ def read_attest_ids_from_latest_file():
                 else:
                     raise
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     attest_dir = config.get('Directories', 'attest_file_directory', fallback='./AttestpflichtDaten')
 
@@ -1733,7 +1733,7 @@ def read_nachteilsausgleich_ids_from_latest_file():
     """
     # SVWS-API-Pfad (Schild 3.x) — nur wenn API aktiv UND nachteilsausgleich_source = 'api'
     use_api, svws_client, fallback_to_csv, _ = get_schild_api_config()
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     safe_read_config(cfg, 'settings.ini')
     source = cfg.get('SchildAPI', 'nachteilsausgleich_source', fallback='csv').strip().lower()
     if use_api and svws_client and source == 'api':
@@ -1751,7 +1751,7 @@ def read_nachteilsausgleich_ids_from_latest_file():
                 else:
                     raise
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, "settings.ini")
     nad_dir = config.get('Directories', 'nachteilsausgleich_file_directory', fallback='./NachteilsausgleichDaten')
 
@@ -1811,7 +1811,7 @@ def _resolve_nachteilsausgleich_excel_path():
     die alten Settings nachteilsausgleich_excel_directory + ...filename, damit
     Bestandsinstallationen weiter funktionieren.
     """
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
 
     explicit_path = (config.get('Directories', 'nachteilsausgleich_excel_path', fallback='') or '').strip()
@@ -1836,7 +1836,7 @@ def update_nachteilsausgleich_excel(students_by_id):
     Alte Dateien mit einer einzelnen 'Nachteilsausgleichdetails'-Spalte werden migriert
     (Inhalt wird in 'Sonstige Vereinbarungen' übernommen).
     """
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     excel_dir, excel_path = _resolve_nachteilsausgleich_excel_path()
     if not excel_dir:
@@ -2002,7 +2002,7 @@ def read_nachteilsausgleich_details_by_id():
     Liest die Nachteilsausgleich-Detailspalten aus der Arbeitsdatei.
     Gibt ein Dict {interne_id: {spalte: wert}} zurück (nur Schüler mit mind. einem Eintrag).
     """
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     _excel_dir, excel_path = _resolve_nachteilsausgleich_excel_path()
 
@@ -2051,7 +2051,7 @@ def create_class_sizes_file(students_by_id):
     print_info("Erstelle Klassengrößen-Auswertung...")
 
     # 1) Lese aus settings.ini das Verzeichnis
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     class_size_dir = config.get('Directories', 'class_size_directory', fallback="./ClassSizes")
 

@@ -363,7 +363,7 @@ class SVWSClient:
     def _read_active_status_from_settings():
         """Liest ACTIVE_SCHILD_STATUS aus settings.ini (Vermeidet Zirkular-Import von main.py)."""
         import configparser
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(interpolation=None)
         try:
             config.read('settings.ini', encoding='utf-8-sig')
             treat_6 = config.getboolean('ProcessingOptions', 'treat_status_6_as_active', fallback=True)
@@ -376,7 +376,7 @@ class SVWSClient:
         """Liest [SchildAPI].allowed_statuses (Komma-Liste) aus settings.ini.
         Default: DEFAULT_ALLOWED_STATUSES."""
         import configparser
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(interpolation=None)
         try:
             config.read('settings.ini', encoding='utf-8-sig')
             raw = config.get('SchildAPI', 'allowed_statuses', fallback='')

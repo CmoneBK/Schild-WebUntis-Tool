@@ -13,57 +13,51 @@ import shutil
 import zipfile
 import configparser
 from datetime import datetime
+from utils import safe_read_config, read_config_for_update, ConfigReadError
 
 # Erlaubte Bild-Endungen
 FOTO_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}
 ARCHIVE_SUBDIR = 'Archiv'
 
 
-def safe_read_config(config, path):
-    try:
-        config.read(path, encoding='utf-8-sig')
-        return True
-    except Exception:
-        return False
-
 
 def get_foto_directory():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'foto_directory', fallback='').strip()
 
 
 def get_zip_name_template():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('FotoOptions', 'zip_name_template', fallback='Fotos_{datum}').strip() or 'Fotos_{datum}'
 
 
 def get_zip_directory():
     """Verzeichnis, in das erzeugte Foto-ZIPs geschrieben werden."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'foto_zip_directory', fallback='SchuelerFotosZips').strip() or 'SchuelerFotosZips'
 
 
 def get_rename_template():
     """Vorlage für die Umbenennung beim Kopieren in den Unterordner."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('FotoOptions', 'rename_template', fallback='{nachname}_{vorname}_{id}').strip() or '{nachname}_{vorname}_{id}'
 
 
 def get_rename_subdir():
     """Name des Unterordners für umbenannte Foto-Kopien."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('FotoOptions', 'rename_subdir', fallback='Umbenannt').strip() or 'Umbenannt'
 
 
 def save_rename_settings(template=None, subdir=None):
     """Speichert Rename-Template und/oder Subdir persistent in settings.ini."""
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('FotoOptions'):
         config.add_section('FotoOptions')
     if template:
@@ -79,8 +73,8 @@ def save_zip_name_template(template):
     template = (template or '').strip()
     if not template:
         return
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('FotoOptions'):
         config.add_section('FotoOptions')
     config.set('FotoOptions', 'zip_name_template', template)

@@ -58,17 +58,11 @@ import configparser
 from datetime import datetime
 
 import ausbilder_extra_db
+from utils import safe_read_config, read_config_for_update, ConfigReadError
 
 
 DEFAULT_OUTPUT_NAME_TEMPLATE = 'WebUntis_Ausbilder_Import_{datetime}'
 
-
-def safe_read_config(config, path):
-    try:
-        config.read(path, encoding='utf-8-sig')
-        return True
-    except Exception:
-        return False
 
 
 # ---------------------------------------------------------------------------
@@ -76,19 +70,19 @@ def safe_read_config(config, path):
 # ---------------------------------------------------------------------------
 
 def get_input_dir():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'ausbilder_input_directory', fallback='AusbilderInput').strip() or 'AusbilderInput'
 
 
 def get_output_dir():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'ausbilder_output_directory', fallback='AusbilderImportDateien').strip() or 'AusbilderImportDateien'
 
 
 def get_output_name_template():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Ausbilder', 'output_name_template', fallback=DEFAULT_OUTPUT_NAME_TEMPLATE).strip() or DEFAULT_OUTPUT_NAME_TEMPLATE
 
@@ -97,8 +91,8 @@ def save_output_name_template(template):
     template = (template or '').strip()
     if not template:
         return
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Ausbilder'):
         config.add_section('Ausbilder')
     config.set('Ausbilder', 'output_name_template', template)
@@ -108,7 +102,7 @@ def save_output_name_template(template):
 
 def get_class_filter():
     """Liefert Liste der zu berücksichtigenden Klassen (leer = alle)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     raw = config.get('Ausbilder', 'class_filter', fallback='').strip()
     if not raw:
@@ -118,8 +112,8 @@ def get_class_filter():
 
 def save_class_filter(classes):
     """Speichert Klassen-Whitelist (List[str])."""
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Ausbilder'):
         config.add_section('Ausbilder')
     cleaned = [str(c).strip() for c in (classes or []) if str(c).strip()]
@@ -130,7 +124,7 @@ def save_class_filter(classes):
 
 def get_blacklist():
     """Liefert Set von Schüler-IDs, die ausgeschlossen werden."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     raw = config.get('Ausbilder', 'blacklist_ids', fallback='').strip()
     if not raw:
@@ -139,8 +133,8 @@ def get_blacklist():
 
 
 def save_blacklist(ids):
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Ausbilder'):
         config.add_section('Ausbilder')
     cleaned = sorted({str(i).strip() for i in (ids or []) if str(i).strip()})
@@ -155,7 +149,7 @@ def save_blacklist(ids):
 # weiterhin Komma-Separation, weil dort Kommas faktisch nicht vorkommen.
 
 def _read_json_list(key):
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     raw = config.get('Ausbilder', key, fallback='').strip()
     if not raw:
@@ -170,8 +164,8 @@ def _read_json_list(key):
 
 
 def _write_json_list(key, items):
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Ausbilder'):
         config.add_section('Ausbilder')
     cleaned = sorted({str(x).strip() for x in (items or []) if str(x).strip()})
@@ -201,7 +195,7 @@ def save_firma_blacklist(firms):
 def get_firma_filter_mode():
     """'whitelist' oder 'blacklist' — bestimmt welche Firma-Liste beim Export wirksam ist.
     Default: 'blacklist' (haeufigster Use-Case: einzelne Firmen ausschliessen)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     mode = config.get('Ausbilder', 'firma_filter_mode', fallback='blacklist').strip().lower()
     return mode if mode in ('whitelist', 'blacklist') else 'blacklist'
@@ -211,8 +205,8 @@ def save_firma_filter_mode(mode):
     mode = (mode or '').strip().lower()
     if mode not in ('whitelist', 'blacklist'):
         raise ValueError("mode muss 'whitelist' oder 'blacklist' sein.")
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Ausbilder'):
         config.add_section('Ausbilder')
     config.set('Ausbilder', 'firma_filter_mode', mode)
@@ -260,7 +254,7 @@ _AUSBILDER_RECOMMENDED = (
 def get_schildexport_dir():
     """Liest das Schild-Exporte-Hauptverzeichnis aus settings.ini (gleiche
     Quelle wie die Schueler-Hauptverarbeitung). Default '.': CWD."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'schildexport_directory',
                       fallback='.').strip() or '.'
@@ -269,7 +263,7 @@ def get_schildexport_dir():
 def get_schueler_export_mode():
     """Liefert den aktiven Quell-Modus fuer den Ausbilder-Workflow:
     'off' (Default) / 'fallback' / 'always'. Siehe Modul-Docstring."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     mode = config.get('Ausbilder', 'schueler_export_mode',
                       fallback='off').strip().lower()
@@ -282,8 +276,8 @@ def save_schueler_export_mode(mode):
     if mode not in _SCHUELER_EXPORT_MODES:
         raise ValueError(
             f"schueler_export_mode muss eines von {_SCHUELER_EXPORT_MODES} sein.")
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Ausbilder'):
         config.add_section('Ausbilder')
     config.set('Ausbilder', 'schueler_export_mode', mode)
@@ -735,15 +729,15 @@ DEFAULT_KL_MAIL_BODY = (
 def _get_bool(key, default):
     """Liest [Ausbilder].<key> als bool (Default identisch zu allen
     bisherigen Settings-Gettern in dieser Datei)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Ausbilder', key, fallback=default)
 
 
 def _set_bool(key, value):
     """Speichert [Ausbilder].<key> als True/False."""
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Ausbilder'):
         config.add_section('Ausbilder')
     config.set('Ausbilder', key, 'True' if value else 'False')
@@ -758,7 +752,7 @@ def get_kl_mail_include_stv_kl():          return _get_bool('kl_mail_include_stv
 
 
 def get_kl_mail_subject_suffix():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Ausbilder', 'kl_mail_subject_suffix', fallback='').strip()
 
@@ -767,8 +761,8 @@ def save_kl_mail_settings(settings):
     """Bulk-Speichern aller KL-Mail-Einstellungen aus einem Dict.
     Akzeptierte Keys: kl_mail_respect_class_whitelist, kl_mail_respect_blacklist,
     kl_mail_respect_firma_filter, kl_mail_include_stv_kl, kl_mail_subject_suffix."""
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Ausbilder'):
         config.add_section('Ausbilder')
     bool_keys = ('kl_mail_respect_class_whitelist', 'kl_mail_respect_blacklist',

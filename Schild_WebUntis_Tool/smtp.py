@@ -50,7 +50,7 @@ from utils import safe_read_config
 
 def send_email(subject, body, to_addresses, attachment_path=None, attachment_paths=None):
     # Konfigurationsdatei einlesen
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'email_settings.ini')
     smtp_server = config.get('Email', 'smtp_server')
     smtp_port = config.getint('Email', 'smtp_port')

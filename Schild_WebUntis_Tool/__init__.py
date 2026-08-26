@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 import history_manager
 
-from utils import safe_read_config
+from utils import safe_read_config, read_config_for_update, ConfigReadError
 import secret_store
 
 import winshell  # Interaktion mit der Windows-Shell (z.B. Erstellen von Verknüpfungen)
@@ -109,7 +109,7 @@ def print_banner():
 
 def get_directory(key, default=None):
     # Hilfsfunktion zum Abrufen von Verzeichnispfaden aus der Konfigurationsdatei
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', key, fallback=default)
 
@@ -130,6 +130,17 @@ app = Flask(__name__,
             static_folder=os.path.join(base_dir, 'static'))
 app.secret_key = secrets.token_hex(24) # Generierung eines zufälligen Secret Keys für die Session
 
+
+@app.errorhandler(ConfigReadError)
+def handle_config_read_error(error):
+    """
+    Eine Speicherfunktion hat abgebrochen, weil die vorhandene .ini nicht lesbar war.
+    Ohne diesen Abbruch wuerde das Zurueckschreiben die nicht eingelesenen Abschnitte
+    verwerfen. Statt eines nackten 500ers bekommt das Frontend hier eine klare Meldung.
+    """
+    print_error(str(error))
+    return jsonify({"status": "error", "message": str(error)}), 500
+
 # Globale Variablen für Warnungen und generierte E-Mails
 global warnings_cache, generated_emails_cache, admin_warnings_cache
 
@@ -144,7 +155,7 @@ last_foto_zip = None            # {'path': ..., 'name': ..., 'included': ..., 'm
 # Start der Datenverarbeitung über das Kommandozeilen-Argument --process (nicht WebEnd-Button) heraus.
 def process_data(no_log=False, no_xlsx=False):
     # Konfigurationsdatei einlesen
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     
     # Werte aus der Konfigurationsdatei laden, da in diesem Fall das WebEnd nicht immer geöffnet ist.
@@ -500,10 +511,13 @@ client_name = Schild-WebUntis-Tool
         print_success("Standard-Konfigurationsdatei 'settings.ini' wurde erstellt.")
     else:
         # Bestehende Konfiguration patchen (neue Felder hinzufügen)
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(interpolation=None)
         if safe_read_config(config, "settings.ini"):
             updated = False
             # ProcessingOptions
+            if not config.has_section('ProcessingOptions'):
+                config.add_section('ProcessingOptions')
+                updated = True
             if not config.has_option('ProcessingOptions', 'warn_karteileichen'):
                 config.set('ProcessingOptions', 'warn_karteileichen', 'False')
                 updated = True
@@ -535,6 +549,9 @@ client_name = Schild-WebUntis-Tool
                     updated = True
 
             # Directories
+            if not config.has_section('Directories'):
+                config.add_section('Directories')
+                updated = True
             if not config.has_option('Directories', 'nachteilsausgleich_excel_directory'):
                 config.set('Directories', 'nachteilsausgleich_excel_directory', default_nachteilsausgleich_excel_directory)
                 updated = True
@@ -696,10 +713,13 @@ client_name = Schild-WebUntis-Tool
         print_success("Standard-Konfigurationsdatei 'email_settings.ini' wurde erstellt.")
     else:
         # Bestehende Konfiguration patchen (neue Felder hinzufügen)
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(interpolation=None)
         if safe_read_config(config, "email_settings.ini"):
             updated = False
             # Templates
+            if not config.has_section('Templates'):
+                config.add_section('Templates')
+                updated = True
             if not config.has_option('Templates', 'subject_karteileiche'):
                 config.set('Templates', 'subject_karteileiche', 'Webuntis-Hinweis: Schüler fehlt/gelöscht $Vorname $Nachname')
                 updated = True
@@ -746,7 +766,7 @@ client_name = Schild-WebUntis-Tool
                 print_info("email_settings.ini wurde um fehlende Einträge aktualisiert (Auto-Patcher).")
 
     # Sicherstellen, dass die in settings.ini definierten Ordner existieren
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     if settings_ini_exists:
         safe_read_config(config, "settings.ini")
 
@@ -797,7 +817,7 @@ def admin_warnings(send_email_flag=False):
     students_output, students_by_id = read_students(use_abschlussdatum=False)
 
     # Konfigurationsdatei einlesen
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
@@ -951,7 +971,7 @@ def index():
     no_xlsx = cli_args.get("no_xlsx", False)
 
     # Werte aus der settings.ini laden
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, "settings.ini")
     use_abschlussdatum = config.getboolean('ProcessingOptions', 'use_abschlussdatum', fallback=False)
     create_second_file = config.getboolean('ProcessingOptions', 'create_second_file', fallback=False)
@@ -968,7 +988,7 @@ def index():
     disable_import_file_if_admin_warning = config.getboolean('ProcessingOptions', 'disable_import_file_if_admin_warning', fallback=False)
 
     # Werte aus der email_settings.ini laden
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     config.read("email_settings.ini", encoding='utf-8-sig')
 
     # Vorlagenwerte laden
@@ -982,7 +1002,7 @@ def index():
     body_karteileiche = config.get("Templates", "body_karteileiche", fallback="")
 
     # Einstellungen laden
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, "settings.ini")
     classes_dir = config.get("Directories", "classes_directory", fallback="./Klassendaten")
     teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
@@ -1126,7 +1146,7 @@ def generate_emails():
         print_info("🌐 Dashboard-Aktion: E-Mail-Generierung angefordert.")
         print_info("Generiere E-Mails basierend auf den vorhandenen Warnungen...")
         # E-Mail-Einstellungen laden
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(interpolation=None)
         safe_read_config(config, 'email_settings.ini')
 
         for i, warning in enumerate(warnings_cache):
@@ -1205,7 +1225,7 @@ def view_generated_emails():
 @app.route('/api/history', methods=['GET'])
 def get_history():
     print_info("Lade Historie-Daten...")
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     config.read("settings.ini", encoding='utf-8-sig')
     log_dir = config.get("Directories", "log_directory", fallback="Logs")
     xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelLogs")
@@ -1257,7 +1277,7 @@ def get_history():
 # Route zum Anzeigen des Datei-Inhalts einer .log-Datei im WeUI Modal
 @app.route('/api/log_content/<path:filename>', methods=['GET'])
 def get_log_content(filename):
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     config.read("settings.ini", encoding='utf-8-sig')
     log_dir = config.get("Directories", "log_directory", fallback="Logs")
     
@@ -1286,7 +1306,7 @@ def get_log_content(filename):
 @app.route('/api/xlsx_view/<path:filename>', methods=['GET'])
 def view_xlsx(filename):
     from openpyxl import load_workbook
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     config.read("settings.ini", encoding='utf-8-sig')
     xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelLogs")
 
@@ -1335,7 +1355,7 @@ def refresh_admin_warnings():
 # Route zum Herunterladen einer Excel-Log-Datei aus dem ExcelLogs-Verzeichnis
 @app.route('/api/xlsx_download/<path:filename>', methods=['GET'])
 def download_xlsx(filename):
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     config.read("settings.ini", encoding='utf-8-sig')
     xlsx_dir = config.get("Directories", "xlsx_directory", fallback="ExcelLogs")
     
@@ -1353,7 +1373,7 @@ def download_xlsx(filename):
 # Route und Funktion zum Abruf der E-Mail Inhalte des Vorlagen-Email-Editors im WebEnd. 
 @app.route('/get_templates', methods=['GET'])
 def get_templates():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     try:
         config.read('email_settings.ini', encoding='utf-8-sig')
         templates = {
@@ -1390,8 +1410,8 @@ def update_templates():
     print_info("Aktualisiere E-Mail-Vorlagen in 'email_settings.ini'...")
     try:
         # E-Mail-Einstellungen laden
-        email_config = configparser.ConfigParser()
-        safe_read_config(email_config, 'email_settings.ini')
+        email_config = configparser.ConfigParser(interpolation=None)
+        read_config_for_update(email_config, 'email_settings.ini')
 
         # Vorlagen mit den bereitgestellten Daten aktualisieren
         email_config['Templates']['subject_entlassdatum'] = request.form.get('subject_entlassdatum', '')
@@ -1435,8 +1455,8 @@ def ausbilder_update_kl_mail_template():
     Paar wirksam, die anderen Vorlagen bleiben unangetastet."""
     print_info("Aktualisiere KL-Mail-Vorlage in 'email_settings.ini'...")
     try:
-        email_config = configparser.ConfigParser()
-        safe_read_config(email_config, 'email_settings.ini')
+        email_config = configparser.ConfigParser(interpolation=None)
+        read_config_for_update(email_config, 'email_settings.ini')
         if not email_config.has_section('Templates'):
             email_config.add_section('Templates')
         subject = request.form.get('subject_ausbilder_kl_uebersicht', '')
@@ -1518,7 +1538,7 @@ def get_info_changes():
 # Route zum Laden/Speichern der Info-Mail Feldauswahl in settings.ini
 @app.route('/api/info_mail_fields', methods=['GET'])
 def get_info_mail_fields():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     raw = config.get('InfoMailOptions', 'selected_fields', fallback='')
     fields = [f.strip() for f in raw.split(',') if f.strip()]
@@ -1528,8 +1548,8 @@ def get_info_mail_fields():
 def save_info_mail_fields():
     data = request.json or {}
     fields = data.get('selected_fields', [])
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if 'InfoMailOptions' not in config:
         config['InfoMailOptions'] = {}
     config['InfoMailOptions']['selected_fields'] = ', '.join(fields)
@@ -2253,7 +2273,7 @@ def _kl_mail_load_templates():
     Defaults aus ausbilder_processor, falls die Datei oder die Section
     nicht existiert. Wird sowohl von Preview als auch Send genutzt."""
     import ausbilder_processor
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     safe_read_config(cfg, 'email_settings.ini')
     subject = cfg.get('Templates', 'subject_ausbilder_kl_uebersicht',
                       fallback=ausbilder_processor.DEFAULT_KL_MAIL_SUBJECT)
@@ -2267,7 +2287,7 @@ def _kl_mail_classes_by_name():
     importieren muessen (verhindert Zyklen) und einfache Fehlerbehandlung
     bei nicht erreichbaren CSV-Verzeichnissen."""
     from main import read_classes
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     safe_read_config(cfg, 'settings.ini')
     classes_dir  = cfg.get('Directories', 'classes_directory',  fallback='Klassendaten')
     teachers_dir = cfg.get('Directories', 'teachers_directory', fallback='Lehrerdaten')
@@ -2550,7 +2570,7 @@ def _erz_kl_mail_load_templates():
     """Liest Subject- und Body-Template aus email_settings.ini. Defaults
     aus erzieher_processor als Fallback."""
     import erzieher_processor
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     safe_read_config(cfg, 'email_settings.ini')
     subject = cfg.get('Templates', 'subject_erzieher_kl_uebersicht',
                       fallback=erzieher_processor.DEFAULT_ERZ_KL_MAIL_SUBJECT)
@@ -2738,8 +2758,8 @@ def erzieher_update_kl_mail_template():
     Symmetrisch zu /api/ausbilder/update_kl_mail_template (Begruendung dort)."""
     print_info("Aktualisiere Erzieher-KL-Mail-Vorlage in 'email_settings.ini'...")
     try:
-        email_config = configparser.ConfigParser()
-        safe_read_config(email_config, 'email_settings.ini')
+        email_config = configparser.ConfigParser(interpolation=None)
+        read_config_for_update(email_config, 'email_settings.ini')
         if not email_config.has_section('Templates'):
             email_config.add_section('Templates')
         subject = request.form.get('subject_erzieher_kl_uebersicht', '')
@@ -2776,7 +2796,7 @@ def generate_info_mails():
     if not notifications:
         return jsonify({"message": "ℹ️ Keine Feldänderungen für die gewählten Felder gefunden."})
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'email_settings.ini')
     subject_tpl = config.get("Templates", "subject_info_notification", fallback=DEFAULT_TEMPLATES['info_notification']['subject'])
     body_tpl    = config.get("Templates", "body_info_notification",    fallback=DEFAULT_TEMPLATES['info_notification']['body'])
@@ -2866,7 +2886,7 @@ def generate_nachteilsausgleich_full_mails():
     if not notifications:
         return jsonify({"success": False, "error": "create_info_notifications hat 0 Mails gebaut (z.B. fehlende Klassenlehrkraft-Stammdaten?)."}), 500
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'email_settings.ini')
     subject_tpl = config.get("Templates", "subject_info_notification", fallback=DEFAULT_TEMPLATES['info_notification']['subject'])
     body_tpl    = config.get("Templates", "body_info_notification",    fallback=DEFAULT_TEMPLATES['info_notification']['body'])
@@ -3064,7 +3084,7 @@ def reset_history():
 
 @app.route('/api/history/reindex', methods=['POST'])
 def reindex_history():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     from utils import safe_read_config
     safe_read_config(config, 'settings.ini')
     log_dir = config.get("Directories", "log_directory", fallback="./Logs")
@@ -3103,7 +3123,7 @@ def nachteilsausgleich_refresh_excel():
 def load_settings():
     settings = {}
     # settings.ini laden
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, "settings.ini")
     for section in config.sections():
         if section not in settings:
@@ -3111,7 +3131,7 @@ def load_settings():
         settings[section].update({key: config.get(section, key, fallback="") for key in config[section]})
 
     # email_settings.ini laden
-    email_config = configparser.ConfigParser()
+    email_config = configparser.ConfigParser(interpolation=None)
     safe_read_config(email_config, "email_settings.ini")
     for section in email_config.sections():
         if section not in settings:
@@ -3164,7 +3184,7 @@ def save_settings():
     sec_in = settings.get('Security') or {}
     if 'nachteilsausgleich_excel_password' in sec_in:
         new_pw = sec_in.get('nachteilsausgleich_excel_password', '') or ''
-        cfg_now = configparser.ConfigParser()
+        cfg_now = configparser.ConfigParser(interpolation=None)
         safe_read_config(cfg_now, 'settings.ini')
         current = cfg_now.get('Security', 'nachteilsausgleich_excel_password', fallback='')
         if new_pw == '':
@@ -3221,8 +3241,8 @@ def save_settings():
 
 # Funktion zum Speichern der Einstellungen in die Datei 'settings.ini'
 def save_to_settings_ini(settings):
-    config = configparser.ConfigParser()
-    safe_read_config(config, "settings.ini")
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, "settings.ini")
     for section, values in settings.items():
         if not config.has_section(section):
             config.add_section(section)
@@ -3235,8 +3255,8 @@ def save_to_settings_ini(settings):
 
 # Funktion zum Speichern der E-Mail-Einstellungen in 'email_settings.ini'
 def save_to_email_settings_ini(settings):
-    config = configparser.ConfigParser()
-    safe_read_config(config, "email_settings.ini")
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, "email_settings.ini")
     existing_sections = config.sections()
     for section, values in settings.items():
         if section in existing_sections:
@@ -3420,7 +3440,7 @@ def create_shortcut():
 def upload_files():
     print_info("Empfange Dateien zum Hochladen...")
     # Get directories from settings.ini
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     config.read("settings.ini", encoding='utf-8-sig')
     classes_dir = config.get("Directories", "classes_directory", fallback="./Klassendaten")
     teachers_dir = config.get("Directories", "teachers_directory", fallback="./Lehrerdaten")
@@ -3704,7 +3724,7 @@ if __name__ == "__main__":
             count = cursor.fetchone()[0]
             if count == 0:
                 print_info("✨ Historie ist leer. Starte automatische Indizierung vorhandener Logs...")
-                config = configparser.ConfigParser()
+                config = configparser.ConfigParser(interpolation=None)
                 from utils import safe_read_config
                 safe_read_config(config, 'settings.ini')
                 log_dir = config.get("Directories", "log_directory", fallback="./Logs")

@@ -124,6 +124,7 @@ import csv
 import zipfile
 import configparser
 from datetime import datetime, date
+from utils import safe_read_config, read_config_for_update, ConfigReadError
 
 
 # ---------------------------------------------------------------------------
@@ -187,34 +188,27 @@ def _gender_from_anrede(anrede):
     return None
 
 
-def safe_read_config(config, path):
-    try:
-        config.read(path, encoding='utf-8-sig')
-        return True
-    except Exception:
-        return False
-
 
 def get_erzieher_export_dir():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'erzieher_export_directory', fallback='ErzieherExport').strip() or 'ErzieherExport'
 
 
 def get_ansprechpartner_export_dir():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'ansprechpartner_export_directory', fallback='AnsprechpartnerExport').strip() or 'AnsprechpartnerExport'
 
 
 def get_output_dir():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'erzieher_output_directory', fallback='ErzieherImporte').strip() or 'ErzieherImporte'
 
 
 def get_zip_name_template():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Erzieher', 'zip_name_template', fallback=DEFAULT_ZIP_NAME_TEMPLATE).strip() or DEFAULT_ZIP_NAME_TEMPLATE
 
@@ -223,8 +217,8 @@ def save_zip_name_template(template):
     template = (template or '').strip()
     if not template:
         return
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Erzieher'):
         config.add_section('Erzieher')
     config.set('Erzieher', 'zip_name_template', template)
@@ -242,14 +236,14 @@ def get_smart_match():
     Hinweis: WebUntis wertet die Telefon-Spalte aktuell nicht aus — die
     Smart-Match-Zuordnung ist primaer fuer Tool-interne Vorschau und Daten-
     Hygiene relevant (falls WebUntis Telefon spaeter unterstuetzt)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'smart_match', fallback=True)
 
 
 def save_smart_match(value):
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Erzieher'):
         config.add_section('Erzieher')
     config.set('Erzieher', 'smart_match', 'True' if value else 'False')
@@ -261,7 +255,7 @@ def get_filter_volljaehrig():
     """True = Schueler, deren Erzieher-Art (Klartext) 'volljaehrig' enthaelt,
     werden komplett aus dem Erzieher-Export herausgefiltert (kein
     sinnvoller Erzieher-Datensatz fuer self-Ansprechpartner)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'filter_volljaehrig', fallback=False)
 
@@ -273,7 +267,7 @@ def save_filter_volljaehrig(value):
 def get_require_email():
     """True = Erzieher ohne E-Mail-Adresse werden nicht exportiert
     (sie koennen sich in WebUntis ohnehin nicht anmelden)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'require_email', fallback=False)
 
@@ -287,7 +281,7 @@ def get_fill_dummies():
     Werten (DUMMY / dummy@invalid.local / 000) gefuellt, damit WebUntis nicht
     auf Pflichtfeldern stolpert und Dummies nachtraeglich gefiltert werden
     koennen."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'fill_dummies', fallback=False)
 
@@ -300,7 +294,7 @@ def get_assign_eltern_ids():
     """True = jedem Erzieher wird eine schulweit eindeutige Eltern-ID zugewiesen
     (persistent in eltern_ids.json), damit WebUntis denselben Erzieher ueber
     Geschwister hinweg als denselben Account erkennt."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'assign_eltern_ids', fallback=False)
 
@@ -314,7 +308,7 @@ def get_phone_from_erz_first():
     (Spaltengruppe 'Telefon-Nummern: ...') wird als ZUSAETZLICHE erste
     Anspr-Pseudozeile pro Schueler behandelt — bekommt damit Vorrang beim
     Slot-Mapping. Duplikate gegenueber dem Anspr-Export werden gefiltert."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'phone_from_erz_first', fallback=True)
 
@@ -328,7 +322,7 @@ def get_class_filter():
     Klassen (leer = alle). Sentinel '__NONE__' = explizit keine Klasse aktiv
     (Default ist 'leer = alle', deshalb braucht's den Marker, um 'explizit
     nichts' von 'noch nicht konfiguriert' zu unterscheiden)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     raw = config.get('Erzieher', 'class_filter', fallback='').strip()
     if not raw:
@@ -338,8 +332,8 @@ def get_class_filter():
 
 def save_class_filter(classes):
     """Speichert die Klassen-Whitelist (Liste[str])."""
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Erzieher'):
         config.add_section('Erzieher')
     cleaned = [str(c).strip() for c in (classes or []) if str(c).strip()]
@@ -378,7 +372,7 @@ def get_lift_limit():
     """True = Anzahl Erzieher pro Schueler ist nicht mehr auf die Slots im
     Schild-Erzieher-Export begrenzt. Ueberzaehlige Ansprechpartner-Telefonzeilen
     werden zu zusaetzlichen Erzieher_N.csv-Slots (Stammdaten ggf. Dummy)."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'lift_limit', fallback=False)
 
@@ -389,8 +383,8 @@ def save_lift_limit(value):
 
 def _set_erz_bool(key, value):
     """Helper: bool in [Erzieher] speichern (idempotent, legt Section ggf. an)."""
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Erzieher'):
         config.add_section('Erzieher')
     config.set('Erzieher', key, 'True' if value else 'False')
@@ -411,7 +405,7 @@ def get_schildexport_dir():
     Quelle wie die Schueler-Hauptverarbeitung). Default '.': Repo-Wurzel/CWD.
     Bewusst lokal definiert (statt aus main.py zu importieren), um keine
     Cross-Modul-Zirkelabhaengigkeit beim Modul-Laden zu erzeugen."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Directories', 'schildexport_directory',
                       fallback='.').strip() or '.'
@@ -423,7 +417,7 @@ def get_schueler_export_mode():
     'fallback' — Schueler-Export aus AusbilderInput nur, wenn separater
                  Erzieher-Export fehlt.
     'always'   — Schueler-Export aus AusbilderInput hat IMMER Vorrang."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     mode = config.get('Erzieher', 'schueler_export_mode',
                       fallback='off').strip().lower()
@@ -436,8 +430,8 @@ def save_schueler_export_mode(mode):
     if mode not in _SCHUELER_EXPORT_MODES:
         raise ValueError(
             f"schueler_export_mode muss eines von {_SCHUELER_EXPORT_MODES} sein.")
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Erzieher'):
         config.add_section('Erzieher')
     config.set('Erzieher', 'schueler_export_mode', mode)
@@ -1925,7 +1919,7 @@ DEFAULT_ERZ_KL_MAIL_BODY = (
 def get_kl_mail_respect_class_whitelist():
     """Klassen-Whitelist (analog Ausbilder) greift auch beim KL-Mail-Versand
     des Erzieher-Workflows."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'kl_mail_respect_class_whitelist', fallback=True)
 
@@ -1936,19 +1930,19 @@ def get_kl_mail_only_minor():
     Self-Ansprechpartner). Default False, weil 'Rohdaten' bedeutet, auch
     diese Eintraege zu zeigen, damit die KL z.B. eine fehlende Vollj.-
     Markierung erkennt."""
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'kl_mail_only_minor', fallback=False)
 
 
 def get_kl_mail_include_stv_kl():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.getboolean('Erzieher', 'kl_mail_include_stv_kl', fallback=True)
 
 
 def get_kl_mail_subject_suffix():
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     return config.get('Erzieher', 'kl_mail_subject_suffix', fallback='').strip()
 
@@ -1956,8 +1950,8 @@ def get_kl_mail_subject_suffix():
 def save_kl_mail_settings(settings):
     """Bulk-Speichern aller KL-Mail-Einstellungen. Akzeptierte Keys siehe
     Modul-Docstring."""
-    config = configparser.ConfigParser()
-    safe_read_config(config, 'settings.ini')
+    config = configparser.ConfigParser(interpolation=None)
+    read_config_for_update(config, 'settings.ini')
     if not config.has_section('Erzieher'):
         config.add_section('Erzieher')
     for k in ('kl_mail_respect_class_whitelist', 'kl_mail_only_minor',

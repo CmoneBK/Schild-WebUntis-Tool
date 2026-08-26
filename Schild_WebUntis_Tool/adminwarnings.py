@@ -54,7 +54,7 @@ def admin_warnings(send_email_flag=False):
     students_output, students_by_id = read_students(use_abschlussdatum=False)
 
     # Einstellungen aus settings.ini einlesen
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
     classes_dir = config.get('Directories', 'classes_directory')
     teachers_dir = config.get('Directories', 'teachers_directory')
