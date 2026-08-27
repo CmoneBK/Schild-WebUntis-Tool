@@ -1108,7 +1108,25 @@ def read_students(use_abschlussdatum=False):
         try:
             ab_info = f"Abschnitt-ID {abschnitt_id}" if abschnitt_id else "aktiver Abschnitt"
             print_info(f"Lese Schülerdaten über SVWS-API (Schild 3.x, {ab_info})...")
-            output_data, students_by_id = svws_client.fetch_students(abschnitt_id=abschnitt_id)
+
+            def _schulbesuch_progress(erledigt, gesamt):
+                """
+                Fortschritt beim Laden der Schulbesuchsdaten (Entlassdatum).
+                Der SVWS-Server bietet dafür keinen Bulk-Endpoint, es ist also ein
+                Request pro Schüler — bei grossen Schulen mehrere Minuten. Ohne
+                Ausgabe wirkt der Lauf hier eingefroren.
+                """
+                if gesamt == 0:
+                    return
+                if erledigt == 0:
+                    print_info(f"Lade Schulbesuchsdaten (Entlassdatum) für {gesamt} Schüler — "
+                               f"ein Abruf pro Schüler, das kann einige Minuten dauern...")
+                else:
+                    print_info(f"Schulbesuchsdaten: {erledigt}/{gesamt} "
+                               f"({erledigt * 100 // gesamt} %)")
+
+            output_data, students_by_id = svws_client.fetch_students(
+                abschnitt_id=abschnitt_id, progress=_schulbesuch_progress)
             print_success(f"Schülerdaten erfolgreich über SVWS-API geladen ({len(students_by_id)} Schüler).")
             return output_data, students_by_id
         except Exception as e:

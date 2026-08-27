@@ -27,6 +27,10 @@ SCHILD_STATUS_LABELS = {
 # "Aktuelles Schuljahr - Aktive, Abgänger und Abschlüsse" + Externe.
 DEFAULT_ALLOWED_STATUSES = {2, 6, 8, 9}
 
+# Nach je so vielen Schülern wird beim Laden der Schulbesuchsdaten ein
+# Fortschritt gemeldet (siehe fetch_students).
+SCHULBESUCH_PROGRESS_STEP = 250
+
 
 def _to_csv_date(iso_date):
     """ISO YYYY-MM-DD → DD.MM.YYYY (wie es die Schild-CSV liefert)."""
@@ -247,7 +251,8 @@ class SVWSClient:
             }
         return classes_by_name
 
-    def fetch_students(self, abschnitt_id=None, fetch_entlassdatum=True, allowed_statuses=None):
+    def fetch_students(self, abschnitt_id=None, fetch_entlassdatum=True, allowed_statuses=None,
+                       progress=None):
         """
         Liefert (output_data_students, students_by_id) — exakt wie read_students()
         aus main.py es per CSV liefert. So kann der CSV-Pfad transparent ersetzt werden.
@@ -255,6 +260,12 @@ class SVWSClient:
         Filter:
           - idSchuljahresabschnitt == aktueller Abschnitt
           - status in allowed_statuses (Default DEFAULT_ALLOWED_STATUSES)
+
+        progress: optionales Callback progress(erledigt, gesamt) fuer das Laden der
+        Schulbesuchsdaten — der einzige Schritt, der pro Schueler einen eigenen
+        Request braucht und bei grossen Schulen mehrere Minuten laeuft. Dieses
+        Modul gibt bewusst selbst nichts aus (main.py haelt die Konsolen-Helfer);
+        ohne Callback verhaelt sich alles wie bisher.
         """
         if abschnitt_id is None:
             abschnitt_id = self.get_aktiver_abschnitt()
@@ -284,13 +295,21 @@ class SVWSClient:
         orte = self.get_orte_lookup()
 
         # 5) Schulbesuch pro Schüler für Entlassdatum (kein Bulk vorhanden)
+        #    Ein Request pro Schüler — bei grossen Schulen der mit Abstand
+        #    laengste Schritt. Fortschritt wird nach aussen gemeldet, damit der
+        #    Lauf nicht faelschlich als haengend wahrgenommen wird.
         entlassdatum_by_id = {}
         if fetch_entlassdatum:
-            for sid in schueler_ids:
+            gesamt = len(schueler_ids)
+            if progress:
+                progress(0, gesamt)
+            for erledigt, sid in enumerate(schueler_ids, start=1):
                 sb = self.get_schueler_schulbesuch(sid)
                 ed = sb.get('entlassungDatum')
                 if ed:
                     entlassdatum_by_id[sid] = _to_csv_date(ed)
+                if progress and (erledigt % SCHULBESUCH_PROGRESS_STEP == 0 or erledigt == gesamt):
+                    progress(erledigt, gesamt)
 
         # 6) Mapping aufbauen — exakt das Format das CSV-Pfad in read_students liefert
         output_columns = [
