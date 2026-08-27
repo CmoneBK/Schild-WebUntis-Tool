@@ -1109,7 +1109,7 @@ def read_students(use_abschlussdatum=False):
             ab_info = f"Abschnitt-ID {abschnitt_id}" if abschnitt_id else "aktiver Abschnitt"
             print_info(f"Lese Schülerdaten über SVWS-API (Schild 3.x, {ab_info})...")
 
-            def _schulbesuch_progress(erledigt, gesamt):
+            def _schulbesuch_progress(erledigt, gesamt, workers=1):
                 """
                 Fortschritt beim Laden der Schulbesuchsdaten (Entlassdatum).
                 Der SVWS-Server bietet dafür keinen Bulk-Endpoint, es ist also ein
@@ -1118,12 +1118,17 @@ def read_students(use_abschlussdatum=False):
                 """
                 if gesamt == 0:
                     return
-                if erledigt == 0:
-                    print_info(f"Lade Schulbesuchsdaten (Entlassdatum) für {gesamt} Schüler — "
-                               f"ein Abruf pro Schüler, das kann einige Minuten dauern...")
-                else:
+                if erledigt > 0:
                     print_info(f"Schulbesuchsdaten: {erledigt}/{gesamt} "
                                f"({erledigt * 100 // gesamt} %)")
+                elif workers > 1:
+                    print_info(f"Lade Schulbesuchsdaten (Entlassdatum) für {gesamt} Schüler — "
+                               f"{workers} parallele Abrufe...")
+                else:
+                    print_info(f"Lade Schulbesuchsdaten (Entlassdatum) für {gesamt} Schüler — "
+                               f"ein Abruf pro Schüler, das kann einige Minuten dauern. "
+                               f"Beschleunigen: Einstellungen → Schild API → "
+                               f"„Parallele Abrufe der Schulbesuchsdaten\".")
 
             output_data, students_by_id = svws_client.fetch_students(
                 abschnitt_id=abschnitt_id, progress=_schulbesuch_progress)

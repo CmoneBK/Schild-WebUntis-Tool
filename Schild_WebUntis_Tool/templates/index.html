@@ -2473,6 +2473,21 @@
                             </div>
                             <input type="hidden" id="schild_api_allowed_statuses" name="schild_api_allowed_statuses">
                         </div>
+                        <div class="form-group">
+                            <label for="schild_api_schulbesuch_workers">⚡ Parallele Abrufe der Schulbesuchsdaten:</label>
+                            <input type="number" class="form-control schild-api-only" min="1" max="16" step="1"
+                                   id="schild_api_schulbesuch_workers" name="schild_api_schulbesuch_workers"
+                                   placeholder="1">
+                            <small class="form-text text-muted">
+                                Das Entlassdatum muss der SVWS-Server <strong>einzeln pro Schüler</strong> liefern —
+                                einen Sammel-Abruf gibt es dafür nicht. Bei grossen Schulen ist das der mit Abstand
+                                längste Schritt der Verarbeitung.
+                                <strong>1</strong> = nacheinander (Standard, schonend für den Server).
+                                Höhere Werte holen entsprechend viele Schüler gleichzeitig und verkürzen den Schritt
+                                deutlich — <strong>4–8</strong> ist ein guter Startwert, erzeugt aber entsprechend
+                                Last auf dem SVWS-Server. Maximum 16.
+                            </small>
+                        </div>
                         <hr>
                         <h6 class="mb-2">📑 Quellen für Attestpflicht / Nachteilsausgleich
                             <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="vermerkart_naming" title="Hilfe">ℹ️</button>

@@ -345,6 +345,11 @@ abschnitt_id =
 #   0=Aufnahme, 1=Warteliste, 2=Aktiv, 3=Beurlaubt, 6=Extern,
 #   8=Abschluss, 9=Abgang ohne Abschluss, 10=Ehemalige
 allowed_statuses = 2,6,8,9
+# Parallele Abrufe beim Laden der Schulbesuchsdaten (Entlassdatum). Der
+# SVWS-Server hat dafuer keinen Bulk-Endpoint, es ist also ein Abruf pro
+# Schueler. 1 = sequenziell (Standard). Hoehere Werte (4-8) beschleunigen
+# grosse Schulen deutlich, erzeugen aber entsprechend Last auf dem Server.
+schulbesuch_workers = 1
 # Bezeichnung der Vermerkart in Schild fuer Attestpflicht / Nachteilsausgleich.
 attest_vermerk_bezeichnung =
 nachteilsausgleich_vermerk_bezeichnung =
@@ -539,6 +544,7 @@ client_name = Schild-WebUntis-Tool
                 ('fallback_to_csv', 'True'),
                 ('abschnitt_id', ''),
                 ('allowed_statuses', '2,6,8,9'),
+                ('schulbesuch_workers', '1'),
                 ('attest_vermerk_bezeichnung', ''),
                 ('nachteilsausgleich_vermerk_bezeichnung', ''),
                 ('attest_source', 'csv'),

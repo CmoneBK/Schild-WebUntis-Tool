@@ -4,6 +4,9 @@ Liest Schüler-, Klassen- und Lehrerdaten aus dem SVWS-Server und mappt sie
 auf das interne Dict-Format, das auch der CSV-Pfad erzeugt — sodass der Rest
 der Verarbeitung identisch bleibt.
 """
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
 import requests
 import urllib3
 
@@ -30,6 +33,13 @@ DEFAULT_ALLOWED_STATUSES = {2, 6, 8, 9}
 # Nach je so vielen Schülern wird beim Laden der Schulbesuchsdaten ein
 # Fortschritt gemeldet (siehe fetch_students).
 SCHULBESUCH_PROGRESS_STEP = 250
+
+# Parallele Abrufe der Schulbesuchsdaten. 1 = sequenziell (Default, bisheriges
+# Verhalten). Hoehere Werte holen entsprechend viele Schueler gleichzeitig —
+# spuerbar schneller, erzeugt aber entsprechend Last auf dem SVWS-Server,
+# deshalb bewusst opt-in ueber [SchildAPI].schulbesuch_workers.
+SCHULBESUCH_WORKERS_DEFAULT = 1
+SCHULBESUCH_WORKERS_MAX = 16
 
 
 def _to_csv_date(iso_date):
@@ -60,6 +70,8 @@ class SVWSClient:
         self.session.verify = verify_ssl
         self.session.headers.update({"Accept": "application/json"})
         self.timeout = timeout
+        # Pro Thread eine eigene Session (siehe _thread_session).
+        self._local = threading.local()
         if not verify_ssl:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -68,8 +80,26 @@ class SVWSClient:
 
     # --- Low-level Helfer -------------------------------------------------
 
-    def _get(self, path):
-        r = self.session.get(self._db(path), timeout=self.timeout)
+    def _thread_session(self):
+        """
+        Liefert eine requests.Session, die nur dem aufrufenden Thread gehoert.
+
+        requests.Session ist nicht als threadsicher zugesichert. Solange alles
+        sequenziell laeuft, teilen sich alle Aufrufe self.session; beim parallelen
+        Abruf der Schulbesuchsdaten bekommt dagegen jeder Worker seine eigene
+        Session mit identischer Auth-/TLS-Konfiguration.
+        """
+        session = getattr(self._local, 'session', None)
+        if session is None:
+            session = requests.Session()
+            session.auth = self.session.auth
+            session.verify = self.session.verify
+            session.headers.update(self.session.headers)
+            self._local.session = session
+        return session
+
+    def _get(self, path, session=None):
+        r = (session or self.session).get(self._db(path), timeout=self.timeout)
         r.raise_for_status()
         return r.json()
 
@@ -164,10 +194,13 @@ class SVWSClient:
             return []
         return self._post_json("/schueler/stammdaten", list(schueler_ids))
 
-    def get_schueler_schulbesuch(self, schueler_id):
-        """Einzel-Call für Entlassdatum (kein Bulk-Endpoint vorhanden)."""
+    def get_schueler_schulbesuch(self, schueler_id, session=None):
+        """Einzel-Call für Entlassdatum (kein Bulk-Endpoint vorhanden).
+
+        session: beim parallelen Abruf die thread-eigene Session (siehe
+        _thread_session); ohne Angabe die gemeinsame Session wie bisher."""
         try:
-            return self._get(f"/schueler/{schueler_id}/schulbesuch")
+            return self._get(f"/schueler/{schueler_id}/schulbesuch", session=session)
         except Exception:
             return {}
 
@@ -251,8 +284,78 @@ class SVWSClient:
             }
         return classes_by_name
 
+    def _fetch_entlassdaten(self, schueler_ids, workers, progress=None):
+        """
+        Holt die Entlassdaten aller Schüler und liefert {schueler_id: 'DD.MM.YYYY'}.
+
+        Meldet den Fortschritt als progress(erledigt, gesamt, workers) — die
+        Worker-Zahl geht mit, damit die Konsole zeigen kann, ob parallel
+        gearbeitet wird und die Einstellung also gegriffen hat.
+
+        workers <= 1  → sequenziell, exakt wie bisher.
+        workers >  1  → so viele Abrufe gleichzeitig (auf SCHULBESUCH_WORKERS_MAX
+                        begrenzt), jeder Worker mit eigener Session.
+
+        Das Ergebnis ist in beiden Faellen identisch — nur die Reihenfolge der
+        Requests unterscheidet sich, und ein Dict ist reihenfolgeunabhaengig.
+        Fehler einzelner Abrufe schluckt get_schueler_schulbesuch wie gehabt,
+        ein toter Schueler-Datensatz kippt also nicht den ganzen Lauf.
+        """
+        gesamt = len(schueler_ids)
+        workers = max(1, min(int(workers or 1), SCHULBESUCH_WORKERS_MAX))
+        if progress:
+            progress(0, gesamt, workers)
+
+        entlassdatum_by_id = {}
+        erledigt = 0
+
+        def _melde():
+            if progress and (erledigt % SCHULBESUCH_PROGRESS_STEP == 0 or erledigt == gesamt):
+                progress(erledigt, gesamt, workers)
+
+        if workers <= 1 or gesamt <= 1:
+            for sid in schueler_ids:
+                sb = self.get_schueler_schulbesuch(sid)
+                ed = sb.get('entlassungDatum')
+                if ed:
+                    entlassdatum_by_id[sid] = _to_csv_date(ed)
+                erledigt += 1
+                _melde()
+            return entlassdatum_by_id
+
+        def _hole(sid):
+            # Läuft im Worker-Thread → eigene Session.
+            return sid, self.get_schueler_schulbesuch(sid, session=self._thread_session())
+
+        # Ergebnisse werden im Haupt-Thread eingesammelt (as_completed-Semantik
+        # von Executor.map: die Iteration liefert der Reihe nach, die Requests
+        # laufen trotzdem parallel). Damit bleibt das Dict-Schreiben single-
+        # threaded und braucht kein Lock.
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            for sid, sb in pool.map(_hole, schueler_ids):
+                ed = sb.get('entlassungDatum')
+                if ed:
+                    entlassdatum_by_id[sid] = _to_csv_date(ed)
+                erledigt += 1
+                _melde()
+        return entlassdatum_by_id
+
+    @staticmethod
+    def _read_schulbesuch_workers_from_settings():
+        """Liest [SchildAPI].schulbesuch_workers aus settings.ini.
+        Default: SCHULBESUCH_WORKERS_DEFAULT (1 = sequenziell)."""
+        import configparser
+        config = configparser.ConfigParser(interpolation=None)
+        try:
+            config.read('settings.ini', encoding='utf-8-sig')
+            raw = config.get('SchildAPI', 'schulbesuch_workers',
+                             fallback=str(SCHULBESUCH_WORKERS_DEFAULT))
+            return max(1, min(int(str(raw).strip()), SCHULBESUCH_WORKERS_MAX))
+        except Exception:
+            return SCHULBESUCH_WORKERS_DEFAULT
+
     def fetch_students(self, abschnitt_id=None, fetch_entlassdatum=True, allowed_statuses=None,
-                       progress=None):
+                       progress=None, workers=None):
         """
         Liefert (output_data_students, students_by_id) — exakt wie read_students()
         aus main.py es per CSV liefert. So kann der CSV-Pfad transparent ersetzt werden.
@@ -261,11 +364,15 @@ class SVWSClient:
           - idSchuljahresabschnitt == aktueller Abschnitt
           - status in allowed_statuses (Default DEFAULT_ALLOWED_STATUSES)
 
-        progress: optionales Callback progress(erledigt, gesamt) fuer das Laden der
-        Schulbesuchsdaten — der einzige Schritt, der pro Schueler einen eigenen
-        Request braucht und bei grossen Schulen mehrere Minuten laeuft. Dieses
-        Modul gibt bewusst selbst nichts aus (main.py haelt die Konsolen-Helfer);
-        ohne Callback verhaelt sich alles wie bisher.
+        progress: optionales Callback progress(erledigt, gesamt, workers) fuer das
+        Laden der Schulbesuchsdaten — der einzige Schritt, der pro Schueler einen
+        eigenen Request braucht und bei grossen Schulen mehrere Minuten laeuft.
+        Dieses Modul gibt bewusst selbst nichts aus (main.py haelt die Konsolen-
+        Helfer); ohne Callback verhaelt sich alles wie bisher.
+
+        workers: Anzahl paralleler Schulbesuch-Abrufe. None (Default) liest
+        [SchildAPI].schulbesuch_workers aus der settings.ini; 1 bedeutet
+        sequenziell wie bisher.
         """
         if abschnitt_id is None:
             abschnitt_id = self.get_aktiver_abschnitt()
@@ -300,16 +407,9 @@ class SVWSClient:
         #    Lauf nicht faelschlich als haengend wahrgenommen wird.
         entlassdatum_by_id = {}
         if fetch_entlassdatum:
-            gesamt = len(schueler_ids)
-            if progress:
-                progress(0, gesamt)
-            for erledigt, sid in enumerate(schueler_ids, start=1):
-                sb = self.get_schueler_schulbesuch(sid)
-                ed = sb.get('entlassungDatum')
-                if ed:
-                    entlassdatum_by_id[sid] = _to_csv_date(ed)
-                if progress and (erledigt % SCHULBESUCH_PROGRESS_STEP == 0 or erledigt == gesamt):
-                    progress(erledigt, gesamt)
+            if workers is None:
+                workers = self._read_schulbesuch_workers_from_settings()
+            entlassdatum_by_id = self._fetch_entlassdaten(schueler_ids, workers, progress)
 
         # 6) Mapping aufbauen — exakt das Format das CSV-Pfad in read_students liefert
         output_columns = [
