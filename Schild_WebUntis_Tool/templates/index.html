@@ -2488,6 +2488,22 @@
                                 Last auf dem SVWS-Server. Maximum 16.
                             </small>
                         </div>
+                        <div class="form-group">
+                            <label for="schild_api_timeout">⏱️ Timeout pro Abruf (Sekunden):</label>
+                            <input type="number" class="form-control schild-api-only" min="0" step="1"
+                                   id="schild_api_timeout" name="schild_api_timeout" placeholder="30">
+                            <small class="form-text text-muted">
+                                Wie lange das Tool auf eine einzelne Antwort des SVWS-Servers wartet.
+                                Standard <strong>30</strong>. Bei langsamen Servern kann ein höherer Wert
+                                (z.&nbsp;B. 60–120) helfen.
+                                <strong>0</strong> deaktiviert den Timeout — das Tool wartet dann
+                                <em>unbegrenzt</em>. ⚠️ Damit kann ein nicht antwortender Server den
+                                Verarbeitungslauf beliebig lange blockieren; nur setzen, wenn Sie genau
+                                das wollen. Gilt für die Verarbeitung — „Verbindung testen" und das Laden
+                                der Vermerkarten/Abschnitte behalten immer 30&nbsp;Sekunden, damit das
+                                Webinterface nicht hängen bleibt.
+                            </small>
+                        </div>
                         <hr>
                         <h6 class="mb-2">📑 Quellen für Attestpflicht / Nachteilsausgleich
                             <button type="button" class="help-btn btn btn-link btn-sm p-0 ml-1" data-help="vermerkart_naming" title="Hilfe">ℹ️</button>

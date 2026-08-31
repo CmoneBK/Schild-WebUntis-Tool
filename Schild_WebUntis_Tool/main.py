@@ -89,12 +89,17 @@ def get_schild_api_config():
         return False, None, fallback, abschnitt_id
     try:
         from schild_api import SVWSClient
+        timeout = SVWSClient.read_timeout_from_settings()
+        if timeout is None:
+            print_warning("SVWS-API-Timeout ist deaktiviert ([SchildAPI] timeout = 0) — "
+                          "ein nicht antwortender Server laesst den Lauf unbegrenzt warten.")
         client = SVWSClient(
             server_url=config.get('SchildAPI', 'server_url', fallback=''),
             schema=config.get('SchildAPI', 'schema', fallback=''),
             user=config.get('SchildAPI', 'user', fallback=''),
             password=config.get('SchildAPI', 'password', fallback=''),
             verify_ssl=config.getboolean('SchildAPI', 'verify_ssl', fallback=False),
+            timeout=timeout,
         )
         return True, client, fallback, abschnitt_id
     except Exception:
@@ -102,10 +107,36 @@ def get_schild_api_config():
 
 
 SCHILD_REQUIRED_COLUMNS = [
-    'Interne ID-Nummer', 'Nachname', 'Vorname', 'Klasse', 'Klassenlehrer', 
-    'Geburtsdatum', 'Geschlecht', 'vorauss. Abschlussdatum', 'Aufnahmedatum', 
+    'Interne ID-Nummer', 'Nachname', 'Vorname', 'Klasse', 'Klassenlehrer',
+    'Geburtsdatum', 'Geschlecht', 'vorauss. Abschlussdatum', 'Aufnahmedatum',
     'Entlassdatum', 'Volljährig', 'Schulpflicht erfüllt', 'Status'
 ]
+
+# Spaltennamen-Varianten im Schild-Export. Schild 2 exportiert die Klassenlehr-
+# kraft als 'Klassenlehrer', Schild 3 als 'Klassenlehrer: Nachname'. Inhaltlich
+# ist beides der Nachname: der Wert wird gegen dieselben Lehrkraft-Namen
+# geprueft wie 'Klassenlehrkraft' aus der Klassen-CSV. Beide Schreibweisen
+# muessen funktionieren, damit Schild-2- und Schild-3-Schulen denselben Export
+# nutzen koennen.
+SCHILD_COLUMN_ALIASES = {
+    'Klassenlehrer': ('Klassenlehrer', 'Klassenlehrer: Nachname'),
+}
+
+
+def schild_column_variants(col):
+    """Alle akzeptierten Schreibweisen einer Schild-Spalte (kanonischer Name zuerst)."""
+    return SCHILD_COLUMN_ALIASES.get(col, (col,))
+
+
+def resolve_schild_column(headers, col):
+    """Liefert die tatsaechlich im Export vorhandene Schreibweise von col
+    (oder None). headers ist die Kopfzeile der CSV."""
+    for variante in schild_column_variants(col):
+        if variante in headers:
+            return variante
+    return None
+
+
 SCHILD_OPTIONAL_COLUMNS = {
     'E-Mail (privat)': 'E-Mail-Korrespondenz mit Schülern über WebUntis nicht möglich.',
     'Telefon-Nr.': 'Notfall-Kontaktdaten (Telefon) fehlen in WebUntis.',
@@ -199,8 +230,10 @@ def validate_imports():
                     reader = csv.DictReader(f, delimiter=';')
                     headers = reader.fieldnames or []
                     
-                    missing_req = [col for col in SCHILD_REQUIRED_COLUMNS if col not in headers]
-                    missing_opt = [col for col in SCHILD_OPTIONAL_COLUMNS if col not in headers]
+                    missing_req = [col for col in SCHILD_REQUIRED_COLUMNS
+                                   if resolve_schild_column(headers, col) is None]
+                    missing_opt = [col for col in SCHILD_OPTIONAL_COLUMNS
+                                   if resolve_schild_column(headers, col) is None]
                     
                     file_status = "success"
                     messages = []
@@ -1173,6 +1206,9 @@ def read_students(use_abschlussdatum=False):
     # Öffnen der neuesten CSV-Datei und Einlesen der Daten
     with open(os.path.join(schildexport_dir, newest_file), 'r', newline='', encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
+        # Tatsaechliche Schreibweise der Klassenlehrer-Spalte bestimmen
+        # (Schild 2: 'Klassenlehrer', Schild 3: 'Klassenlehrer: Nachname').
+        kl_spalte = resolve_schild_column(reader.fieldnames or [], 'Klassenlehrer')
         # Überprüfen, ob die notwendigen Spalten vorhanden sind
         header = [column for column in reader.fieldnames if column in columns_to_filter]
         header.append('Schulpflicht')
@@ -1213,9 +1249,10 @@ def read_students(use_abschlussdatum=False):
             # Schüler als aktiv markieren basierend auf dem Status
             filtered_row['Aktiv'] = 'Ja' if row['Status'] in active_statuses else 'Nein'
 
-            # Klassenlehrer verarbeiten
-            if 'Klassenlehrer' in reader.fieldnames:
-                filtered_row['Klassenlehrer'] = row.get('Klassenlehrer', '').strip()
+            # Klassenlehrer verarbeiten — je nach Schild-Version heisst die Spalte
+            # 'Klassenlehrer' (Schild 2) oder 'Klassenlehrer: Nachname' (Schild 3).
+            if kl_spalte:
+                filtered_row['Klassenlehrer'] = (row.get(kl_spalte, '') or '').strip()
             else:
                 filtered_row['Klassenlehrer'] = ''  # Standardwert, falls die Spalte fehlt
 

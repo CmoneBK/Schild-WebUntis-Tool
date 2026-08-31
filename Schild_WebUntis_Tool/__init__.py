@@ -350,6 +350,10 @@ allowed_statuses = 2,6,8,9
 # Schueler. 1 = sequenziell (Standard). Hoehere Werte (4-8) beschleunigen
 # grosse Schulen deutlich, erzeugen aber entsprechend Last auf dem Server.
 schulbesuch_workers = 1
+# Timeout pro API-Abruf in Sekunden. 0 = deaktiviert (unbegrenzt warten).
+# Achtung: Ohne Timeout kann ein nicht antwortender SVWS-Server den Lauf
+# beliebig lange blockieren.
+timeout = 30
 # Bezeichnung der Vermerkart in Schild fuer Attestpflicht / Nachteilsausgleich.
 attest_vermerk_bezeichnung =
 nachteilsausgleich_vermerk_bezeichnung =
@@ -545,6 +549,7 @@ client_name = Schild-WebUntis-Tool
                 ('abschnitt_id', ''),
                 ('allowed_statuses', '2,6,8,9'),
                 ('schulbesuch_workers', '1'),
+                ('timeout', '30'),
                 ('attest_vermerk_bezeichnung', ''),
                 ('nachteilsausgleich_vermerk_bezeichnung', ''),
                 ('attest_source', 'csv'),

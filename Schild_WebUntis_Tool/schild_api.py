@@ -41,6 +41,11 @@ SCHULBESUCH_PROGRESS_STEP = 250
 SCHULBESUCH_WORKERS_DEFAULT = 1
 SCHULBESUCH_WORKERS_MAX = 16
 
+# Timeout pro API-Abruf in Sekunden. None = kein Timeout (Aufruf wartet
+# unbegrenzt) — bewusst moeglich, weil manche SVWS-Server unter Last sehr lange
+# brauchen; siehe [SchildAPI].timeout.
+DEFAULT_TIMEOUT = 30
+
 
 def _to_csv_date(iso_date):
     """ISO YYYY-MM-DD → DD.MM.YYYY (wie es die Schild-CSV liefert)."""
@@ -62,7 +67,9 @@ def _bool_to_ja_nein(value):
 
 
 class SVWSClient:
-    def __init__(self, server_url, schema, user, password, verify_ssl=False, timeout=30):
+    def __init__(self, server_url, schema, user, password, verify_ssl=False,
+                 timeout=DEFAULT_TIMEOUT):
+        """timeout: Sekunden pro Abruf, oder None fuer 'unbegrenzt warten'."""
         self.base_url = server_url.rstrip('/')
         self.schema = schema
         self.session = requests.Session()
@@ -339,6 +346,25 @@ class SVWSClient:
                 erledigt += 1
                 _melde()
         return entlassdatum_by_id
+
+    @staticmethod
+    def read_timeout_from_settings():
+        """Liest [SchildAPI].timeout (Sekunden) aus settings.ini.
+
+        Liefert die Sekundenzahl, oder None wenn der Wert <= 0 ist — dann wartet
+        das Tool unbegrenzt. Ungueltige oder fehlende Werte ergeben DEFAULT_TIMEOUT.
+        """
+        import configparser
+        config = configparser.ConfigParser(interpolation=None)
+        try:
+            config.read('settings.ini', encoding='utf-8-sig')
+            raw = config.get('SchildAPI', 'timeout', fallback='').strip()
+            if not raw:
+                return DEFAULT_TIMEOUT
+            wert = int(raw)
+        except Exception:
+            return DEFAULT_TIMEOUT
+        return None if wert <= 0 else wert
 
     @staticmethod
     def _read_schulbesuch_workers_from_settings():
