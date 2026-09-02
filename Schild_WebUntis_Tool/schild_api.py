@@ -105,16 +105,37 @@ class SVWSClient:
             self._local.session = session
         return session
 
+    @staticmethod
+    def _raise_for_status(r):
+        """Wie response.raise_for_status(), nimmt aber den Antwort-Body mit auf.
+
+        Der SVWS-Server begruendet Fehler im Body; raise_for_status() wirft ihn
+        weg und hinterlaesst nur 'HTTP 500'. Ohne den Grund ist ein Fehler kaum
+        einzugrenzen — insbesondere wenn ein Reverse-Proxy dazwischenhaengt und
+        gar nicht klar ist, wer den Fehler erzeugt hat.
+        """
+        if r.status_code < 400:
+            return
+        try:
+            body = (r.text or '').strip()
+        except Exception:
+            body = ''
+        if len(body) > 500:
+            body = body[:500] + ' […]'
+        detail = f" — Antwort des Servers: {body}" if body else " (Server sendete keinen Fehlertext)"
+        raise requests.exceptions.HTTPError(
+            f"HTTP {r.status_code} bei {r.url}{detail}", response=r)
+
     def _get(self, path, session=None):
         r = (session or self.session).get(self._db(path), timeout=self.timeout)
-        r.raise_for_status()
+        self._raise_for_status(r)
         return r.json()
 
     def _post_json(self, path, body):
         r = self.session.post(self._db(path), json=body,
                               headers={"Content-Type": "application/json"},
                               timeout=self.timeout)
-        r.raise_for_status()
+        self._raise_for_status(r)
         return r.json()
 
     # --- Verbindung -------------------------------------------------------
@@ -132,7 +153,7 @@ class SVWSClient:
                 return False, f"Schema '{self.schema}' nicht gefunden."
             if r.status_code == 403:
                 return False, "Auth ok, aber Benutzer hat keine Berechtigung für diesen Endpoint."
-            r.raise_for_status()
+            self._raise_for_status(r)
             data = r.json()
             return True, f"Verbindung OK. Schule: {data.get('bezeichnung1', '')} ({data.get('schulNr', '')})"
         except requests.exceptions.SSLError as e:

@@ -1630,6 +1630,22 @@ def save_files(output_data_students, warnings, create_second_file, admin_warning
     import_dir = get_directory('import_directory', './WebUntis Importe')
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
+    # 0) Schutz gegen eine leere Importdatei.
+    # output_data_students enthaelt in Zeile 0 die Kopfzeile — weniger als zwei
+    # Eintraege heisst also "kein einziger Schueler". Das passiert z.B., wenn die
+    # SVWS-API scheitert und im CSV-Fallback keine Datei liegt. Eine leere
+    # Importdatei ist nicht harmlos: je nach Import-Filter deaktiviert WebUntis
+    # damit saemtliche Schueler. Deshalb lieber gar nichts schreiben und die
+    # zuletzt erzeugte Datei stehen lassen. (Verhindert nebenbei den IndexError
+    # in den Spalten-Bloecken weiter unten, die output_data_students[0] lesen.)
+    if not output_data_students or len(output_data_students) < 2:
+        print_error("Keine Schülerdaten vorhanden — es wird KEINE WebUntis-Importdatei erstellt.")
+        print_warning("Eine leere Importdatei könnte in WebUntis je nach Import-Filter alle "
+                      "Schüler deaktivieren. Bitte die Meldungen oben prüfen — z.B. "
+                      "fehlgeschlagene SVWS-API und gleichzeitig fehlende CSV-Dateien im "
+                      "Schild-Exporte-Verzeichnis.")
+        return
+
     # 1) Attestpflicht-Spalte
     if enable_attestpflicht_column:
         print_info("Füge Attestpflicht-Spalte hinzu...")
