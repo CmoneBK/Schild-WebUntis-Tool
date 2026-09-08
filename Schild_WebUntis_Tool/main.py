@@ -356,8 +356,10 @@ def run(use_abschlussdatum=False, create_second_file=False, enable_attestpflicht
     # Konfigurationsdatei einlesen
     config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
-    classes_dir  = config.get('Directories', 'classes_directory')
-    teachers_dir = config.get('Directories', 'teachers_directory')
+    # Mit fallback lesen: fehlt der Schluessel in einer bestehenden settings.ini,
+    # brach der Lauf hier frueher mit NoOptionError ab.
+    classes_dir  = config.get('Directories', 'classes_directory',  fallback='./Klassendaten')
+    teachers_dir = config.get('Directories', 'teachers_directory', fallback='./Lehrerdaten')
 
     opts = Table(box=None, show_header=False, pad_edge=False, padding=(0, 2, 0, 2))
     opts.add_column(style="cyan dim", no_wrap=True)

@@ -88,6 +88,42 @@ def print_section(title):
     """Gibt eine Abschnittsüberschrift aus – strukturelle Trennung, kein Emoji."""
     _console.rule(title, style="cyan")
 
+
+def _fatal_error_hook(exc_type, exc_value, exc_tb):
+    """Faengt unbehandelte Ausnahmen ab, damit das Konsolenfenster nicht
+    kommentarlos zuklappt.
+
+    Beim Start per Doppelklick schliesst Windows das Fenster sofort, wenn das
+    Programm abstuerzt — die Fehlermeldung ist dann nicht lesbar, und der Nutzer
+    sieht nur ein kurz aufblitzendes Fenster. Deshalb hier eine verstaendliche
+    Zusammenfassung, die technischen Details und eine Wartepause.
+
+    Die Pause gilt nur fuer interaktive Konsolen: in der Windows-Aufgabenplanung
+    gibt es kein TTY, dort wuerde ein input() den Task haengen lassen.
+    """
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_tb)
+        return
+    try:
+        print_error(f"Das Programm wurde wegen eines unerwarteten Fehlers beendet: "
+                    f"{exc_type.__name__}: {exc_value}")
+        if issubclass(exc_type, configparser.Error):
+            print_warning("Das deutet auf eine unvollstaendige oder beschaedigte 'settings.ini' hin. "
+                          "Benennen Sie die Datei um oder loeschen Sie sie — das Tool legt sie beim "
+                          "naechsten Start mit Standardwerten neu an. Ihre Verzeichnis-Einstellungen "
+                          "muessen Sie danach einmalig neu setzen.")
+    except Exception:
+        pass
+    traceback.print_exception(exc_type, exc_value, exc_tb)
+    try:
+        if sys.stdin is not None and sys.stdin.isatty():
+            input("\nZum Schliessen die Eingabetaste druecken...")
+    except Exception:
+        pass
+
+
+sys.excepthook = _fatal_error_hook
+
 def print_banner():
     import_dir  = get_directory('import_directory', './WebUntis Importe')
     log_dir     = get_directory('log_directory', './Logs')
@@ -563,36 +599,35 @@ client_name = Schild-WebUntis-Tool
             if not config.has_section('Directories'):
                 config.add_section('Directories')
                 updated = True
-            if not config.has_option('Directories', 'nachteilsausgleich_excel_directory'):
-                config.set('Directories', 'nachteilsausgleich_excel_directory', default_nachteilsausgleich_excel_directory)
-                updated = True
-            if not config.has_option('Directories', 'nachteilsausgleich_excel_filename'):
-                config.set('Directories', 'nachteilsausgleich_excel_filename', '')
-                updated = True
-            if not config.has_option('Directories', 'nachteilsausgleich_excel_path'):
-                config.set('Directories', 'nachteilsausgleich_excel_path', '')
-                updated = True
-            if not config.has_option('Directories', 'foto_directory'):
-                config.set('Directories', 'foto_directory', default_foto_directory)
-                updated = True
-            if not config.has_option('Directories', 'foto_zip_directory'):
-                config.set('Directories', 'foto_zip_directory', default_foto_zip_directory)
-                updated = True
-            if not config.has_option('Directories', 'erzieher_export_directory'):
-                config.set('Directories', 'erzieher_export_directory', default_erzieher_export_directory)
-                updated = True
-            if not config.has_option('Directories', 'ansprechpartner_export_directory'):
-                config.set('Directories', 'ansprechpartner_export_directory', default_ansprechpartner_export_directory)
-                updated = True
-            if not config.has_option('Directories', 'erzieher_output_directory'):
-                config.set('Directories', 'erzieher_output_directory', default_erzieher_output_directory)
-                updated = True
-            if not config.has_option('Directories', 'ausbilder_input_directory'):
-                config.set('Directories', 'ausbilder_input_directory', default_ausbilder_input_directory)
-                updated = True
-            if not config.has_option('Directories', 'ausbilder_output_directory'):
-                config.set('Directories', 'ausbilder_output_directory', default_ausbilder_output_directory)
-                updated = True
+            # Alle Schluessel aus dem Standard-Template pruefen, nicht nur die
+            # neu hinzugekommenen. Fehlt einer in einer bestehenden Konfiguration
+            # (von Hand bearbeitet, unvollstaendig kopiert), brach das Tool beim
+            # Start mit einem NoOptionError ab — das Konsolenfenster schloss sich
+            # sofort wieder, ohne lesbare Meldung.
+            for key, default in [
+                ('classes_directory', default_classes_dir),
+                ('teachers_directory', default_teachers_dir),
+                ('log_directory', default_log_dir),
+                ('xlsx_directory', default_xlsx_dir),
+                ('import_directory', default_import_dir),
+                ('schildexport_directory', default_schildexport_dir),
+                ('class_size_directory', default_class_size_dir),
+                ('attest_file_directory', default_attest_file_directory),
+                ('nachteilsausgleich_file_directory', default_nachteilsausgleich_file_directory),
+                ('nachteilsausgleich_excel_directory', default_nachteilsausgleich_excel_directory),
+                ('nachteilsausgleich_excel_filename', ''),
+                ('nachteilsausgleich_excel_path', ''),
+                ('foto_directory', default_foto_directory),
+                ('foto_zip_directory', default_foto_zip_directory),
+                ('erzieher_export_directory', default_erzieher_export_directory),
+                ('ansprechpartner_export_directory', default_ansprechpartner_export_directory),
+                ('erzieher_output_directory', default_erzieher_output_directory),
+                ('ausbilder_input_directory', default_ausbilder_input_directory),
+                ('ausbilder_output_directory', default_ausbilder_output_directory),
+            ]:
+                if not config.has_option('Directories', key):
+                    config.set('Directories', key, default)
+                    updated = True
             # FotoOptions
             if not config.has_section('FotoOptions'):
                 config.add_section('FotoOptions')
@@ -830,8 +865,10 @@ def admin_warnings(send_email_flag=False):
     # Konfigurationsdatei einlesen
     config = configparser.ConfigParser(interpolation=None)
     safe_read_config(config, 'settings.ini')
-    classes_dir = config.get('Directories', 'classes_directory')
-    teachers_dir = config.get('Directories', 'teachers_directory')
+    # Mit fallback lesen — siehe run() in main.py: ein fehlender Schluessel in
+    # einer bestehenden settings.ini fuehrte hier zu einem NoOptionError.
+    classes_dir = config.get('Directories', 'classes_directory', fallback='./Klassendaten')
+    teachers_dir = config.get('Directories', 'teachers_directory', fallback='./Lehrerdaten')
 
     # Klassen- und Lehrkräfte-Daten einlesen
     classes_by_name, teachers = read_classes(classes_dir, teachers_dir, return_teachers=True)
