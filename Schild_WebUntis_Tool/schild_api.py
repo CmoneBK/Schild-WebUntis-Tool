@@ -4,6 +4,7 @@ Liest Schüler-, Klassen- und Lehrerdaten aus dem SVWS-Server und mappt sie
 auf das interne Dict-Format, das auch der CSV-Pfad erzeugt — sodass der Rest
 der Verarbeitung identisch bleibt.
 """
+import re
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -51,6 +52,21 @@ SCHULBESUCH_WORKERS_MAX = 16
 # ('entlassdatumVorherigeSchule' ist bewusst NICHT dabei — das ist das
 # Entlassdatum der *vorherigen* Schule, ein voellig anderer Wert.)
 ENTLASSDATUM_FELDER = ('entlassdatumDieseSchule', 'entlassungDatum')
+
+# Erkennung kuenftiger Umbenennungen (siehe unbekannte_entlassdatum_felder).
+# Bewusst als *positive* Suche gebaut: Wir melden nur, wenn die Antwort ein Feld
+# enthaelt, das nach einem Entlassdatum aussieht, aber keiner uns bekannten
+# Schreibweise entspricht. Auf die blosse Abwesenheit der bekannten Felder zu
+# pruefen waere unbrauchbar — je nach Jackson-Konfiguration laesst der Server
+# leere Felder einfach weg, und waehrend des Schuljahres ist ein leeres
+# Entlassdatum der Normalfall. Ein Fehlalarm bei jedem Lauf waere die Folge.
+_ENTLASSDATUM_MUSTER = re.compile(r'entlass.*datum|datum.*entlass', re.IGNORECASE)
+_VORHERIGE_SCHULE_MUSTER = re.compile(r'vorherige|vorige', re.IGNORECASE)
+
+# Stammdaten-Felder, die immer gefuellt sind — fehlen sie, hat sich die
+# Struktur der API-Antwort geaendert. Optionale Felder (Geschlecht, Adresse,
+# Aufnahmedatum ...) sind bewusst NICHT dabei: sie duerfen legitim fehlen.
+STAMMDATEN_PFLICHTFELDER = ('id', 'nachname', 'vorname')
 
 # Wiederholversuche fuer fehlgeschlagene Schulbesuch-Abrufe (0 = aus).
 SCHULBESUCH_RETRIES_DEFAULT = 1
@@ -266,6 +282,37 @@ class SVWSClient:
             return False, {}
 
     @staticmethod
+    def unbekannte_entlassdatum_felder(schulbesuch):
+        """Erkennt, ob der Server das Entlassdatum unter einem uns unbekannten
+        Feldnamen liefert. Liefert die verdaechtigen Feldnamen (leer = alles gut).
+
+        Hintergrund: SVWS 1.4 hat 'entlassungDatum' in 'entlassdatumDieseSchule'
+        umbenannt. Weil ein fehlendes JSON-Feld beim Zugriff einfach None ergibt,
+        blieb die Spalte danach wochenlang leer, ohne dass irgendetwas auffiel.
+        Diese Pruefung soll die naechste Umbenennung sofort sichtbar machen.
+
+        Bewusst positiv formuliert: gesucht wird ein *vorhandenes* Feld, das nach
+        einem Entlassdatum aussieht, aber keiner bekannten Schreibweise
+        entspricht. Ist eine bekannte Schreibweise dabei, ist ohnehin alles in
+        Ordnung. Felder mit Bezug zur vorherigen Schule werden ausgeklammert —
+        die gibt es regulaer und sie meinen etwas anderes.
+        """
+        if any(feld in schulbesuch for feld in ENTLASSDATUM_FELDER):
+            return []
+        return [k for k in schulbesuch
+                if _ENTLASSDATUM_MUSTER.search(k)
+                and not _VORHERIGE_SCHULE_MUSTER.search(k)]
+
+    @staticmethod
+    def fehlende_stammdaten_felder(stammdatensatz):
+        """Liefert die Pflichtfelder, die in einem Stammdatensatz fehlen.
+
+        Nur Felder, die immer gefuellt sind (siehe STAMMDATEN_PFLICHTFELDER) —
+        fehlt eines davon, hat sich die Struktur der API-Antwort geaendert.
+        """
+        return [f for f in STAMMDATEN_PFLICHTFELDER if f not in stammdatensatz]
+
+    @staticmethod
     def entlassdatum_aus_schulbesuch(schulbesuch):
         """Entlassdatum (DD.MM.YYYY) aus den Schulbesuchsdaten, versionsunabhaengig.
 
@@ -395,7 +442,20 @@ class SVWSClient:
             if progress and (erledigt % SCHULBESUCH_PROGRESS_STEP == 0 or erledigt == gesamt):
                 progress(erledigt, gesamt, workers)
 
+        # Feld-Sanity-Check: einmal pro Lauf an der ersten erfolgreichen Antwort,
+        # damit kein zusaetzlicher Request noetig ist.
+        geprueft = {'schulbesuch': False}
+
         def _uebernimm(sid, sb):
+            if not geprueft['schulbesuch']:
+                geprueft['schulbesuch'] = True
+                unbekannt = self.unbekannte_entlassdatum_felder(sb)
+                if unbekannt and warn:
+                    warn(f"Die SVWS-API liefert das Entlassdatum offenbar unter einem "
+                         f"unbekannten Feldnamen: {', '.join(sorted(unbekannt))}. "
+                         f"Bekannt sind {', '.join(ENTLASSDATUM_FELDER)}. Vermutlich eine "
+                         f"neuere Serverversion mit geaenderten Feldnamen — die Spalte "
+                         f"'Entlassdatum' bleibt sonst stillschweigend leer. Bitte melden.")
             datum = self.entlassdatum_aus_schulbesuch(sb)
             if datum:
                 entlassdatum_by_id[sid] = datum
@@ -556,6 +616,17 @@ class SVWSClient:
 
         # 3) Stammdaten Bulk
         stammdaten = self.get_schueler_stammdaten_bulk(schueler_ids)
+
+        # Feld-Sanity-Check am ersten Datensatz — kostet keinen zusaetzlichen
+        # Request. Fehlt eines der immer gefuellten Pflichtfelder, hat sich die
+        # Struktur der API-Antwort geaendert und stille Datenverluste drohen.
+        if stammdaten and warn:
+            fehlend = self.fehlende_stammdaten_felder(stammdaten[0])
+            if fehlend:
+                warn(f"Die SVWS-API liefert erwartete Stammdaten-Felder nicht: "
+                     f"{', '.join(fehlend)}. Vermutlich eine neuere Serverversion mit "
+                     f"geaenderten Feldnamen — betroffene Spalten bleiben sonst "
+                     f"stillschweigend leer. Bitte melden.")
 
         # 4) Orte-Lookup
         orte = self.get_orte_lookup()
