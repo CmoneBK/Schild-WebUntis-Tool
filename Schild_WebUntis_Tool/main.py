@@ -1144,6 +1144,20 @@ def read_students(use_abschlussdatum=False):
             ab_info = f"Abschnitt-ID {abschnitt_id}" if abschnitt_id else "aktiver Abschnitt"
             print_info(f"Lese Schülerdaten über SVWS-API (Schild 3.x, {ab_info})...")
 
+            # Die Option 'Abschlussdatum' greift nur im CSV-Pfad: sie leitet das
+            # Entlassdatum aus 'vorauss. Abschlussdatum' ab, und dieses Feld
+            # liefert die SVWS-API nicht (geprueft gegen SVWS 1.3.1 und 1.4.1 —
+            # es existiert nur das Flag istAbschlussPrognose, kein Datum). Ohne
+            # Hinweis wuerde die Option im API-Modus wirkungslos bleiben, ohne
+            # dass der Nutzer es merkt. Die Spalte bleibt trotzdem in der
+            # Ausgabedatei, damit das Dateiformat unabhaengig von der Datenquelle
+            # identisch ist — und falls der SVWS-Server das Feld nachliefert.
+            if use_abschlussdatum:
+                print_warning("Die Option 'Abschlussdatum' ist aktiv, wirkt im SVWS-API-Modus "
+                              "aber nicht: Die API liefert kein voraussichtliches Abschlussdatum. "
+                              "Die Spalte bleibt daher leer, und es wird kein Entlassdatum daraus "
+                              "abgeleitet. Im CSV-Modus funktioniert die Option unverändert.")
+
             def _schulbesuch_progress(erledigt, gesamt, workers=1):
                 """
                 Fortschritt beim Laden der Schulbesuchsdaten (Entlassdatum).
