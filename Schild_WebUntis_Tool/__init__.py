@@ -137,7 +137,7 @@ def print_banner():
 
     _console.print(Panel(
         content,
-        title="[bold cyan]🚀 Schild-WebUntis-Tool v3.0[/]",
+        title="[bold cyan]🚀 Schild-WebUntis-Tool v3.3[/]",
         border_style="cyan",
         padding=(0, 1),
     ))
