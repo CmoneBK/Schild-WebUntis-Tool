@@ -1577,6 +1577,23 @@ MISSING_CRITERIA = {
             for i in range(1, n + 1)
         ),
     },
+    # Schaerfere Variante von 'no_email': Schlaegt nur an, wenn KEIN einziger
+    # Erzieher eine E-Mail hat. Sinnvoll an Schulen, wo ueblicherweise nur ein
+    # Elternteil eine Adresse hinterlegt hat — dort trifft 'no_email' auf fast
+    # jeden Schueler zu (der zweite Slot ist mit Namen gefuellt, aber ohne
+    # E-Mail) und der Report wird unbrauchbar. Hier bleiben genau die Faelle
+    # uebrig, bei denen tatsaechlich keine Kontaktaufnahme moeglich ist.
+    # Die Bedingung "mindestens ein Erzieher vorhanden" grenzt das Kriterium
+    # gegen 'no_erzieher' ab, damit dieselben Schueler nicht in beiden Listen
+    # auftauchen.
+    'no_email_any': {
+        'label': 'Kein Erzieher mit E-Mail',
+        'test':  lambda er, n: any(_slot_used(er, i) for i in range(1, n + 1))
+                               and not any(
+            _slot_used(er, i) and (er.get(f'Erzieher {i}: E-Mail', '') or '').strip()
+            for i in range(1, n + 1)
+        ),
+    },
 }
 
 

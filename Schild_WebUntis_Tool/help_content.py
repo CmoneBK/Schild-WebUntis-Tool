@@ -1264,6 +1264,12 @@ oder <strong>📄 Quelldateien anzeigen</strong>, um die Datenqualität zu prüf
     <ul>
       <li>Kein Erzieher hinterlegt</li>
       <li>Mind. ein Erzieher ohne Nachname / Vorname / E-Mail</li>
+      <li><strong>Kein Erzieher mit E-Mail</strong> — schärfere Variante: schlägt nur an,
+      wenn <em>kein einziger</em> hinterlegter Erzieher eine E-Mail hat. Sinnvoll, wenn
+      üblicherweise nur ein Elternteil eine Adresse hinterlegt hat: „Mind. ein Erzieher
+      ohne E-Mail" trifft dann auf fast jeden Schüler zu, weil der zweite Erzieher zwar
+      mit Namen erfasst, aber ohne E-Mail ist. Übrig bleiben so genau die Fälle, in denen
+      gar keine Kontaktaufnahme per E-Mail möglich ist.</li>
     </ul>
     <p>Verknüpfung wahlweise mit <em>ODER</em> (mindestens eines) oder <em>UND</em>
     (alle aktivierten). Selektion erfolgt per Klassen-Checkbox; Export erzeugt eine
