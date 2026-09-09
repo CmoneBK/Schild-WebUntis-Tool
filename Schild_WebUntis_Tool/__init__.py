@@ -386,6 +386,13 @@ allowed_statuses = 2,6,8,9
 # Schueler. 1 = sequenziell (Standard). Hoehere Werte (4-8) beschleunigen
 # grosse Schulen deutlich, erzeugen aber entsprechend Last auf dem Server.
 schulbesuch_workers = 1
+# Wiederholversuche fuer fehlgeschlagene Schulbesuch-Abrufe (0 = aus, max 5).
+# Wiederholt werden nur die fehlgeschlagenen Schueler, nicht der ganze Lauf.
+schulbesuch_retries = 1
+# Abbruchschwelle in Prozent fehlgeschlagener Schulbesuch-Abrufe (0 = aus).
+# Bei Ueberschreitung bricht der API-Lauf ab, statt unvollstaendige
+# Entlassdaten weiterzuverarbeiten (greift dann der CSV-Fallback).
+schulbesuch_max_fehlerquote = 0
 # Timeout pro API-Abruf in Sekunden. 0 = deaktiviert (unbegrenzt warten).
 # Achtung: Ohne Timeout kann ein nicht antwortender SVWS-Server den Lauf
 # beliebig lange blockieren.
@@ -585,6 +592,8 @@ client_name = Schild-WebUntis-Tool
                 ('abschnitt_id', ''),
                 ('allowed_statuses', '2,6,8,9'),
                 ('schulbesuch_workers', '1'),
+                ('schulbesuch_retries', '1'),
+                ('schulbesuch_max_fehlerquote', '0'),
                 ('timeout', '30'),
                 ('attest_vermerk_bezeichnung', ''),
                 ('nachteilsausgleich_vermerk_bezeichnung', ''),

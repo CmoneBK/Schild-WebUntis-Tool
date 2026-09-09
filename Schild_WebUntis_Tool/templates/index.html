@@ -2489,6 +2489,34 @@
                             </small>
                         </div>
                         <div class="form-group">
+                            <label for="schild_api_schulbesuch_retries">🔁 Wiederholversuche bei fehlgeschlagenen Abrufen:</label>
+                            <input type="number" class="form-control schild-api-only" min="0" max="5" step="1"
+                                   id="schild_api_schulbesuch_retries" name="schild_api_schulbesuch_retries"
+                                   placeholder="1">
+                            <small class="form-text text-muted">
+                                Scheitert der Abruf der Schulbesuchsdaten für einzelne Schüler (typischerweise,
+                                weil der SVWS-Server unter Last mit einem Fehler antwortet), fehlt bei diesen
+                                Schülern das <strong>Entlassdatum</strong> — auch wenn in Schild eines hinterlegt
+                                ist. Wiederholt werden nur die fehlgeschlagenen Schüler, nicht der gesamte Lauf.
+                                Standard <strong>1</strong>, <strong>0</strong> schaltet die Wiederholung ab.
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label for="schild_api_schulbesuch_max_fehlerquote">🛑 Abbruch ab Fehlerquote (%):</label>
+                            <input type="number" class="form-control schild-api-only" min="0" max="100" step="1"
+                                   id="schild_api_schulbesuch_max_fehlerquote" name="schild_api_schulbesuch_max_fehlerquote"
+                                   placeholder="0">
+                            <small class="form-text text-muted">
+                                Bricht die API-Verarbeitung ab, wenn mehr als dieser Anteil der
+                                Schulbesuch-Abrufe fehlschlägt — damit keine lückenhaften Entlassdaten
+                                weiterverarbeitet werden (unvollständige Daten führen sonst zu falschen
+                                Entlassdatum-Warnungen an die Klassenlehrkräfte). Anschließend greift der
+                                CSV-Fallback, sofern aktiviert.
+                                <strong>0</strong> = deaktiviert: es wird nur gewarnt und mit Lücken
+                                weitergearbeitet (bisheriges Verhalten).
+                            </small>
+                        </div>
+                        <div class="form-group">
                             <label for="schild_api_timeout">⏱️ Timeout pro Abruf (Sekunden):</label>
                             <input type="number" class="form-control schild-api-only" min="0" step="1"
                                    id="schild_api_timeout" name="schild_api_timeout" placeholder="30">

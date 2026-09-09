@@ -1166,7 +1166,8 @@ def read_students(use_abschlussdatum=False):
                                f"„Parallele Abrufe der Schulbesuchsdaten\".")
 
             output_data, students_by_id = svws_client.fetch_students(
-                abschnitt_id=abschnitt_id, progress=_schulbesuch_progress)
+                abschnitt_id=abschnitt_id, progress=_schulbesuch_progress,
+                warn=print_warning)
             print_success(f"Schülerdaten erfolgreich über SVWS-API geladen ({len(students_by_id)} Schüler).")
             return output_data, students_by_id
         except Exception as e:

@@ -41,6 +41,25 @@ SCHULBESUCH_PROGRESS_STEP = 250
 SCHULBESUCH_WORKERS_DEFAULT = 1
 SCHULBESUCH_WORKERS_MAX = 16
 
+# Feldname des Entlassdatums in SchuelerSchulbesuchsdaten — je nach
+# SVWS-Version unterschiedlich:
+#   SVWS 1.4.x: 'entlassdatumDieseSchule'
+#   SVWS 1.3.x: 'entlassungDatum'
+# Reihenfolge = Suchreihenfolge, der erste nicht-leere Wert gewinnt. Beide
+# Schreibweisen muessen unterstuetzt werden, damit Schulen mit aelterem und
+# neuerem SVWS-Server dieselbe Tool-Version nutzen koennen.
+# ('entlassdatumVorherigeSchule' ist bewusst NICHT dabei — das ist das
+# Entlassdatum der *vorherigen* Schule, ein voellig anderer Wert.)
+ENTLASSDATUM_FELDER = ('entlassdatumDieseSchule', 'entlassungDatum')
+
+# Wiederholversuche fuer fehlgeschlagene Schulbesuch-Abrufe (0 = aus).
+SCHULBESUCH_RETRIES_DEFAULT = 1
+SCHULBESUCH_RETRIES_MAX = 5
+
+# Abbruchschwelle in Prozent fehlgeschlagener Schulbesuch-Abrufe.
+# 0 = deaktiviert (nur Warnung, Verarbeitung laeuft mit Luecken weiter).
+SCHULBESUCH_MAX_FEHLERQUOTE_DEFAULT = 0
+
 # Timeout pro API-Abruf in Sekunden. None = kein Timeout (Aufruf wartet
 # unbegrenzt) — bewusst moeglich, weil manche SVWS-Server unter Last sehr lange
 # brauchen; siehe [SchildAPI].timeout.
@@ -227,10 +246,38 @@ class SVWSClient:
 
         session: beim parallelen Abruf die thread-eigene Session (siehe
         _thread_session); ohne Angabe die gemeinsame Session wie bisher."""
+        return self._schulbesuch_versuch(schueler_id, session)[1]
+
+    def _schulbesuch_versuch(self, schueler_id, session=None):
+        """Wie get_schueler_schulbesuch, meldet aber zusaetzlich, OB der Abruf gelang.
+
+        Liefert (erfolg: bool, daten: dict).
+
+        Die Unterscheidung ist wichtig fuer die Fehlerzaehlung: Ein *leeres*
+        Ergebnis ist voellig normal — waehrend des laufenden Schuljahres ist bei
+        den meisten Schuelern noch kein Entlassdatum gepflegt. Ein
+        *fehlgeschlagener* Abruf ist dagegen ein echtes Problem, denn dann
+        fehlen Daten, die eigentlich vorhanden waeren. Frueher waren beide
+        Faelle nicht unterscheidbar, weil hier stillschweigend {} zurueckkam.
+        """
         try:
-            return self._get(f"/schueler/{schueler_id}/schulbesuch", session=session)
+            return True, (self._get(f"/schueler/{schueler_id}/schulbesuch", session=session) or {})
         except Exception:
-            return {}
+            return False, {}
+
+    @staticmethod
+    def entlassdatum_aus_schulbesuch(schulbesuch):
+        """Entlassdatum (DD.MM.YYYY) aus den Schulbesuchsdaten, versionsunabhaengig.
+
+        Siehe ENTLASSDATUM_FELDER: SVWS 1.4 hat das Feld umbenannt. Wird nur der
+        alte Name gelesen, bleibt die Spalte auf neueren Servern immer leer —
+        ohne jede Fehlermeldung, weil ein fehlendes Feld schlicht None ergibt.
+        """
+        for feld in ENTLASSDATUM_FELDER:
+            wert = (schulbesuch.get(feld) or '').strip()
+            if wert:
+                return _to_csv_date(wert)
+        return ''
 
     # --- Vermerke (für Attestpflicht / Nachteilsausgleich) ---------------
 
@@ -312,7 +359,8 @@ class SVWSClient:
             }
         return classes_by_name
 
-    def _fetch_entlassdaten(self, schueler_ids, workers, progress=None):
+    def _fetch_entlassdaten(self, schueler_ids, workers, progress=None,
+                            retries=None, warn=None):
         """
         Holt die Entlassdaten aller Schüler und liefert {schueler_id: 'DD.MM.YYYY'}.
 
@@ -326,11 +374,17 @@ class SVWSClient:
 
         Das Ergebnis ist in beiden Faellen identisch — nur die Reihenfolge der
         Requests unterscheidet sich, und ein Dict ist reihenfolgeunabhaengig.
-        Fehler einzelner Abrufe schluckt get_schueler_schulbesuch wie gehabt,
-        ein toter Schueler-Datensatz kippt also nicht den ganzen Lauf.
+
+        Fehlgeschlagene Einzelabrufe kippen den Lauf nicht, werden aber gezaehlt
+        und je nach Konfiguration wiederholt bzw. als Abbruchgrund gewertet —
+        siehe retries und max_fehlerquote. Rueckgabe:
+        (entlassdatum_by_id, anzahl_fehlgeschlagener_abrufe).
         """
         gesamt = len(schueler_ids)
         workers = max(1, min(int(workers or 1), SCHULBESUCH_WORKERS_MAX))
+        if retries is None:
+            retries = self._read_schulbesuch_retries_from_settings()
+        retries = max(0, min(int(retries or 0), SCHULBESUCH_RETRIES_MAX))
         if progress:
             progress(0, gesamt, workers)
 
@@ -341,32 +395,59 @@ class SVWSClient:
             if progress and (erledigt % SCHULBESUCH_PROGRESS_STEP == 0 or erledigt == gesamt):
                 progress(erledigt, gesamt, workers)
 
-        if workers <= 1 or gesamt <= 1:
-            for sid in schueler_ids:
-                sb = self.get_schueler_schulbesuch(sid)
-                ed = sb.get('entlassungDatum')
-                if ed:
-                    entlassdatum_by_id[sid] = _to_csv_date(ed)
-                erledigt += 1
-                _melde()
-            return entlassdatum_by_id
+        def _uebernimm(sid, sb):
+            datum = self.entlassdatum_aus_schulbesuch(sb)
+            if datum:
+                entlassdatum_by_id[sid] = datum
 
-        def _hole(sid):
-            # Läuft im Worker-Thread → eigene Session.
-            return sid, self.get_schueler_schulbesuch(sid, session=self._thread_session())
+        def _durchlauf(ids, mit_fortschritt):
+            """Holt die Schulbesuchsdaten fuer ids, liefert die IDs mit Fehlern."""
+            nonlocal erledigt
+            gescheitert = []
+            if workers <= 1 or len(ids) <= 1:
+                for sid in ids:
+                    ok, sb = self._schulbesuch_versuch(sid)
+                    if ok:
+                        _uebernimm(sid, sb)
+                    else:
+                        gescheitert.append(sid)
+                    if mit_fortschritt:
+                        erledigt += 1
+                        _melde()
+                return gescheitert
 
-        # Ergebnisse werden im Haupt-Thread eingesammelt (as_completed-Semantik
-        # von Executor.map: die Iteration liefert der Reihe nach, die Requests
-        # laufen trotzdem parallel). Damit bleibt das Dict-Schreiben single-
-        # threaded und braucht kein Lock.
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            for sid, sb in pool.map(_hole, schueler_ids):
-                ed = sb.get('entlassungDatum')
-                if ed:
-                    entlassdatum_by_id[sid] = _to_csv_date(ed)
-                erledigt += 1
-                _melde()
-        return entlassdatum_by_id
+            def _hole(sid):
+                # Läuft im Worker-Thread → eigene Session.
+                return (sid,) + self._schulbesuch_versuch(sid, session=self._thread_session())
+
+            # Ergebnisse werden im Haupt-Thread eingesammelt (Executor.map liefert
+            # der Reihe nach, die Requests laufen trotzdem parallel). Damit bleibt
+            # das Dict-Schreiben single-threaded und braucht kein Lock.
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                for sid, ok, sb in pool.map(_hole, ids):
+                    if ok:
+                        _uebernimm(sid, sb)
+                    else:
+                        gescheitert.append(sid)
+                    if mit_fortschritt:
+                        erledigt += 1
+                        _melde()
+            return gescheitert
+
+        gescheitert = _durchlauf(schueler_ids, mit_fortschritt=True)
+
+        # Wiederholung nur fuer die fehlgeschlagenen IDs — die uebrigen Daten
+        # liegen bereits vor. Typische Ursache sind Lastfehler des SVWS-Servers,
+        # die beim zweiten Versuch oft nicht mehr auftreten.
+        for versuch in range(retries):
+            if not gescheitert:
+                break
+            if warn:
+                warn(f"Wiederhole {len(gescheitert)} fehlgeschlagene Schulbesuch-Abrufe "
+                     f"(Versuch {versuch + 2} von {retries + 1})...")
+            gescheitert = _durchlauf(gescheitert, mit_fortschritt=False)
+
+        return entlassdatum_by_id, len(gescheitert)
 
     @staticmethod
     def read_timeout_from_settings():
@@ -388,6 +469,33 @@ class SVWSClient:
         return None if wert <= 0 else wert
 
     @staticmethod
+    def _read_int_setting(option, default, minimum, maximum):
+        """Liest eine Ganzzahl aus [SchildAPI] und begrenzt sie auf [minimum, maximum].
+        Fehlender, leerer oder unlesbarer Wert → default."""
+        import configparser
+        config = configparser.ConfigParser(interpolation=None)
+        try:
+            config.read('settings.ini', encoding='utf-8-sig')
+            raw = config.get('SchildAPI', option, fallback='').strip()
+            if not raw:
+                return default
+            return max(minimum, min(int(raw), maximum))
+        except Exception:
+            return default
+
+    @staticmethod
+    def _read_schulbesuch_retries_from_settings():
+        """[SchildAPI].schulbesuch_retries — Wiederholversuche, 0 = aus."""
+        return SVWSClient._read_int_setting(
+            'schulbesuch_retries', SCHULBESUCH_RETRIES_DEFAULT, 0, SCHULBESUCH_RETRIES_MAX)
+
+    @staticmethod
+    def _read_schulbesuch_max_fehlerquote_from_settings():
+        """[SchildAPI].schulbesuch_max_fehlerquote — Prozent, 0 = deaktiviert."""
+        return SVWSClient._read_int_setting(
+            'schulbesuch_max_fehlerquote', SCHULBESUCH_MAX_FEHLERQUOTE_DEFAULT, 0, 100)
+
+    @staticmethod
     def _read_schulbesuch_workers_from_settings():
         """Liest [SchildAPI].schulbesuch_workers aus settings.ini.
         Default: SCHULBESUCH_WORKERS_DEFAULT (1 = sequenziell)."""
@@ -402,7 +510,7 @@ class SVWSClient:
             return SCHULBESUCH_WORKERS_DEFAULT
 
     def fetch_students(self, abschnitt_id=None, fetch_entlassdatum=True, allowed_statuses=None,
-                       progress=None, workers=None):
+                       progress=None, workers=None, warn=None):
         """
         Liefert (output_data_students, students_by_id) — exakt wie read_students()
         aus main.py es per CSV liefert. So kann der CSV-Pfad transparent ersetzt werden.
@@ -420,6 +528,10 @@ class SVWSClient:
         workers: Anzahl paralleler Schulbesuch-Abrufe. None (Default) liest
         [SchildAPI].schulbesuch_workers aus der settings.ini; 1 bedeutet
         sequenziell wie bisher.
+
+        warn: optionales Callback warn(nachricht) fuer Warnungen — aktuell fuer
+        fehlgeschlagene Schulbesuch-Abrufe. Wie bei progress gibt dieses Modul
+        selbst nichts aus.
         """
         if abschnitt_id is None:
             abschnitt_id = self.get_aktiver_abschnitt()
@@ -456,7 +568,22 @@ class SVWSClient:
         if fetch_entlassdatum:
             if workers is None:
                 workers = self._read_schulbesuch_workers_from_settings()
-            entlassdatum_by_id = self._fetch_entlassdaten(schueler_ids, workers, progress)
+            entlassdatum_by_id, fehler = self._fetch_entlassdaten(
+                schueler_ids, workers, progress=progress, warn=warn)
+            if fehler:
+                quote = (fehler * 100.0 / len(schueler_ids)) if schueler_ids else 0.0
+                meldung = (f"{fehler} von {len(schueler_ids)} Schulbesuch-Abrufen fehlgeschlagen "
+                           f"({quote:.1f} %) — bei diesen Schuelern fehlt das Entlassdatum, "
+                           f"auch wenn in Schild eines hinterlegt ist. Haeufigste Ursache ist "
+                           f"Ueberlastung des SVWS-Servers.")
+                grenze = self._read_schulbesuch_max_fehlerquote_from_settings()
+                if grenze and quote > grenze:
+                    raise RuntimeError(
+                        f"{meldung} Die konfigurierte Grenze von {grenze} % "
+                        f"([SchildAPI] schulbesuch_max_fehlerquote) ist ueberschritten — "
+                        f"Abbruch, damit keine unvollstaendigen Entlassdaten weiterverarbeitet werden.")
+                if warn:
+                    warn(meldung)
 
         # 6) Mapping aufbauen — exakt das Format das CSV-Pfad in read_students liefert
         output_columns = [
